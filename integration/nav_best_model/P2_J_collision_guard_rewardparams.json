@@ -1,0 +1,14 @@
+{
+  "stall_assist_min_throttle": 0.28,
+  "stall_clearance_threshold": 0.6,
+  "stall_heading_cos_threshold": 0.95,
+  "robot_safety_radius": 0.33,
+  "near_obstacle_slowdown_dist": 0.66,
+  "collision_threshold": 0.22,
+  "near_obstacle_min_linear_scale": 0.24,
+  "near_obstacle_min_angular_scale": 0.9,
+  "obstacle_turn_bonus_dist": 0.78,
+  "obstacle_turn_bonus_scale": 0.36,
+  "reward_obstacle_proximity": -0.35,
+  "reward_collision": -75.0
+}

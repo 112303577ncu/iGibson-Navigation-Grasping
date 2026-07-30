@@ -1,0 +1,162 @@
+# X3Plus Code Index
+
+Quick map for finding the right code without scanning the whole project.
+
+## Main Entry Points
+
+| Task | File | What to inspect first |
+|---|---|---|
+| PPO grasp deployment | `grasp/x3plus_real_grasp.py` | `DeployConfig`, `DetectionReceiver`, `GraspController.run()` |
+| One-process navigation + grasp | `integration/vision_grasp_pipeline.py` | `Navigator`, `run_pipeline()`, camera constants |
+| RL navigation + grasp | `integration/nav_rl_grasp_pipeline.py` | `RLNavigator`, `_rl_navigate()`, shared Rosmaster device |
+| TG30 ROS scan adapter | `integration/nav_rl.py` | `RosLaserScanSource`, `laser_scan_to_points()`, `make_lidar()` |
+| set_motor/odom/ROS detailed plan | `integration/SETMOTOR_ODOM_INTEGRATION.md` | serial ownership, actuator contract, odom/TF gates |
+| Dynamic Jetson host | `set_jetson_host.ps1` | set `X3PLUS_JETSON_HOST` once per PowerShell session; no source edits needed |
+| Arm-camera TCP bridge | `integration/vision_grasp_bridge.py` | `estimate_distance()`, payload `{x,y,z,w,class}` |
+| Camera/frame static check | `integration/verify_camera_grasp_frame.py` | URDF `mono_link` pose vs vision constants |
+| Deployment preflight | `integration/verify_x3plus_deploy.py` | dependency and real-run checks |
+
+## Data Flow
+
+```text
+arm camera / rear camera
+  -> YOLO detection
+  -> bbox geometry: distance, lateral offset, width
+  -> object target `{x, y, z, w}`
+  -> grasp controller object provider or TCP socket
+  -> 28D PPO observation
+  -> Rosmaster_Lib servo commands
+```
+
+Two supported integration modes:
+
+| Mode | Command path | Notes |
+|---|---|---|
+| Unified pipeline | `integration/vision_grasp_pipeline.py` | One process owns Rosmaster for wheels and arm. Preferred full robot loop. |
+| TCP bridge | `integration/vision_grasp_bridge.py` + `grasp/x3plus_real_grasp.py --socket` | Separate vision sender to grasp receiver on port 5555. |
+
+The `detection/rear_nav/` programs and older ROS `/cmd_vel` demos are retained
+as calibration/history references. They are not compatible with the current
+55D observation ordering or Phase-1/2 camera constants, and now require an
+explicit `--real` before any non-stop motor command is allowed.
+
+## Grasp Code Landmarks
+
+In `grasp/x3plus_real_grasp.py`:
+
+| Code | Purpose |
+|---|---|
+| `DeployConfig` | Servo limits, home poses, socket config, thresholds, width grip config |
+| `home_deg` | Navigation/cruise home pose |
+| `grasp_home_deg` | PPO training initial pose before policy starts |
+| `JointMapper` | sim radians <-> Rosmaster servo degrees, width -> S6 close angle |
+| `ServoController` | Rosmaster_Lib wrapper, `move_to_home()`, `move_to_grasp_home()` |
+| `FKComputer` | PyBullet/URDF FK for TCP pose |
+| `DetectionReceiver` | TCP `{x,y,z,w}` receiver |
+| `ObsBuilder.build()` | 28D observation, including `rel_pos = obj_pos - tcp_pos` |
+| `GraspController.run()` | Stage 0/1/2 policy loop |
+
+Important current defaults:
+
+```text
+home_deg       = (90, 140, 0, 0, 90, 30)   # navigation/cruise home
+grasp_home_deg = (90, 32.704, 9.786, 32.704, 90, 30)   # PPO training home
+S6 open=30 deg, closed=180 deg
+arm_hw_invert = (False, False, False, False, False)
+max_delta_deg=3.0
+```
+
+## Vision And Coordinate Code
+
+| File | Role |
+|---|---|
+| `detection/arm_cam.py` | Original arm-camera bbox -> distance/offset demo |
+| `detection/nav_arm_cam.py` | Arm-camera navigation demo |
+| `detection/rear_nav/rear_to_arm_blind_handoff.py` | Source of rear/arm navigation logic ported into pipeline |
+| `detection/calibration/calibrate_arm_camera_theta.py` | Arm camera pitch/distance calibration |
+| `detection/calibration/arm_camera_calibration_points.csv` | Existing arm camera calibration samples |
+| `integration/verify_camera_grasp_frame.py` | Checks whether camera pose assumptions match URDF base frame |
+
+Coordinate assumption to verify before trusting XY:
+
+```text
+PPO object frame = URDF/PyBullet base_link frame
+vision obj_x = camera ground distance + camera/base X offset
+vision obj_y = sign_y * lateral offset + camera/base Y offset
+```
+
+Current calibration status: `vision_grasp_bridge.py`、`vision_grasp_pipeline.py` 與
+`detection/arm_cam.py` 已同步 2026-07-10 的手臂相機內參／俯角，且先 undistort bbox
+底邊中點；Phase 3 已於 2026-07-16 完成四點實機複驗：`CAM_TO_BASE_X=0.1639m`、
+`CAM_TO_BASE_Y=0.0331m`、`SIGN_Y=-1`，最大誤差 X=0.39cm、Y=0.33cm。
+`z_offset=0.0488m` 已撤銷，因 FK TCP 是 arm_link5 慣性中心而非指間中心；瓶蓋 Z
+先保留訓練預設 0.02m，於 Phase 4 實抓微調。
+
+## Models And Assets
+
+| Path | Purpose |
+|---|---|
+| `grasp/trained_6d_models_v17/ppo_6d_final_ready_for_real_robot.zip` | PPO policy |
+| `grasp/trained_6d_models_v17/vecnormalize_6d_final.pkl` | VecNormalize stats |
+| `integration/nav_best_model/ppo_nav_281440_steps.zip` + `ppo_nav_vecnormalize_281440_steps.pkl` | Current nav baseline/default |
+| `integration/nav_best_model/doorway_ft_final.zip` + `doorway_ft_final_vecnormalize.pkl` | Candidate nav pair; on-robot A/B required before default switch |
+| `grasp/x3plus/yahboomcar.urdf` | FK/URDF frame source |
+| `detection/models/best.pt` | Current YOLO model |
+| `detection/models/data.yaml` | YOLO class names: `bottle-cap`, `paper-ball` |
+
+## Calibration And Verification Commands
+
+```bash
+# Static frame sanity check, no hardware deps
+python3 integration/verify_camera_grasp_frame.py
+
+# Pure logic self-test, no camera/hardware
+python3 integration/vision_grasp_pipeline.py --selftest
+python3 integration/nav_rl.py --selftest
+
+# TG30 /scan direction probe (TG.launch + rosbridge must already be running)
+python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
+
+# Deployment preflight
+python3 integration/verify_x3plus_deploy.py
+
+# TCP bridge one detection
+python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
+
+# Grasp with a calibrated external XYZ sender
+python3 grasp/x3plus_real_grasp.py --real --socket --width-grip --latch-obj \
+  --i-confirm-external-frame
+```
+
+Useful pose/class arguments:
+
+```bash
+--nav-home-deg 90,140,0,0,90,30
+--grasp-home-deg 90,140,0,0,90,30
+--class-z bottle-cap=0.012 --class-z paper-ball=0.035
+```
+
+## Fast Search Keywords
+
+```bash
+rg -n "home_deg|grasp_home_deg|move_to_home|move_to_grasp_home" grasp integration
+rg -n "DetectionReceiver|obj_provider|snapshot|latch|width_to_close" grasp integration
+rg -n "CAM_TO_BASE|SIGN_Y|THETA_ARM|FIXED_THETA|estimate_distance|width_m" integration detection
+rg -n "VecNormalize|norm_reward|training = False|shape=\\(28|shape=\\(6" grasp
+rg -n "mono_link|mono_joint|arm_joint|base_link" grasp/x3plus/yahboomcar.urdf
+```
+
+## Common Gotchas
+
+- Do not average camera-frame XY from different arm poses unless both detections are transformed into the same URDF/base frame first.
+- Freeze the target for one PPO episode; do not continuously update object position while the arm camera is moving.
+- If `x/y` looks consistently shifted, tune camera-to-base offsets (`CAM_TO_BASE_X/Y` or bridge `--cam-x/--cam-y`).
+- If left/right is reversed, flip `SIGN_Y` or bridge `--sign-y`.
+- If distance scale changes with range, recalibrate camera `H/theta/FX/FY`.
+- `x3plus_deploy_bridge.py` is not used by the main deployment path.
+- `/odom_setmotor` and `odom→base_footprint` are planned but not implemented in this repo yet.
+- The real LiDAR is YDLIDAR TG30. `/dev/rplidar` is only a udev alias; use the ROS `/scan`
+  backend and `roslibpy`, not `rplidar-roboticia`.
+- Never run a separate motor server and the unified grasp/navigation pipeline if both open `/dev/myserial`.
+- Real integrated grasp is refused until Phase-3 values are supplied with
+  `--cam-x/--cam-y/--sign-y` and acknowledged by `--i-confirm-camera-frame`.

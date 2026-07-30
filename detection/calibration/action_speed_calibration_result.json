@@ -1,0 +1,30 @@
+{
+    "test_duration_s": 2.0,
+    "test_speeds": [
+        30,
+        35,
+        40,
+        45,
+        50
+    ],
+    "command_interval_s": 0.05,
+    "vx": {
+        "axis": "vx",
+        "k": 0.010392349631953407,
+        "b": -0.14014916275336592,
+        "k_through_origin": 0.006994794171265748,
+        "rmse": 0.0020889767583506563,
+        "rmse_through_origin": 0.024486108621549204,
+        "samples": 5
+    },
+    "vy": null,
+    "wz": {
+        "axis": "wz",
+        "k": 0.0,
+        "b": 0.0,
+        "k_through_origin": 0.0,
+        "rmse": 0.0,
+        "rmse_through_origin": 0.0,
+        "samples": 5
+    }
+}

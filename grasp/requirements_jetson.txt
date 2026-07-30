@@ -1,0 +1,25 @@
+# Jetson Nano deployment requirements for X3Plus 6D grasp policy
+# Install with:  pip install -r requirements_jetson.txt
+#
+# Notes
+# -----
+# - PyBullet: used ONLY for headless forward kinematics (no GUI needed)
+# - torch: install the Jetson-optimised wheel from NVIDIA first:
+#     wget https://nvidia.box.com/shared/static/...  (see JetPack docs)
+#     pip install <torch_jetson_whl>
+# - Rosmaster_Lib: copy the Jetson-installed package beside the deploy script
+#     cp -r /usr/local/lib/python3.6/dist-packages/Rosmaster_Lib .
+
+# Core ML
+# torch  # install NVIDIA Jetson wheel separately — DO NOT pip install torch here
+stable-baselines3==2.3.2
+gymnasium==0.29.1
+
+# Robot physics (FK only, headless)
+pybullet>=3.2.6
+
+# Numerics
+numpy>=1.23.0
+
+# ROS1 /scan bridge for the Python 3.8 navigation process
+roslibpy

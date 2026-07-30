@@ -1,0 +1,8 @@
+axis,action,motor_command,duration_s,actual_motion_time_s,send_count,measured_value,velocity,unit
+vx,forward,0,2.0,2.0569628999999994,34,0.0,0.0,m/s
+vx,forward,0,2.0,2.0204690000000003,34,0.0,0.0,m/s
+vx,forward,0,2.0,2.055428299999999,34,0.0,0.0,m/s
+vx,forward,0,2.0,2.0383485000000015,34,0.0,0.0,m/s
+vx,forward,0,2.0,2.0132075,33,0.0,0.0,m/s
+wz,turn_left,0,2.0,2.011778999999997,33,0.0,0.0,rad/s
+wz,turn_left,0,2.0,2.003297999999994,33,0.0,0.0,rad/s

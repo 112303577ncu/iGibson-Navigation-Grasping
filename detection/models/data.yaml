@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['bottle-cap', 'paper-ball']
+
+roboflow:
+  workspace: new-workspace-cdskb
+  project: trash_identify-9jr6n
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/new-workspace-cdskb/trash_identify-9jr6n/dataset/3

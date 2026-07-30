@@ -1,0 +1,41 @@
+# Generated / dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.next/
+dist/
+build/
+.cache/
+
+# Agent/IDE local hidden folders
+.agents/
+.claude/
+.codebase-memory/
+
+# Local secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Large binary/media artifacts
+*.mp3
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.7z
+*.rar
+*.pt
+*.pth
+*.onnx
+*.ckpt
+
+# Exclude zip by default except trained models
+*.zip
+!grasp/trained_6d_models_v17/*.zip
+!integration/nav_best_model/*.zip

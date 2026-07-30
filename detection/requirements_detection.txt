@@ -1,0 +1,5 @@
+# 辨識端（detection/）相依套件
+# 安裝：pip install -r requirements_detection.txt
+ultralytics>=8.3
+opencv-python
+numpy
