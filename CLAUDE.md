@@ -17,32 +17,56 @@
 `arm_pose.md`、`JETSON_DRYRUN_CHECKLIST.md`。
 
 ### `grasp/`（夾取）
+
+> **★ 2026-08-01 起，正式夾取流程是 `grasp/v21/`，不是根目錄那支。**
+> 唯一在實機上夾取成功過的是 v21（2026-07-31，3cm 物體，完整 log 見
+> `grasp/v21/manifest.json` 的 `hardware_gates.first_real_grasp_2026_07_31`）。
+> 模式 A / 模式 C 兩支自走流程都已改接 v21（透過 `_load_grasp_module()`）。
+> 根目錄的 `x3plus_real_grasp.py` + `trained_6d_models_v17/` 原封保留可直接跑，
+> 根目錄那支 v17 已無任何程式匯入（`tests/test_safety_guards.py` 也在 2026-08-01
+> 改成透過 `vgp._load_grasp_module()` 取得模組，測的就是 pipeline 實際載入的那一份）。
+
 | 檔案 | 說明 |
 |------|------|
-| `x3plus_real_grasp.py` | 主部署腳本（無 ROS，直接在 Jetson 執行） |
-| `x3plus_deploy_bridge.py` | 工具類，正規化 action → 伺服機角度 |
-| `trained_6d_models_v17/*.zip` | 訓練好的 PPO 模型 |
-| `trained_6d_models_v17/*.pkl` | VecNormalize 統計（觀測正規化） |
-| `x3plus/yahboomcar.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型 |
+| `v21/x3plus_real_grasp.py` | ★**現行**主部署腳本（incremental action、`gripper_center` TCP、接觸式夾持、預防式 FloorGuard） |
+| `v21/models/candidate_v21_seed816_ckpt550000.zip` + `_vec.pkl` | ★現行 PPO 權重 + VecNormalize（**不可與 v17 混搭**，見下） |
+| `v21/deploy_contract.py` / `action_execution_v21.py` | 觀測/動作契約定義；`obs_28_incremental` |
+| `v21/manifest.json` | 權重 sha256、契約、硬體 gate、變更紀錄（單一事實來源） |
+| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` | 回歸測試，須 **93 / 37 / 641** 全過 |
+| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（93/37/641、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
+| `v21/bus_probe.py` / `pose_check.py` | 唯讀診斷：半雙工伺服匯流排讀取、姿態/FK 核對 |
+| `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
+| `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |
+| `x3plus/yahboomcar.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
 | `Rosmaster_Lib/` | 硬體驅動（本地化到此，見下方指令） |
 | `fk_test.py` / `servo_test.py` / `workspace_scan.py` / `joint_direction_calibration.py` | 測試/校正小工具 |
+
+⚠️ **v21 權重絕對不可餵給根目錄那支 v17 腳本**（反之亦然）。
+v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 absolute；
+兩者 shape 都是 28D/6D，**任何 shape 檢查都抓不到**，手臂會直接暴走。
+以 `--contract obs_28_incremental` 與 manifest 的 sha256 為準。
 
 ### `detection/`（辨識）
 | 檔案 | 說明 |
 |------|------|
 | `arm_cam.py` | ★手臂相機 + YOLO，bbox → 前向距離+左右偏移（橋接幾何來源） |
-| `models/best.pt` | ★正式 YOLOv11 模型（train5），類別 `bottle-cap`/`paper-ball` |
+| `models/best.pt` | ★正式 YOLOv11 模型。**2026-08-01 起為單類別 `sugarbox`（藍色盒子，高 6.5cm）**，sha256 `ca42c3f4…`。前兩代備份於同目錄：`best_eraser_detect_train11.pt.bak`（`eraser-detect`）、`best_trash_identify_train5.pt.bak`（`bottle-cap`/`paper-ball`）|
 | `models/data.yaml` / `yolo11n.pt` | 類別定義 / 基底模型 |
 | `calibration/` | 相機/底盤校正腳本與量測資料（含 `calibrate_arm_camera_theta.py`） |
 | `debug_tools/` | `yolo_test.py`、`detect_video.py` 等測試/擷取工具 |
-| `rear_nav/` | 後相機導航子專案（與夾取無關，僅歸檔） |
+| `rear_nav/` | 只剩 `rear_to_arm_blind_handoff.py`（模式 A 導航幾何的來源）。其餘 8 支舊實驗 2026-08-01 已刪 |
 | `requirements_detection.txt` | 辨識端相依（ultralytics, opencv-python） |
 
 ### `integration/`（整合）
 | 檔案 | 說明 |
 |------|------|
+| `mission_pipeline.py` | ★**完整任務**：巡航→辨識→接近→夾取→送垃圾桶→續巡。單一 Py3.8 程序擁有 `/dev/myserial`，ROS 只跑感測/定位。見 `MISSION.md` |
+| `mission_fsm.py` | 20 狀態任務機（純邏輯，`--selftest`/`--diagram`）。強制「輪子與手臂不同時動」「換目標來源必重置 nav」 |
+| `map_goal_provider.py` | route.yaml 117 waypoint + AMCL pose → `(dist, bearing)`。含 `--validate` 與弧長重取樣（Route C 原檔最小間距只有 0.049 m） |
+| `feedback_odom.py` | `get_motion_data()` → odom pose，移植 Route A 校正值（linear 0.65 / angular 0.501） |
+| `ros_io.py` | rosbridge：發 `/odom_setmotor` + `odom→base_footprint` TF、收 `/amcl_pose`（含 covariance 發散門檻） |
 | `vision_grasp_pipeline.py` | ★模式A 自走全流程：雙相機導航(set_car_motion)→handoff→PPO 夾取(obj_provider)→驗證/重試(≤3)。含 `--selftest` |
-| `vision_grasp_bridge.py` | 模式B（除錯）：辨識→算 x/y/z/寬度→TCP 5555 送夾取端 |
+| `vision_grasp_bridge.py` | 模式B（除錯）：辨識→算 x/y/z/寬度/高度→TCP 5555 送夾取端。payload 是 superset，v17 讀 `w`、v21 讀 `height` |
 | `nav_rl.py` + `nav_rl_grasp_pipeline.py` | 模式C：RL 導航避障（PPO+48束LiDAR，訓練 plant 復刻+幾何煞停）→精對位→夾取，見 `NAV_RL.md` |
 | `nav_best_model/` | 導航 PPO 權重（best + checkpoint 281440，各配 vecnorm pkl，來源 igibson_x3_test） |
 | `README.md` | 兩種模式開啟流程、各檔用途、校正清單 |
@@ -67,30 +91,51 @@ pip install -r ~/Documents/deploy_jetson2/detection/requirements_detection.txt
 
 ## 部署指令
 
-夾取端在 `grasp/` 執行：
+夾取端在 `grasp/v21/` 執行（**上機前先跑 `./jetson_verify.sh`**）：
+
+```bash
+cd grasp/v21
+
+# 0) 上機前置檢查：93/37/641 全過、wrist_z_offset=0.0564、安全閘 exit 3
+./jetson_verify.sh
+
+# 1) 空跑測試（不驅動伺服機，確認角度輸出合理）
+python3 x3plus_real_grasp.py \
+  --model models/candidate_v21_seed816_ckpt550000.zip \
+  --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl \
+  --contract obs_28_incremental \
+  --object-height 0.03 --obj-x 0.2563 --obj-y -0.0035 --obj-z 0.015
+
+# 2) 實機（★2026-07-31 用這條夾取成功，物體置於 P 點前方 1cm）
+#    manifest status 還是 candidate，所以必須帶 --unlock-candidate-real，
+#    且須有人在場、手放電源開關。
+python3 x3plus_real_grasp.py \
+  --model models/candidate_v21_seed816_ckpt550000.zip \
+  --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl \
+  --contract obs_28_incremental \
+  --object-height 0.03 --obj-x 0.2563 --obj-y -0.0035 --obj-z 0.015 \
+  --real --unlock-candidate-real
+```
+
+`--object-height` 在 28D 契約下是必填（沒有它就沒有 `wrist_z_offset`）。
+v21 **沒有** `--width-grip` / `--latch-obj` / `--i-confirm-external-frame`
+（夾爪改成接觸偵測 + hold，不再靠寬度算閉合角；物體鎖定由呼叫端的
+`obj_provider` 負責）。舊 v17 指令請見本節末的備援區塊。
+
+<details><summary>備援：v17 舊流程（僅在 v21 出問題時使用）</summary>
 
 ```bash
 cd grasp
-
-# 空跑測試（不驅動伺服機，確認角度輸出合理）
-python3 x3plus_real_grasp.py
-
-# 實際執行
-python3 x3plus_real_grasp.py --real
-
-# 實際執行 + 外部視覺偵測（TCP port 5555）
-# 注意：--real --socket 強制要求 --latch-obj 與 --i-confirm-external-frame
-#（確認送來的 XYZ 已校正到 PPO/URDF base_link 座標系）
-python3 x3plus_real_grasp.py --real --socket --latch-obj --i-confirm-external-frame
-
-# 完整視覺夾取（建議）：socket + 寬度控夾爪 + home 鎖定物體
 python3 x3plus_real_grasp.py --real --socket --width-grip --latch-obj --i-confirm-external-frame
-
-# 自訂物體位置（公尺，無視覺時）
 python3 x3plus_real_grasp.py --real --obj-x 0.30 --obj-y 0.05 --obj-z 0.02
 ```
+權重固定用 `trained_6d_models_v17/`，**不可**指到 `v21/models/`。
+</details>
 
 ### 模式 A：自走全流程（推薦，單一程式控車+手臂）
+
+> 2026-08-01 起手臂端已改接 `grasp/v21/`。物體座標用 `controller.obj_provider`
+> 注入，在 home 姿勢鎖定一次後整輪凍結（等同舊版 `--latch-obj`，但由 pipeline 負責）。
 
 ```bash
 # 純邏輯自測（免相機/硬體/torch，可在開發機跑）
@@ -105,17 +150,48 @@ python3 integration/vision_grasp_pipeline.py --real --show   --cam-x <Phase3_X> 
 
 ### 模式 B：TCP 橋接（除錯用，底盤需另外處理）
 
-夾取端用上面的 `--socket`；辨識+整合端（另一終端機）：
+**用途**：把「辨識」跟「夾取」拆成兩個行程，各跑一個終端機。辨識端算出物體座標
+用 TCP 5555 送過去，夾取端只管夾。好處是可以單獨換掉任一端 —— 例如手動送一筆
+假座標測夾取、或先只看辨識算出來的 x/y/z 合不合理，不用真的動手臂。
+底盤導航**不在**模式 B 範圍內，要自己處理。
+
+2026-08-01 起模式 B 也支援 v21。橋接端送的是 superset payload
+（`x,y,z,w,height`）：v17 讀 `w` 忽略 `height`，v21 讀 `height` 忽略 `w`，
+所以同一支橋接程式兩邊都能接。
 
 ```bash
-# 先 --once 核對座標/寬度合理，再連續送
-python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
-python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --show
+# 終端機 A —— 夾取端（v21）
+cd grasp/v21
+python3 x3plus_real_grasp.py --real --socket \
+  --latch-obj --i-confirm-external-frame --unlock-candidate-real \
+  --model models/candidate_v21_seed816_ckpt550000.zip \
+  --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl \
+  --contract obs_28_incremental
+
+# 終端機 B —— 辨識端。先 --once 核對座標合理，再連續送
+python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show \
+  --class-height eraser-detect=0.03 --class-z eraser-detect=0.015
+python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --show \
+  --class-height eraser-detect=0.03 --class-z eraser-detect=0.015
 ```
 
 **旗標說明**
-- `--socket`：從 TCP 5555 接收 `{x,y,z,w}`（公尺）。
-- `--width-grip`：依物體寬度決定 Stage 1 夾爪閉合角；不加則一律全閉 180°（向後相容）。
+- `--socket`：從 TCP 5555 接收 `{x,y,z,height}`（公尺）。
+- `--latch-obj`：在 home 姿勢**擷取一次**座標+高度並凍結整輪。
+  **手臂相機裝在 `arm_link4` 會跟著手臂動**，`arm_cam` 的固定高度/俯仰角只在 home 成立，
+  手臂一離開 home 偵測就失真。沒有 latch，目標會在接近途中從 policy 腳下漂走。
+  `--real --socket` **強制**要這個旗標。
+- `--i-confirm-external-frame`：確認送來的 XYZ 已經在 PPO/URDF base_link 座標系，
+  不是原始相機座標。座標系搞錯**下游偵測不到**，只會很有把握地夾在錯的地方。
+  `--real --socket` 也強制要這個。
+- 橋接端 `--class-height NAME=公尺`：物體全高（頂到地），v21 用來算 `wrist_z_offset`。
+  **不能從 bbox 量**（相機是斜著往下看，bbox 像素高度混了高度和深度），所以按類別填。
+  不填就不送 `height`，v21 退回它自己的對稱物體估計。
+- 橋接端 `--class-z NAME=公尺`：物體**質心** z，跟高度是兩回事（對稱且貼地才有 `高度 = 2×質心z`）。
+
+夾取端還會做兩件事保護自己：payload 有 NaN/無限大/負高度就整筆丟掉；
+超過 `detection_stale_timeout_sec`（預設 1 秒）沒有新偵測，就把舊值撤回改用預設值，
+而不是繼續當成現況供應。`--real` 下 latch 逾時會直接 raise，不會朝預設座標移動。
 - `--latch-obj`：在 home 姿勢擷取一次 obj 座標+寬度並凍結整輪。**手臂相機裝在 arm_link4 會隨手臂移動**，
   固定高度/俯仰角只在 home 成立，故強烈建議開啟以免移動後失真偵測干擾 policy。
 
@@ -152,13 +228,25 @@ python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --show
 
 ---
 
-## 三段式控制邏輯
+## 三段式控制邏輯（★v21 現行）
 
 | Stage | 觸發條件 | 行為 |
 |-------|----------|------|
-| 0 | 初始 | RL 輸出對位，夾爪張開 |
+| 0 | 初始 | RL 輸出對位（incremental），夾爪張開。進 Stage 1 要同時滿足 xy / z / 進場半徑 / pads_ready 四項幾何閘；卡在門檻外時有懸停後備（連續 3 秒近失即放行） |
+| 1 | 上述幾何閘通過 | 鎖定手臂、S6 限速閉合。**接觸偵測**：連續 2 次「指令走了但角度沒跟上」判定夾到 → 指令停在 `接觸角 + jaw_hold_bias_deg(8°)`，不再往 180 硬推（這是夾持力來源，也是齒輪研磨的防線） |
+| 2 | Stage 1 確認夾到 | **全程維持同一個 hold 角**（不可用編碼器回讀重設，否則位置誤差歸零、物體會掉），抬升後回 home |
+
+空夾判定：夾爪一路走到 180° 全閉停點 = 中間沒東西 → ABORT，不抬升。
+`grasp_stall_min_fraction = 0.03`（2026-07-31 實機驗證：空夾在此門檻下不會誤判）。
+
+<details><summary>v17 舊版三段式（備援）</summary>
+
+| Stage | 觸發條件 | 行為 |
+|-------|----------|------|
+| 0 | 初始 | RL 輸出對位（absolute），夾爪張開 |
 | 1 | dist < 5 cm（`stage0_dist_threshold`）或 grip_cmd > 0.90（`grip_close_threshold`）或 diverging | 鎖定手臂、S6 限速閉合至目標角（`--width-grip` 時依寬度，否則 180°），到位後轉 Stage 2 |
 | 2 | Stage 1 完成後 | 維持夾爪閉合角，回 home |
+</details>
 
 ---
 
@@ -185,12 +273,26 @@ python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --show
 ## 注意事項
 - 首次連接伺服機前，務必先跑一次 dry-run，目視確認角度輸出合理
 - arm_hw_invert = (False, False, False, False, False) — API 鏡像（S2/S3/S4）已抵消原 invert，全部改為 False
-- 安全限制：`max_delta_deg=3.0`，每步最多動 3°，防止暴衝
-- `stage0_dist_threshold = 0.05m`；備用觸發：dist 從最小值回升 > 0.05m 也觸發 Stage 1
+- 安全限制：v21 `max_delta_deg=8.0`（v17 是 3.0），每步每軸最多動這麼多，防止暴衝。
+  限速是從**上一次的指令值**（`_last_deg`）走，不是從編碼器 —— 夾爪被物體擋住時指令仍會往前走，
+  這就是第 3 跑齒輪研磨的成因，現在由接觸偵測擋下
 - 若 Stage 1 觸發但夾爪與物體相差甚遠，需校正 obj 位置或 FK 偏移量
 - **物體座標必須在 base/URDF 座標系**（與 FK 算出的 TCP 同框）；橋接端的相機距離→base 映射需校正
   `--cam-x/--cam-y/--sign-y/--obj-z`，詳見 `integration/README.md` 校正清單
 - **手臂相機（URDF `mono_link`）固定在 `arm_link4`，會隨手臂移動**，`arm_cam` 固定高度/俯仰角只在 home 成立 →
-  視覺夾取務必加 `--latch-obj`（home 鎖定一次）
+  視覺夾取務必在 home 鎖定一次（v21：pipeline 側凍結 `obj_provider`；v17：`--latch-obj`）
+- **半雙工伺服匯流排**：六顆伺服機共用一條 UART。`Rosmaster_Lib.get_uart_servo_value` 回傳
+  「第一個抵達的回應」而不檢查是不是問的那一顆 —— 一個遲到封包會讓整條管線錯位，症狀是相鄰數顆
+  同時「讀不到」。v21 已改為讀 raw 並認回應者的 ID。診斷用 `grasp/v21/bus_probe.py`（唯讀，不寫入）
+- **URDF 手指比實體長 16.7mm** — 尚未修（要等 v22 重訓）。所以紙球、瓶蓋這類矮物體目前夾不到；
+  可用 `--floor-finger-error-mm` 做部分補償，但那只抬 pad，非 pad link 最低時會被夾住不放大
+- v21 尚未通過的硬體 gate：`guard_margin_8mm_validated_on_hardware`、`c3_real_reach_envelope`、
+  `object_heights_measured`。所以 manifest `status` 仍是 `candidate`，`--real` 必帶 `--unlock-candidate-real`
+
+<details><summary>v17 專屬設定（備援）</summary>
+
+- 安全限制：`max_delta_deg=3.0`
+- `stage0_dist_threshold = 0.05m`；備用觸發：dist 從最小值回升 > 0.05m 也觸發 Stage 1
 - `--width-grip` 寬度→夾爪角公式：`close = 180 − (w/grip_max_object_width_m)×(180 − grip_min_close_deg)`
   （預設 `grip_max_object_width_m=0.06`、`grip_min_close_deg=120`，需依夾爪實測校正）
+</details>

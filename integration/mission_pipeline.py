@@ -1,0 +1,1453 @@
+#!/usr/bin/env python3
+"""Full mission: patrol the map, spot trash, drive to it, grasp it, bin it, resume.
+
+One Python 3.8 process owns /dev/myserial and runs everything that touches the
+robot (SETMOTOR_ODOM_INTEGRATION.md section 2.1). ROS Melodic runs only the
+sensor/localisation side and must NOT open the chassis serial port:
+
+    this process (sole /dev/myserial owner)      ROS Melodic (Python 2.7)
+      GraspController -> servos (v21)              robot_state_publisher
+      set_car_motion  -> wheels                    YDLIDAR TG30 -> /scan
+      get_motion_data -> /odom_setmotor + TF       map_server -> /map
+      nav PPO 55D->2D, grasp PPO 28D->6D           AMCL -> map->odom
+      MissionFSM                                   rosbridge_server
+
+Pieces, all separately testable:
+
+    map_goal_provider.py  route.yaml + AMCL pose -> (dist, bearing)
+    feedback_odom.py      get_motion_data()      -> odom pose
+    ros_io.py             rosbridge publish/subscribe
+    mission_fsm.py        the state machine
+    nav_rl.py             55D obs, training plant, 48-ray lidar, safety brake
+    vision_grasp_pipeline.py  cameras, YOLO, fine align, latch, verify
+    grasp/v21/            the grasp policy that actually picks things up
+
+Run:
+    python3 integration/mission_pipeline.py --selftest        # no hw, no torch
+    python3 integration/mission_pipeline.py --dry-run --route <route.yaml>
+    python3 integration/mission_pipeline.py --real --route <route.yaml> \\
+        --i-confirm-serial-owner --i-confirm-lidar-orientation \\
+        --i-confirm-arm-cam-pose
+
+HARDWARE PREREQUISITES
+    * NOTHING else may hold /dev/myserial: no rosmaster_main.py, no
+      Mcnamu_driver.py, no ai_motor_server_B.py, no Route A runtime node, no
+      port-7000 motor server.  Check with: sudo fuser -v /dev/myserial
+    * ROS side up: TG30 driver, robot_state_publisher, map_server, AMCL,
+      rosbridge_server.  Set the AMCL initial pose in RViz with a TIGHT
+      estimate (std 0.15 m / 7 deg) -- broad initialisation was measured
+      jumping 1.573 m in the repeated corridor and does not converge.
+    * Camera streams on :8080.
+"""
+from __future__ import annotations
+
+import argparse
+import math
+import os
+import sys
+import threading
+import time
+from pathlib import Path
+from typing import Optional, Tuple
+
+import numpy as np
+
+try:  # direct script execution
+    import nav_rl as nr
+    import nav_rl_grasp_pipeline as nrgp
+    import vision_grasp_pipeline as vgp
+    import map_goal_provider as mgp
+    import mission_fsm as mfsm
+    import ros_io
+    from feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
+except ImportError:  # package import
+    from . import nav_rl as nr
+    from . import nav_rl_grasp_pipeline as nrgp
+    from . import vision_grasp_pipeline as vgp
+    from . import map_goal_provider as mgp
+    from . import mission_fsm as mfsm
+    from . import ros_io
+    from .feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
+
+# ── frame offsets, measured from the deployed FK and the URDF, not assumed ──
+# The grasp policy frame is the URDF loaded at deploy_contract.URDF_TO_TRAINING_FRAME,
+# so its origin does NOT sit on base_footprint. Measured with grasp/v21's own
+# FKComputer (2026-08-04):
+#
+#   policy_x = base_footprint_x + 0.0199
+#   arm_link1  -> policy 0.1181  = 0.0982 m ahead of base_footprint (URDF: 0.09825)
+#   front axle -> base_link +0.08 = 0.080 m ahead of base_footprint
+#   rear axle  -> base_link -0.08
+#
+# base_footprint is therefore the middle of the CHASSIS (midway between the two
+# axles), not the middle of the front axle: front and rear wheels sit at +-0.08.
+POLICY_X_OF_BASE_FOOTPRINT = 0.0199   # m, policy-frame x of base_footprint
+FRONT_AXLE_FROM_FOOTPRINT = 0.08      # m, front wheel axle ahead of base_footprint
+
+ODOM_RATE_HZ = 20.0           # Route A's measured /odom_setmotor rate
+DET_INTERVAL_S = 0.5          # YOLO cadence (Jetson-friendly), as in nav_rl_grasp
+LOG_PERIOD_S = 1.0
+AUTO_REPORT_WAIT_S = 3.0      # how long to wait for the board to start reporting
+INVESTIGATE_WZ = 0.5          # rad/s, slow confirm turn
+INVESTIGATE_VX = 0.10         # m/s, creep forward while confirming
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Odometry publisher thread
+# ════════════════════════════════════════════════════════════════════════════
+
+class OdomPublisher(threading.Thread):
+    """Poll wheel feedback at 20 Hz and publish /odom_setmotor + TF.
+
+    Runs in its own thread so odometry keeps flowing while a blocking action
+    (the grasp policy, the place sequence) holds the main loop. That is safe
+    without a serial lock because ``Rosmaster.get_motion_data()`` only reads
+    the values the board's receive thread already cached -- it performs no
+    serial I/O of its own, unlike every set_* call.
+    """
+
+    def __init__(self, reader: FeedbackOdomReader, rio, rate_hz: float = ODOM_RATE_HZ):
+        super().__init__(name="odom-publisher", daemon=True)
+        self.reader = reader
+        self.rio = rio
+        self.period = 1.0 / float(rate_hz)
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._state = None
+        self.ticks = 0
+        self.publish_failures = 0
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            t0 = time.time()
+            try:
+                state = self.reader.poll(now=t0)
+                with self._lock:
+                    self._state = state
+                    self.ticks += 1
+                self.rio.publish_odom_and_tf(state, self.reader.odom.covariance(),
+                                             stamp=t0)
+            except Exception as exc:                  # never kill the thread
+                self.publish_failures += 1
+                if self.publish_failures in (1, 10, 100):
+                    print(f"[mission][odom] publish failed ({self.publish_failures}x): {exc}")
+            slept = self.period - (time.time() - t0)
+            if slept > 0:
+                self._stop.wait(slept)
+
+    def state(self):
+        with self._lock:
+            return self._state
+
+    def stop(self) -> None:
+        self._stop.set()
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Navigator: one RL control tick, usable with any goal source
+# ════════════════════════════════════════════════════════════════════════════
+
+class NavTick(tuple):
+    """(vx, wz, braked, stall, min_ray, front_raw)"""
+    __slots__ = ()
+
+    def __new__(cls, vx, wz, braked, stall, min_ray, front_raw):
+        return tuple.__new__(cls, (vx, wz, braked, stall, min_ray, front_raw))
+
+    vx = property(lambda s: s[0])
+    wz = property(lambda s: s[1])
+    braked = property(lambda s: s[2])
+    stall = property(lambda s: s[3])
+    min_ray = property(lambda s: s[4])
+    front_raw = property(lambda s: s[5])
+
+
+class MissionNavigator(nrgp.RLNavigator):
+    """RLNavigator split into single ticks so the FSM owns the loop.
+
+    Inherits _drive_raw, _detect_rear, _detect_arm, _arm_align, latch_arm_object,
+    verify_grasp and back_off unchanged -- this class adds no new geometry, so
+    the calibrated v21 vision path is exactly the one already under test.
+    """
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.reset_nav()
+
+    def reset_nav(self, clear_tracker: bool = True) -> None:
+        """Clear every carry-over aimed at the previous goal.
+
+        A fresh ActionDelay rather than a cleared one, so this is also the
+        constructor path: there is no window in which the buffer exists but
+        still holds commands meant for a target we have abandoned.
+
+        ``clear_tracker`` is separate because the two things reset for opposite
+        reasons. The ActionDelay always has to go: it holds commands computed
+        for the old goal. The GoalTracker must NOT go when the camera target is
+        what we are switching TO -- on PATROL -> INVESTIGATE the tracker holds
+        the very fix that triggered the transition, and throwing it away leaves
+        the next tick with fix_age = infinity, which reads as "target lost" and
+        sends the robot straight back to patrol. Clear it only when entering a
+        map-goal state, where the camera target is genuinely irrelevant.
+        """
+        self.delay = nr.ActionDelay(self.ncfg.motor_delay_steps)
+        self.prev_action = np.zeros(2, dtype=np.float32)
+        self.last_vx = self.last_wz = 0.0
+        if clear_tracker:
+            self.tracker = nr.GoalTracker()
+
+    def nav_tick(self, goal_dist: float, goal_bearing: float, dt: float,
+                 points) -> NavTick:
+        """One 6 Hz policy step. Mirrors RLNavigator._rl_navigate exactly."""
+        cfg = self.ncfg
+        rays = nr.scan_to_rays(points, cfg)
+        obs = nr.build_nav_obs(goal_dist, goal_bearing, abs(self.last_vx),
+                               self.last_wz, self.prev_action, rays)
+        action = self.policy.predict(obs)
+        executed = self.delay.push(action)
+        vx, wz, stall = nr.shape_action(executed, obs, cfg)
+
+        # Geometric brake on RAW points: the 48-ray obs is floored at 0.33 m and
+        # is blind below it. The policy alone still collides in 20-27% of sim
+        # episodes, so this is not optional.
+        front = nr.front_min_raw(points, cfg)
+        braked = front < cfg.safety_brake_dist and vx > 0.0
+        if braked:
+            vx = 0.0
+
+        self._drive_raw(vx, wz)
+        self.tracker.predict(vx, wz, dt)
+        self.prev_action = action
+        self.last_vx, self.last_wz = vx, wz
+        return NavTick(vx, wz, braked, stall, float(np.min(rays)), front)
+
+    def creep(self, vx: float, wz: float, dt: float) -> None:
+        """Open-loop slow motion for INVESTIGATE. Not policy-driven, so the
+        ActionDelay is left untouched and reset before the policy resumes."""
+        self._drive_raw(vx, wz)
+        self.tracker.predict(vx, wz, dt)
+        self.last_vx, self.last_wz = vx, wz
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Mission runner
+# ════════════════════════════════════════════════════════════════════════════
+
+class MissionRunner:
+    def __init__(self, *, nav: MissionNavigator, controller, goals: mgp.MapGoalProvider,
+                 rio, odom_pub: Optional[OdomPublisher], lidar,
+                 fsm: mfsm.MissionFSM, args):
+        self.nav = nav
+        self.controller = controller
+        self.goals = goals
+        self.rio = rio
+        self.odom_pub = odom_pub
+        self.lidar = lidar
+        self.fsm = fsm
+        self.args = args
+
+        self.started = not args.wait_start
+        self.self_check_passed = False
+        self.operator_cleared = False
+        self.fault = ""
+        self._last_det = 0.0
+        self._det_streak = 0
+        self._det_class: Optional[str] = None
+        self._last_log = 0.0
+        self._t_prev = time.time()
+        self._latched: Optional[Tuple[list, Optional[float], Optional[float]]] = None
+        self._grasp_finished = False
+        self._grasp_verified = False
+        self._place_finished = False
+        self._arm_at_home = True
+        self._align_failed = False
+        self._handoff_ready = False
+        self._blacklist: list = []
+
+    # ── self check ──
+    def run_self_check(self) -> bool:
+        ok = True
+        dev = self.nav.device
+        if self.args.real and dev is None:
+            print("[mission][check] FAIL: no Rosmaster device")
+            return False
+
+        # The board only streams motion feedback when auto-report is on. v21's
+        # ServoController calls create_receive_threading() but not this, so
+        # without it get_motion_data() returns its initial zeros forever and the
+        # odometry would look like a robot that never moves -- which AMCL
+        # believes, silently.
+        if dev is not None:
+            try:
+                dev.set_auto_report_state(True, False)
+                print("[mission][check] auto-report enabled")
+            except Exception as exc:
+                print(f"[mission][check] FAIL: set_auto_report_state: {exc}")
+                return False
+            deadline = time.time() + AUTO_REPORT_WAIT_S
+            live = False
+            while time.time() < deadline:
+                try:
+                    if float(dev.get_battery_voltage()) > 5.0:
+                        live = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.1)
+            if live:
+                print("[mission][check] board is reporting (battery telemetry seen)")
+            else:
+                print("[mission][check] FAIL: no telemetry within "
+                      f"{AUTO_REPORT_WAIT_S:.0f}s — odometry would be fake zeros")
+                ok = False
+
+        if self.odom_pub is not None:
+            deadline = time.time() + 2.0
+            while time.time() < deadline and self.odom_pub.ticks < 3:
+                time.sleep(0.1)
+            st = self.odom_pub.state()
+            if st is None or not st.valid:
+                reason = "no samples" if st is None else st.reason
+                print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
+                      f"wheel feedback not valid ({reason})")
+                ok = ok and not self.args.real
+            else:
+                print("[mission][check] wheel feedback valid")
+
+        if self.lidar.age() > self.nav.ncfg.lidar_stale_timeout_s:
+            print("[mission][check] FAIL: /scan stale — is the TG30 driver running?")
+            ok = False
+        else:
+            print(f"[mission][check] /scan fresh ({len(self.lidar.get_points())} points)")
+
+        pose = self.rio.latest_pose()
+        good, why = self.rio.pose_quality_ok()
+        if pose is None or not good:
+            print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
+                  f"AMCL not usable ({why}). Set a TIGHT 2D Pose Estimate in RViz.")
+            ok = ok and not self.args.real
+        else:
+            self.goals.set_pose(pose)
+            idx = self.goals.nearest_index(pose.x, pose.y)
+            self.goals.reset(start_index=idx)
+            wp = self.goals.current_waypoint()
+            print(f"[mission][check] AMCL ok at ({pose.x:.2f}, {pose.y:.2f}); "
+                  f"patrol starts at {wp.id} ({wp.x:.2f}, {wp.y:.2f})")
+
+        self.self_check_passed = ok
+        return ok
+
+    # ── perception ──
+    def _run_detection(self, now: float) -> None:
+        """Rear-camera YOLO during patrol, with a spatial consistency gate.
+
+        Counting bare detections is not enough. ``_detect_rear`` reports a
+        distance and a lateral offset but no track id, so three frames in a row
+        could be three different things -- or the same flicker appearing at
+        random places in the image. Either would pull the robot off its route.
+        Requiring successive fixes to land near each other is the check that is
+        actually available, and it costs nothing.
+        """
+        if now - self._last_det < DET_INTERVAL_S:
+            return
+        self._last_det = now
+        try:
+            found, dist_f, off = self.nav._detect_rear()
+        except Exception as exc:
+            print(f"[mission][det] rear detection failed: {exc}")
+            return
+        if not (found and dist_f > 0):
+            self._det_streak = 0
+            return
+
+        blocked = self._blacklisted_here()
+        if blocked is not None:
+            # Seen, but this is somewhere we already failed. Keep patrolling.
+            if self._det_streak != 0:
+                print(f"[mission][det] ignoring a detection {blocked:.2f} m from a "
+                      f"previous give-up point")
+            self._det_streak = 0
+            return
+
+        # The robot keeps driving between detections, so the previous RAW fix is
+        # not where the object should be now. Compare against the tracker, which
+        # has been dead-reckoning that fix forward with the commanded motion --
+        # that is the prediction the new detection has to agree with.
+        tracker = self.nav.tracker
+        if tracker.has_fix and self._det_streak > 0:
+            d, b = tracker.dist(), tracker.bearing()
+            pred_forward = d * math.cos(b)
+            pred_right = -d * math.sin(b)      # tracker y is LEFT-positive
+            moved = math.hypot(dist_f - pred_forward, off - pred_right)
+            if moved > self.args.detection_jump_m:
+                print(f"[mission][det] fix is {moved:.2f} m from where the tracker "
+                      f"predicted (> {self.args.detection_jump_m:.2f}) — "
+                      f"restarting the streak")
+                self._det_streak = 1
+            else:
+                self._det_streak += 1
+        else:
+            self._det_streak = 1
+        tracker.update(dist_f, off)
+
+    def _refresh_close_fix(self, now: float) -> None:
+        """Once inside ~0.9 m the arm camera is the better source (as in
+        RLNavigator._rl_navigate)."""
+        if now - self._last_det < DET_INTERVAL_S:
+            return
+        self._last_det = now
+        try:
+            found, dist_f, off = self.nav._detect_rear()
+            if found and dist_f > 0:
+                self.nav.tracker.update(dist_f, off)
+                return
+            if self.nav.tracker.has_fix and self.nav.tracker.dist() < 0.9:
+                found_a, dist_a, off_a, _w, _c = self.nav._detect_arm()
+                if found_a:
+                    self.nav.tracker.update(dist_a, off_a)
+        except Exception as exc:
+            # A detection failure must not kill the control loop: the tracker
+            # keeps dead-reckoning and the FSM's fix-age timeout is what decides
+            # whether the target is really gone.
+            print(f"[mission][det] close-range detection failed: {exc}")
+
+    # ── sensing ──
+    def _sense(self, now: float) -> mfsm.Sense:
+        odom = self.odom_pub.state() if self.odom_pub is not None else None
+        pose = self.rio.latest_pose()
+        amcl_good, _ = self.rio.pose_quality_ok()
+        if pose is not None and amcl_good:
+            self.goals.set_pose(pose)
+
+        scan_fresh = self.lidar.age() <= self.nav.ncfg.lidar_stale_timeout_s
+        health = mfsm.Health(
+            serial_ok=(self.nav.device is not None) or not self.args.real,
+            odom_valid=bool(odom.valid) if odom is not None else (not self.args.real),
+            odom_fresh=bool(odom.fresh) if odom is not None else (not self.args.real),
+            scan_fresh=scan_fresh,
+            amcl_ok=bool(pose is not None and amcl_good),
+            estop=False,
+            fault=self.fault,
+        )
+        fix = self.goals.get(now)
+        return mfsm.Sense(
+            now=now,
+            health=health,
+            started=self.started,
+            self_check_passed=self.self_check_passed,
+            operator_cleared=self.operator_cleared,
+            waypoint_reached=self.goals.arrived(fix, now),
+            detection_streak=self._det_streak,
+            target_visible=self.nav.tracker.has_fix,
+            target_dist=self.nav.tracker.dist(),
+            target_fix_age=self.nav.tracker.fix_age(now),
+            handoff_ready=self._handoff_ready,
+            align_failed=self._align_failed,
+            stationary=bool(odom.stationary) if odom is not None else True,
+            arm_at_home=self._arm_at_home,
+            grasp_finished=self._grasp_finished,
+            grasp_verified=self._grasp_verified,
+            latched=self._latched is not None,
+            bin_reached=self.goals.arrived(fix, now) and self.goals.in_override,
+            place_finished=self._place_finished,
+        )
+
+    # ── envelope gate ──
+    def envelope_ok(self, obj_pos) -> Tuple[bool, str]:
+        """Is the object where the v21 policy was actually trained to grasp?
+
+        The documented region is x 0.20-0.28 m, y -0.09..0.08 m in the arm base
+        frame -- a box roughly 8 cm by 17 cm. The arm camera can see 0.205-0.317
+        m, i.e. it overhangs at the far end, so a detection alone is not proof
+        the policy can act on it. v21 re-checks this itself before running; this
+        early copy exists so ALIGN keeps servoing instead of handing over a
+        target that would be refused.
+        """
+        cfg = self.controller.cfg
+        x, y = float(obj_pos[0]), float(obj_pos[1])
+        xlo, xhi = cfg.documented_x_range
+        ylo, yhi = cfg.documented_y_range
+        tol = cfg.envelope_tol_m
+        if not (xlo - tol <= x <= xhi + tol):
+            return False, (f"x={x:.3f} outside documented [{xlo:.2f}, {xhi:.2f}] "
+                           f"({self.describe_frames(obj_pos)})")
+        if not (ylo - tol <= y <= yhi + tol):
+            return False, f"y={y:+.3f} outside documented [{ylo:+.2f}, {yhi:+.2f}]"
+
+        # Second, tighter gate: how far is it from where we are aiming? The
+        # envelope is a box the policy was evaluated over; this is the "close
+        # enough to hand over" tolerance, and it is the one to tune on the robot.
+        aim = self.args.handoff_aim_x
+        r = math.hypot(x - aim, y)
+        if r > self.args.handoff_radius_m:
+            return False, (f"{r*100:.1f} cm from the aim point "
+                           f"(x={aim:.3f}, y=0) > {self.args.handoff_radius_m*100:.1f} cm "
+                           f"({self.describe_frames(obj_pos)})")
+        return True, ""
+
+    @staticmethod
+    def describe_frames(obj_pos) -> str:
+        """The same point in all three frames people quote it in.
+
+        Getting these confused is a 10-20 cm error that looks like a bad grasp,
+        so every gate message carries all three rather than a bare number.
+        """
+        x, y = float(obj_pos[0]), float(obj_pos[1])
+        bf = x - POLICY_X_OF_BASE_FOOTPRINT
+        axle = bf - FRONT_AXLE_FROM_FOOTPRINT
+        return (f"policy x={x:.3f} | base_footprint x={bf:.3f} | "
+                f"front-axle x={axle:.3f} | y={y:+.3f} m")
+
+    # ── acting ──
+    def _act(self, tr: mfsm.Transition, now: float, dt: float) -> None:
+        A = mfsm.Action
+        act = tr.action
+
+        if tr.reset_nav:
+            # Entering a map-goal state means the camera target no longer
+            # matters; entering a camera-goal state means it is the whole point.
+            self.nav.reset_nav(clear_tracker=tr.state in mfsm.MAP_STATES)
+
+        if act in (A.STOP, A.SETTLE, A.WAIT_OPERATOR, A.HOLD, A.RUN_SELF_CHECK):
+            self.nav.stop()
+            if act is A.RUN_SELF_CHECK and not self.self_check_passed:
+                self.run_self_check()
+            elif act is A.WAIT_OPERATOR and not self.started:
+                self._await_operator()
+            return
+
+        if act is A.DRIVE_BIN and not self.goals.in_override:
+            # Entering DELIVER: point the goal provider at the bin. Without this
+            # the "drive to the bin" action drives to whatever patrol waypoint
+            # was current, and the arrival test passes at the wrong place.
+            self.goals.set_bin_target()
+            bx, by, byaw, _ = self.goals.target()
+            print(f"[mission] bin approach target: ({bx:.2f}, {by:.2f}, "
+                  f"yaw={byaw if byaw is None else round(byaw, 2)}); "
+                  f"patrol parked at index {self.goals.interrupted_index}")
+
+        if act is A.DRIVE_PATROL or act is A.DRIVE_BIN:
+            fix = self.goals.get(now)
+            if not fix.valid:
+                self.nav.stop()
+                return
+            self.nav.nav_tick(fix.dist, fix.bearing, dt, self.lidar.get_points())
+            if act is A.DRIVE_PATROL:
+                self._run_detection(now)
+            return
+
+        if act is A.RESUME_PATROL:
+            if tr.state is mfsm.State.RESUME:
+                # Done with this object -- delivered, or given up on. Every flag
+                # about it has to go. Leaving them set is not cosmetic: a stale
+                # `_latched` makes Sense.latched true on the FIRST tick of the
+                # next LATCH, so the FSM skips straight to GRASP and the arm
+                # reaches for the PREVIOUS object's coordinates. A stale
+                # `_align_failed` makes the next ALIGN abort instantly.
+                self.nav.stop()
+                if not self._grasp_verified:
+                    # Gave up on this one. Remember WHERE, or the next patrol
+                    # pass sees the same object, confirms it again, and the robot
+                    # loops on an ungraspable thing forever. The FSM already says
+                    # "blacklisting"; this is what makes that true.
+                    self._blacklist_here()
+                idx = (self.goals.resume_patrol() if self.goals.in_override
+                       else self.goals.advance())
+                self._reset_target_state()
+            else:
+                # A plain waypoint advance, 83 times a lap. Do NOT stop (that
+                # would stutter the whole patrol at 6 Hz) and do NOT clear the
+                # detection streak -- the robot can be two frames into
+                # confirming an object exactly as it passes a waypoint.
+                idx = self.goals.advance()
+            print(f"[mission] next waypoint: {self.goals.route.waypoints[idx].id}")
+            return
+
+        if act is A.TURN_TO_TARGET:
+            self._refresh_close_fix(now)
+            if not self.nav.tracker.has_fix:
+                self.nav.stop()
+                return
+            b = self.nav.tracker.bearing()
+            wz = max(-INVESTIGATE_WZ, min(INVESTIGATE_WZ, 2.0 * b))
+            vx = INVESTIGATE_VX if abs(b) < math.radians(15.0) else 0.0
+            front = nr.front_min_raw(self.lidar.get_points(), self.nav.ncfg)
+            if front < self.nav.ncfg.safety_brake_dist:
+                vx = 0.0
+            self.nav.creep(vx, wz, dt)
+            return
+
+        if act is A.DRIVE_TARGET:
+            self._refresh_close_fix(now)
+            if not self.nav.tracker.has_fix:
+                self.nav.stop()
+                return
+            self.nav.nav_tick(self.nav.tracker.dist(), self.nav.tracker.bearing(),
+                              dt, self.lidar.get_points())
+            return
+
+        if act is A.FINE_ALIGN:
+            # Blocking, by design: the visual servo owns the base until it either
+            # lands the object inside the trained envelope or gives up. Odometry
+            # keeps publishing from its own thread throughout.
+            self.nav.stop()
+            ok = False
+            try:
+                ok = self.nav._arm_align()
+            except Exception as exc:
+                print(f"[mission] fine align raised: {exc}")
+            self.nav.stop()
+            if not ok:
+                self._align_failed = True
+                return
+            try:
+                obj_pos, width, height = self.nav.latch_arm_object()
+            except Exception as exc:
+                print(f"[mission] latch preview failed: {exc}")
+                self._align_failed = True
+                return
+            good, why = self.envelope_ok(obj_pos)
+            if not good:
+                print(f"[mission] aligned but outside the v21 envelope: {why}")
+                self._align_failed = True
+                return
+            if width is not None and width > vgp.MAX_GRASP_WIDTH_M:
+                print(f"[mission] object too wide: {width * 100:.1f} cm > "
+                      f"{vgp.MAX_GRASP_WIDTH_M * 100:.1f} cm — abandoning")
+                self._align_failed = True
+                self._blacklist.append(tuple(round(v, 2) for v in obj_pos))
+                return
+            self._handoff_ready = True
+            return
+
+        if act is A.LATCH:
+            self.nav.stop()
+            try:
+                self._latched = self.nav.latch_arm_object()
+            except Exception as exc:
+                print(f"[mission] latch failed: {exc}")
+                self._latched = None
+            return
+
+        if act is A.RUN_GRASP:
+            if self._latched is None:
+                self.fault = "RUN_GRASP with nothing latched"
+                return
+            obj_pos, _width, height = self._latched
+            self.nav.stop()
+            self._arm_at_home = False
+            # v21's obj_provider second element is the object's HEIGHT (drives
+            # wrist_z_offset), never its width. Passing width here silently
+            # ruins the engagement depth.
+            self.controller.obj_provider = (lambda p=obj_pos, h=height: (p, h))
+            try:
+                self._grasp_finished = bool(
+                    self.controller.run(max_steps=self.args.max_steps))
+            except Exception as exc:
+                self.fault = f"grasp policy raised: {exc}"
+            return
+
+        if act is A.VERIFY:
+            self.nav.stop()
+            obj_pos = self._latched[0] if self._latched else None
+            try:
+                self._grasp_verified = bool(
+                    self._grasp_finished and obj_pos is not None
+                    and self.nav.verify_grasp(obj_pos))
+            except Exception as exc:
+                print(f"[mission] verify failed ({exc}) — treating as a failed grasp")
+                self._grasp_verified = False
+            if self._grasp_verified:
+                print("[mission] grasp VERIFIED — object is off the floor")
+            return
+
+        if act is A.BACK_OFF:
+            try:
+                if not self.controller.move_home():
+                    # The arm is somewhere unknown; reversing now could drag it
+                    # through whatever it failed to clear.
+                    self.fault = "arm did not reach home before the retry back-off"
+                    return
+                self._arm_at_home = True
+            except Exception as exc:
+                self.fault = f"move_home failed during retry: {exc}"
+                return
+            self.nav.back_off()
+            self.nav.stop()
+            self._latched = None
+            self._grasp_finished = self._grasp_verified = False
+            self._handoff_ready = self._align_failed = False
+            return
+
+        if act is A.PLACE:
+            self.nav.stop()
+            self._place_finished = self._run_place()
+            return
+
+    def _await_operator(self) -> None:
+        """Block in IDLE until a human says go.
+
+        The self-check has passed, which means the wheels are live and the very
+        next state drives. Starting that the instant the process launches is a
+        surprise nobody wants standing next to the robot. Falls through if there
+        is no terminal (cron, nohup, a pipe), because then nobody is there to
+        press anything anyway.
+        """
+        print("\n" + "=" * 60)
+        print("  Self-check passed. The robot will start PATROLLING.")
+        print("  Clear the area, then press Enter (Ctrl+C to abort).")
+        print("=" * 60)
+        try:
+            input()
+        except (EOFError, OSError):
+            print("[mission] no terminal attached — starting without confirmation")
+        self.started = True
+
+    # ── blacklist: objects we already failed on ──
+    def _blacklist_here(self) -> None:
+        """Record the map pose where we gave up on an object."""
+        pose = self.goals.pose
+        if pose is None:
+            print("[mission] gave up on the target but have no AMCL pose to "
+                  "blacklist — it may be picked up again next pass")
+            return
+        self._blacklist.append((pose.x, pose.y))
+        print(f"[mission] blacklisted ({pose.x:.2f}, {pose.y:.2f}); "
+              f"{len(self._blacklist)} point(s) suppressed")
+
+    def _blacklisted_here(self) -> Optional[float]:
+        """Distance to the nearest give-up point, if we are inside the radius."""
+        pose = self.goals.pose
+        if pose is None or not self._blacklist:
+            return None
+        d = min(math.hypot(pose.x - bx, pose.y - by) for bx, by in self._blacklist)
+        return d if d <= self.args.blacklist_radius_m else None
+
+    def _reset_target_state(self) -> None:
+        self._latched = None
+        self._grasp_finished = self._grasp_verified = False
+        self._handoff_ready = self._align_failed = False
+        self._place_finished = False
+        self._det_streak = 0
+
+    def _run_place(self) -> bool:
+        """Drop the object: grasp/v21's scripted release, run in place.
+
+        No bin pose, no aiming, no measured over-the-bin arm pose. The opening
+        is ~30 cm across, so once the chassis is at the bin waypoint the object
+        can simply fall: reach forward, stop as soon as FK says the pad would
+        drop below the rim, open, come home.
+
+        ``run_release_only()`` deliberately does not go to home first (the arm is
+        holding something) and refuses if the jaw check says nothing is held --
+        which also catches an object dropped somewhere between the grasp and the
+        bin, instead of miming a release over an empty jaw.
+
+        There is no drop verification. The jaw-stall proxy reads "holding" right
+        up until the jaw is commanded open, so it cannot tell a successful drop
+        from a failed one. A "released" outcome means the motion ran.
+        """
+        try:
+            outcome = self.controller.run_release_only()
+        except Exception as exc:
+            self.fault = f"release sequence raised: {exc}"
+            return False
+
+        if outcome == "released":
+            self._arm_at_home = True
+            print("[mission] release motion complete (the drop itself is not sensed)")
+            return True
+        if outcome == "rejected":
+            # Nothing in the jaw. Not a fault: the object is gone, the arm is
+            # safe, and the right move is to carry on patrolling.
+            self._arm_at_home = True
+            print("[mission] nothing in the jaw to release — resuming patrol")
+            return True
+        self.fault = f"release aborted: {outcome}"
+        return False
+
+    # ── main loop ──
+    def run(self) -> int:
+        cfg = self.nav.ncfg
+        print("[mission] starting. Ctrl+C stops the base and releases the port.")
+        try:
+            while True:
+                now = time.time()
+                dt = min(now - self._t_prev, 3 * cfg.control_period_s)
+                self._t_prev = now
+
+                sense = self._sense(now)
+                tr = self.fsm.step(sense)
+
+                if tr.changed:
+                    print(f"[mission] {tr.state.value:<16} {tr.reason}")
+                elif now - self._last_log >= LOG_PERIOD_S:
+                    self._last_log = now
+                    fix = self.goals.get(now)
+                    print(f"[mission] {tr.state.value:<16} "
+                          f"goal={fix.goal_id}:{fix.dist:.2f}m "
+                          f"tgt={sense.target_dist:.2f}m "
+                          f"streak={sense.detection_streak} "
+                          f"{'STOP' if not tr.chassis_allowed else ''}")
+
+                if tr.terminal:
+                    self.nav.stop()
+                    print(f"[mission] TERMINAL {tr.state.value}: {tr.reason}")
+                    return 2
+                if tr.state is mfsm.State.PAUSED and self.args.exit_on_pause:
+                    self.nav.stop()
+                    print(f"[mission] PAUSED: {tr.reason} (--exit-on-pause)")
+                    return 3
+
+                self._act(tr, now, dt)
+
+                if self.args.max_laps and self.goals.laps >= self.args.max_laps:
+                    self.nav.stop()
+                    print(f"[mission] completed {self.goals.laps} lap(s) — done.")
+                    return 0
+
+                spent = time.time() - now
+                if cfg.control_period_s - spent > 0:
+                    time.sleep(cfg.control_period_s - spent)
+        except KeyboardInterrupt:
+            print("\n[mission] interrupted")
+            return 130
+        finally:
+            self.shutdown()
+
+    def shutdown(self) -> None:
+        try:
+            self.nav.stop()
+        except Exception as exc:
+            print(f"[mission][WARN] chassis stop failed: {exc}")
+        if self.odom_pub is not None:
+            self.odom_pub.stop()
+            self.odom_pub.join(timeout=2.0)
+        for name, fn in (("cameras", self.nav.release), ("lidar", self.lidar.close),
+                         ("ros", self.rio.close), ("grasp", self.controller.close)):
+            try:
+                fn()
+            except Exception as exc:
+                print(f"[mission][WARN] {name} cleanup failed: {exc}")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Wiring
+# ════════════════════════════════════════════════════════════════════════════
+
+def resolve_grasp_model(verify_hashes: bool = True) -> Tuple[str, str]:
+    """Read the grasp model pair out of grasp/v21/manifest.json and check it.
+
+    DeployConfig ships a deliberate placeholder ("SELECTED_MODEL_REQUIRED.zip"),
+    so something must name the weights. Taking them from the manifest rather
+    than hardcoding two more paths buys the pairing rule the manifest states:
+    "These two files are one unit. Never load this model with another
+    VecNormalize, or this VecNormalize with another model." A wrong-but-loadable
+    VecNormalize does not raise -- it silently feeds the policy mis-normalised
+    observations, and the arm just grasps in the wrong place.
+    """
+    import hashlib
+    import json
+
+    v21 = Path(__file__).resolve().parent.parent / "grasp" / "v21"
+    manifest_path = v21 / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit(f"[mission] missing grasp manifest: {manifest_path}")
+    with open(manifest_path, "r", encoding="utf-8") as fh:
+        manifest = json.load(fh)
+
+    artifacts = manifest.get("artifacts") or {}
+    out = []
+    for key in ("model", "vecnormalize"):
+        entry = artifacts.get(key) or {}
+        rel = entry.get("file")
+        if not rel:
+            raise SystemExit(f"[mission] manifest has no artifacts.{key}.file")
+        path = v21 / rel
+        if not path.exists():
+            raise SystemExit(f"[mission] manifest names a missing file: {path}")
+        want = entry.get("sha256")
+        if verify_hashes and want:
+            h = hashlib.sha256()
+            with open(path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(chunk)
+            if h.hexdigest() != want:
+                raise SystemExit(
+                    f"[mission] {path.name} does not match the manifest sha256.\n"
+                    f"  expected {want}\n  got      {h.hexdigest()}\n"
+                    f"  Refusing to run: the model/VecNormalize pairing is the one "
+                    f"thing that fails silently rather than loudly.")
+        out.append(str(path))
+
+    status = manifest.get("status", "?")
+    print(f"[mission] grasp model: {manifest.get('package')} (status={status}), "
+          f"sha256 verified" if verify_hashes else "[mission] grasp model resolved")
+    if status != "approved":
+        print(f"[mission] NOTE: this grasp package is '{status}', not approved — "
+              f"see manifest status_note before quoting results.")
+    return out[0], out[1]
+
+
+def build_and_run(args) -> int:
+    if args.real:
+        missing = [f for f, v in (
+            ("--i-confirm-serial-owner", args.i_confirm_serial_owner),
+            ("--i-confirm-lidar-orientation", args.i_confirm_lidar_orientation),
+            ("--i-confirm-arm-cam-pose", args.i_confirm_arm_cam_pose),
+        ) if not v]
+        if missing:
+            raise SystemExit(
+                "[mission] --real refuses to start without: " + ", ".join(missing) +
+                "\n  serial owner:      sudo fuser -v /dev/myserial   (exactly one PID)"
+                "\n  lidar orientation: python3 integration/nav_rl.py --probe"
+                "\n  arm cam pose:      the C3 extrinsics must be MEASURED, not predicted"
+            )
+
+    route = mgp.load_route(args.route, annotations_path=args.annotations,
+                           arrival_radius_m=args.arrival_radius,
+                           resample_m=(args.resample_m or None))
+    print(f"[mission] route: {len(route.waypoints)} waypoints, loop={route.loop}, "
+          f"bin approach={route.bin_approach}")
+    goals = mgp.MapGoalProvider(route, arrival_radius_m=args.arrival_radius,
+                                pose_max_age_s=args.pose_max_age)
+
+    ncfg = nr.NavRLConfig()
+    if args.model: ncfg.model_path = args.model
+    if args.vecnorm: ncfg.vecnorm_path = args.vecnorm
+    if args.lidar_dir < 0: ncfg.lidar_angle_dir = -1.0
+    if args.lidar_yaw_offset_deg: ncfg.lidar_yaw_offset_deg = args.lidar_yaw_offset_deg
+    if args.control_period: ncfg.control_period_s = args.control_period
+    nr.validate_config(ncfg)
+    policy = nr.NavPolicy(ncfg)
+
+    g = vgp._load_grasp_module()
+    from ultralytics import YOLO
+    model_path = Path(__file__).resolve().parent.parent / "detection" / "models" / "best.pt"
+    print(f"[mission] loading YOLO: {model_path}")
+    model = YOLO(str(model_path))
+
+    gcfg = g.DeployConfig(serial_port=args.port)
+    gmodel, gvec = (args.grasp_model, args.grasp_vecnorm)
+    if not (gmodel and gvec):
+        gmodel, gvec = resolve_grasp_model(verify_hashes=not args.skip_model_hash)
+    gcfg.model_path, gcfg.vecnorm_path = gmodel, gvec
+    gcfg.release_enable = not args.no_deliver
+    gcfg.bin_rim_height = args.bin_rim_height
+    gcfg.release_clearance = args.release_clearance
+    gcfg.release_extend_steps = args.release_extend_steps
+    if args.grasp_home_deg is not None:
+        gcfg.grasp_home_deg = g.parse_deg6_csv(args.grasp_home_deg)
+    class_z_m = vgp.parse_class_z(args.class_z, vgp.OBJ_Z_FIXED)
+    class_height_m = vgp.parse_class_height(args.class_height)
+    vgp.check_arm_cam_pose(gcfg.home_deg, real=args.real,
+                           acknowledged=args.i_confirm_arm_cam_pose)
+
+    lidar = nr.make_lidar(ncfg, args.lidar_backend, ros_host=args.ros_host,
+                          ros_port=args.ros_port, scan_topic=args.scan_topic)
+    rio = None
+    controller = None
+    odom_pub = None
+    try:
+        rio = ros_io.make_ros_io(args.ros_backend, host=args.ros_host,
+                                 port=args.ros_port)
+        controller = g.GraspController(gcfg, real_servo=args.real, use_socket=False)
+        nav = MissionNavigator(
+            controller.servo.device, model,
+            policy=policy, lidar=lidar, ncfg=ncfg,
+            wz_sign=args.wz_sign, nav_stop_dist=args.nav_stop_dist,
+            show=args.show, dry_run=not args.real,
+            rear_url=args.rear_stream or
+                f"http://{args.jetson_ip}:8080/stream?topic=/back_cam/image_raw",
+            arm_url=args.arm_stream or
+                f"http://{args.jetson_ip}:8080/stream?topic=/arm_cam/image_raw",
+            class_z_m=class_z_m, class_height_m=class_height_m,
+        )
+        nav.open_cameras()
+        reader = FeedbackOdomReader(controller.servo.device, FeedbackOdomConfig())
+        odom_pub = OdomPublisher(reader, rio, rate_hz=args.odom_rate)
+        odom_pub.start()
+
+        fcfg = mfsm.MissionConfig(
+            detection_streak_needed=args.detection_streak,
+            approach_to_align_m=args.nav_stop_dist,
+        )
+        fsm = mfsm.MissionFSM(fcfg, deliver_enabled=not args.no_deliver)
+        runner = MissionRunner(nav=nav, controller=controller, goals=goals, rio=rio,
+                               odom_pub=odom_pub, lidar=lidar, fsm=fsm, args=args)
+        return runner.run()
+    except Exception:
+        if odom_pub is not None:
+            odom_pub.stop()
+        for fn in (getattr(lidar, "close", None), getattr(rio, "close", None),
+                   getattr(controller, "close", None)):
+            if fn is not None:
+                try:
+                    fn()
+                except Exception:
+                    pass
+        raise
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Selftest — the whole mission on fakes: no torch, no cameras, no hardware
+# ════════════════════════════════════════════════════════════════════════════
+
+class _FakePolicy:
+    """Proportional controller in the policy's action space."""
+
+    def predict(self, obs55):
+        dist, sin_b, cos_b = float(obs55[0]), float(obs55[1]), float(obs55[2])
+        bearing = math.atan2(sin_b, cos_b)
+        return np.array([np.clip(dist, 0.0, 1.0) * (1.0 if abs(bearing) < 0.5 else 0.2),
+                         np.clip(2.0 * bearing, -1.0, 1.0)], dtype=np.float32)
+
+
+class _FakeLidar:
+    def __init__(self):
+        self.points = [(a - 90.0, 4.0) for a in range(0, 181, 2)]
+
+    def get_points(self):
+        return list(self.points)
+
+    def age(self):
+        return 0.0
+
+    def close(self):
+        pass
+
+
+def run_selftest() -> None:
+    print("== mission pipeline selftest (no hardware, no torch) ==")
+    ncfg = nr.NavRLConfig()
+
+    # ── nav_tick drives a toy robot to a map waypoint ──
+    class _Nav(MissionNavigator):
+        def __init__(self):
+            self.policy, self.lidar, self.ncfg = _FakePolicy(), _FakeLidar(), ncfg
+            self.wz_sign, self.dry_run, self.device, self.show = 1.0, True, None, False
+            self.commands = []
+            MissionNavigator.reset_nav(self)
+
+        def _drive_raw(self, vx, wz):
+            self.commands.append((vx, wz))
+
+        def stop(self):
+            self.commands.append((0.0, 0.0))
+
+    route = mgp.RouteSpec(
+        waypoints=[mgp.Waypoint("p0", 0.0, 0.0), mgp.Waypoint("p1", 2.0, 0.0),
+                   mgp.Waypoint("p2", 2.0, 2.0)],
+        loop=True, bin_center=(3.0, 2.0), bin_approach=(2.6, 2.0, 0.0),
+    )
+    goals = mgp.MapGoalProvider(route, arrival_radius_m=0.25)
+    nav = _Nav()
+
+    # closed loop: integrate the commands we issue and check we reach p1
+    x, y, yaw = 0.0, 0.0, 0.0
+    goals.reset(start_index=1)
+    dt = ncfg.control_period_s
+    for step in range(400):
+        t = 1000.0 + step * dt
+        goals.set_pose(mgp.MapPose(x, y, yaw, t))
+        fix = goals.get(t)
+        assert fix.valid, fix
+        if goals.arrived(fix, t):
+            break
+        tick = nav.nav_tick(fix.dist, fix.bearing, dt, nav.lidar.get_points())
+        x += tick.vx * math.cos(yaw) * dt
+        y += tick.vx * math.sin(yaw) * dt
+        yaw = mgp.wrap_angle(yaw + tick.wz * dt)
+    assert goals.arrived(now=t), f"never arrived: ({x:.2f}, {y:.2f})"
+    print(f"  reached {goals.current_waypoint().id} in {step} ticks "
+          f"at ({x:.2f}, {y:.2f})")
+
+    # ── the safety brake outranks the policy, on raw points ──
+    # Prime the 2-step ActionDelay on a clear path first, otherwise the plant is
+    # still executing the zeros it started with and vx would be 0 for reasons
+    # that have nothing to do with braking.
+    nav2 = _Nav()
+    clear = nav2.lidar.get_points()
+    for _ in range(ncfg.motor_delay_steps + 1):
+        primed = nav2.nav_tick(3.0, 0.0, dt, clear)
+    assert primed.vx > 0.0 and not primed.braked, primed
+    blocked = [(0.0, 0.15)] + [(a - 90.0, 4.0) for a in range(0, 181, 5)]
+    tick = nav2.nav_tick(3.0, 0.0, dt, blocked)
+    assert tick.braked and tick.vx == 0.0, tick
+    assert tick.min_ray >= ncfg.lidar_min_dist, \
+        "the 48-ray obs is floored, which is exactly why the brake reads raw points"
+    print(f"  safety brake fired: front={tick.front_raw:.2f} m -> vx=0 "
+          f"(obs min ray would have read {tick.min_ray:.2f} m)")
+
+    # ── reset_nav clears everything aimed at the previous goal ──
+    nav3 = _Nav()
+    for _ in range(5):
+        nav3.nav_tick(2.0, 0.3, dt, nav3.lidar.get_points())
+    nav3.tracker.update(1.0, 0.0)
+    assert nav3.last_vx != 0.0 and nav3.tracker.has_fix
+    nav3.reset_nav()
+    assert nav3.last_vx == 0.0 and nav3.last_wz == 0.0
+    assert not nav3.tracker.has_fix
+    assert float(np.max(np.abs(nav3.prev_action))) == 0.0
+    assert float(np.max(np.abs(nav3.delay.push(np.zeros(2, np.float32))))) == 0.0
+    print("  reset_nav cleared ActionDelay, prev_action and the tracker")
+
+    # ── the handoff gate: trained envelope AND radius from the aim point ──
+    class _Cfg:
+        documented_x_range = (0.20, 0.28)
+        documented_y_range = (-0.09, 0.08)
+        envelope_tol_m = 0.001
+
+    class _Ctl:
+        cfg = _Cfg()
+
+    class _Args:
+        handoff_aim_x = 0.24
+        handoff_radius_m = 0.04
+
+    runner = MissionRunner.__new__(MissionRunner)
+    runner.controller = _Ctl()
+    runner.args = _Args()
+    for pos, want, needle in (
+        ((0.24, 0.00, 0.02), True, ""),          # dead on the aim point
+        ((0.27, 0.02, 0.02), True, ""),          # 3.6 cm away, inside the radius
+        ((0.31, 0.00, 0.02), False, "x="),       # camera sees it, never trained
+        ((0.19, 0.00, 0.02), False, "x="),
+        ((0.24, 0.12, 0.02), False, "y="),
+        ((0.20, -0.09, 0.02), False, "from the aim point"),  # in the box, too far
+        ((0.28, 0.00, 0.02), False, "from the aim point"),
+    ):
+        ok, why = MissionRunner.envelope_ok(runner, pos)
+        assert ok is want, (pos, ok, why)
+        if not want:
+            assert needle in why, (pos, why)
+    print("  handoff gate: trained box 0.20-0.28 m AND within "
+          f"{_Args.handoff_radius_m*100:.0f} cm of the aim point")
+
+    # frame arithmetic must be stated, not assumed: the same object in the three
+    # frames people quote (measured from grasp/v21's FK, 2026-08-04)
+    desc = MissionRunner.describe_frames((0.24, 0.0, 0.02))
+    assert "base_footprint x=0.220" in desc, desc
+    assert "front-axle x=0.140" in desc, desc
+    print(f"  frame conversion: {desc}")
+
+    # ── DELIVER must actually re-point the goal provider at the bin ──
+    # Without this the "drive to the bin" action drives to whatever patrol
+    # waypoint happened to be current, and the arrival test passes there.
+    dgoals = mgp.MapGoalProvider(
+        mgp.RouteSpec(waypoints=[mgp.Waypoint(f"p{i}", i * 0.8, 0.0) for i in range(6)],
+                      loop=True, bin_center=(3.0, 1.0), bin_approach=(3.0, 0.6, 0.0)),
+        arrival_radius_m=0.25)
+    dgoals.reset(start_index=2)
+
+    class _StubNav:
+        def stop(self): pass
+        def reset_nav(self, clear_tracker=True): pass
+        def nav_tick(self, *a, **k): pass
+
+    dr = MissionRunner.__new__(MissionRunner)
+    dr.goals, dr.nav = dgoals, _StubNav()
+    dr.lidar = type("L", (), {"get_points": lambda s: []})()
+    dr.args = type("A", (), {"blacklist_radius_m": 1.0})()
+    dr._det_streak = 0
+    dr._grasp_verified = True          # delivered successfully
+    dr._blacklist = []
+
+    assert not dgoals.in_override
+    MissionRunner._act(dr, mfsm.Transition(mfsm.State.DELIVER, mfsm.Action.DRIVE_BIN),
+                       1.0, 0.1)
+    assert dgoals.in_override and dgoals.target()[:2] == (3.0, 0.6), dgoals.target()
+    assert dgoals.interrupted_index == 2
+    dgoals.set_pose(mgp.MapPose(3.0, 0.6, 0.0, 10.0))
+    assert dgoals.arrived(now=10.0)
+    MissionRunner._act(dr, mfsm.Transition(mfsm.State.RESUME, mfsm.Action.RESUME_PATROL),
+                       11.0, 0.1)
+    assert not dgoals.in_override and dgoals.index == 3, dgoals.index
+    assert dr._det_streak == 0, "coming back from the bin should start a fresh look"
+    # ...but a plain patrol advance must not wipe a confirmation in progress
+    dr._det_streak = 2
+    MissionRunner._act(dr, mfsm.Transition(mfsm.State.PATROL, mfsm.Action.RESUME_PATROL),
+                       12.0, 0.1)
+    assert dgoals.index == 4 and dr._det_streak == 2, \
+        "a waypoint advance stopped the robot or wiped the detection streak"
+    assert dr._blacklist == [], "a delivered object must not be blacklisted"
+    print("  DELIVER re-points the goal to the bin, RESUME returns to the next waypoint")
+
+    # ── giving up must clear the target state AND blacklist the spot ──
+    # Leaving _latched set makes Sense.latched true on the first tick of the
+    # NEXT object's LATCH, so the FSM skips the latch entirely and the arm
+    # reaches for the previous object's coordinates. Not blacklisting makes the
+    # robot re-confirm the same ungraspable thing on every patrol lap, forever.
+    gr = MissionRunner.__new__(MissionRunner)
+    gr.goals, gr.nav = dgoals, _StubNav()
+    gr.lidar = dr.lidar
+    gr.args = type("A", (), {"blacklist_radius_m": 1.0, "detection_jump_m": 0.35})()
+    gr._blacklist = []
+    gr._det_streak = 3
+    gr._latched = ([0.24, 0.0, 0.02], 0.023, 0.065)
+    gr._grasp_finished = True
+    gr._grasp_verified = False            # gave up
+    gr._align_failed = True
+    gr._handoff_ready = True
+    gr._place_finished = False
+    dgoals.set_pose(mgp.MapPose(2.5, 0.0, 0.0, 50.0))
+    MissionRunner._act(gr, mfsm.Transition(mfsm.State.RESUME, mfsm.Action.RESUME_PATROL),
+                       50.0, 0.1)
+    assert gr._latched is None, "a stale latch would make the NEXT grasp use old coords"
+    assert not gr._align_failed and not gr._handoff_ready
+    assert not gr._grasp_finished and not gr._grasp_verified
+    assert gr._det_streak == 0
+    assert gr._blacklist == [(2.5, 0.0)], gr._blacklist
+    print("  giving up clears every target flag and blacklists the spot")
+
+    # ...and a detection back at that spot is ignored instead of looping forever
+    gr.nav = _Nav()
+    gr._last_det = 0.0
+    gr.nav._detect_rear = lambda: (True, 1.5, 0.0)
+    dgoals.set_pose(mgp.MapPose(2.7, 0.0, 0.0, 60.0))     # 0.2 m from the give-up
+    MissionRunner._run_detection(gr, 60.0)
+    assert gr._det_streak == 0, "detection inside the blacklist radius must not count"
+    dgoals.set_pose(mgp.MapPose(4.6, 0.0, 0.0, 61.0))     # 2.1 m away, outside
+    gr._last_det = 0.0
+    MissionRunner._run_detection(gr, 61.0)
+    assert gr._det_streak == 1, "outside the radius detections must count again"
+    print("  blacklist suppresses re-detection nearby, releases further away")
+
+    # ── the bin override remembers where patrol was ──
+    goals.reset(start_index=1)
+    goals.set_bin_target()
+    assert goals.in_override and goals.interrupted_index == 1
+    goals.set_pose(mgp.MapPose(2.6, 2.0, 0.0, 1.0))
+    assert goals.arrived(now=1.0), "sitting on the bin approach point"
+    assert goals.resume_patrol() == 2, goals.index
+    assert not goals.in_override
+    print("  bin override -> resume at the NEXT waypoint OK")
+
+    # ── FSM + goal-source switching agree ──
+    fsm = mfsm.MissionFSM(mfsm.MissionConfig(approach_to_align_m=0.75))
+    t = 0.0
+    fsm.step(mfsm.Sense(now=t))
+    fsm.step(mfsm.Sense(now=t + 0.1, self_check_passed=True))
+    fsm.step(mfsm.Sense(now=t + 0.2, started=True))
+    assert fsm.state is mfsm.State.PATROL
+    tr = fsm.step(mfsm.Sense(now=t + 0.3, detection_streak=3))
+    assert tr.reset_nav and tr.chassis_allowed
+    print("  FSM patrol -> investigate switches goal source with reset_nav")
+
+    # ── PATROL -> INVESTIGATE must NOT throw away the fix that triggered it ──
+    # This is the untested leg of the mission. Clearing the tracker here leaves
+    # the next tick with fix_age = infinity, the FSM reads "target lost", and the
+    # robot bounces straight back to patrol -- it could never reach an object it
+    # had just seen. Regression test, because nothing on the robot would show
+    # this as anything but "it ignored the trash".
+    nav4 = _Nav()
+    nav4.tracker.update(1.8, 0.10)
+    assert nav4.tracker.has_fix
+    nav4.reset_nav(clear_tracker=(mfsm.State.INVESTIGATE in mfsm.MAP_STATES))
+    assert nav4.tracker.has_fix, \
+        "PATROL->INVESTIGATE cleared the camera fix; the target is instantly 'lost'"
+    assert nav4.tracker.fix_age() < 1.0
+    assert float(np.max(np.abs(nav4.prev_action))) == 0.0, \
+        "the ActionDelay must still be cleared — it is aimed at the map waypoint"
+    # ...and entering a map-goal state DOES clear it
+    nav4.reset_nav(clear_tracker=(mfsm.State.DELIVER in mfsm.MAP_STATES))
+    assert not nav4.tracker.has_fix, "DELIVER is a map goal; the camera fix must go"
+    print("  tracker survives PATROL->INVESTIGATE, cleared on ->DELIVER")
+
+    # the FSM would abandon immediately on a cleared tracker — prove the failure
+    # mode this guards against is real, not hypothetical
+    fsm2 = mfsm.MissionFSM(mfsm.MissionConfig())
+    fsm2.state, fsm2.entered_at = mfsm.State.INVESTIGATE, 100.0
+    tr = fsm2.step(mfsm.Sense(now=100.1, target_visible=False,
+                              target_fix_age=float("inf")))
+    assert fsm2.state is mfsm.State.RESUME and "lost" in tr.reason, tr
+    print("  (confirmed: a cleared tracker makes INVESTIGATE abandon on tick 1)")
+
+    # ── detection streak needs spatial agreement, not just three hits ──
+    class _StreakRunner(MissionRunner):
+        def __init__(self, nav, jump_m):
+            self.nav = nav
+            self._det_streak = 0
+            self._last_det = 0.0
+            self.args = type("A", (), {"detection_jump_m": jump_m,
+                                       "blacklist_radius_m": 1.0})()
+            self._blacklist = []
+            self.goals = mgp.MapGoalProvider(
+                mgp.RouteSpec(waypoints=[mgp.Waypoint("a", 0.0, 0.0),
+                                         mgp.Waypoint("b", 1.0, 0.0)], loop=False))
+
+        def _detect(self):
+            return self._detections.pop(0)
+
+    nav5 = _Nav()
+    r5 = _StreakRunner(nav5, 0.35)
+    # three consistent sightings of a stationary object (robot is not moving in
+    # this harness, so the tracker prediction stays put)
+    r5.nav._detect_rear = lambda: (True, 2.00, 0.05)
+    for i in range(3):
+        r5._last_det = 0.0
+        MissionRunner._run_detection(r5, 100.0 + i)
+    assert r5._det_streak == 3, r5._det_streak
+    # now a flicker somewhere else entirely
+    r5.nav._detect_rear = lambda: (True, 2.00, 1.20)
+    r5._last_det = 0.0
+    MissionRunner._run_detection(r5, 200.0)
+    assert r5._det_streak == 1, \
+        f"a fix 1.15 m off the prediction should restart the streak, got {r5._det_streak}"
+    # a miss resets it outright
+    r5.nav._detect_rear = lambda: (False, -1.0, 0.0)
+    r5._last_det = 0.0
+    MissionRunner._run_detection(r5, 300.0)
+    assert r5._det_streak == 0
+    print("  detection streak: 3 consistent hits confirm, a jump restarts, a miss resets")
+
+    # ── every Action the FSM can emit must have a handler ──
+    # A missing branch is silent: _act just returns, the robot does nothing, and
+    # the FSM sits in that state until its timeout. Cheap to check, so check it.
+    import inspect
+    src = inspect.getsource(MissionRunner._act)
+    unhandled = [a.name for a in mfsm.Action if f"A.{a.name}" not in src]
+    assert not unhandled, f"FSM actions with no handler in _act: {unhandled}"
+    print(f"  all {len(list(mfsm.Action))} FSM actions have a handler")
+
+    print("[mission] SELFTEST PASSED")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# CLI
+# ════════════════════════════════════════════════════════════════════════════
+
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--selftest", action="store_true", help="offline logic tests")
+    p.add_argument("--real", action="store_true", help="drive real hardware")
+    p.add_argument("--dry-run", action="store_true",
+                   help="run the full loop with hardware output suppressed")
+    p.add_argument("--show", action="store_true")
+
+    p.add_argument("--route", default=str(mgp.DEFAULT_ROUTE_HINT))
+    p.add_argument("--annotations", default=None)
+    p.add_argument("--arrival-radius", type=float, default=mgp.DEFAULT_ARRIVAL_RADIUS_M)
+    # Route C's route.yaml declares 0.75 m spacing but really has 0.049 m in
+    # places (orthogonal A* on the 0.049 m/cell grid). 0 disables re-sampling,
+    # which for that file means the route is rejected at load.
+    p.add_argument("--resample-m", type=float, default=0.75,
+                   help="re-space the patrol polyline at this arc length "
+                        "(0 = use route.yaml as-is)")
+    p.add_argument("--pose-max-age", type=float, default=mgp.DEFAULT_POSE_MAX_AGE_S)
+    p.add_argument("--max-laps", type=int, default=0, help="0 = patrol forever")
+    p.add_argument("--no-deliver", action="store_true",
+                   help="stop after a verified grasp instead of going to the bin")
+
+    p.add_argument("--model", default=None)
+    p.add_argument("--vecnorm", default=None)
+    p.add_argument("--nav-stop-dist", type=float, default=nrgp.NAV_STOP_DIST_M)
+    p.add_argument("--detection-streak", type=int, default=3)
+    p.add_argument("--control-period", type=float, default=None)
+    p.add_argument("--wz-sign", type=float, default=1.0, choices=(-1.0, 1.0))
+
+    p.add_argument("--lidar-backend", default="ros", choices=("ros", "rplidar", "none"))
+    p.add_argument("--lidar-dir", type=float, default=1.0, choices=(-1.0, 1.0))
+    p.add_argument("--lidar-yaw-offset-deg", type=float, default=0.0)
+    p.add_argument("--scan-topic", default="/scan")
+    p.add_argument("--ros-backend", default="ros", choices=("ros", "none"))
+    p.add_argument("--ros-host", default="127.0.0.1")
+    p.add_argument("--ros-port", type=int, default=9090)
+    p.add_argument("--odom-rate", type=float, default=ODOM_RATE_HZ)
+
+    p.add_argument("--port", default="/dev/myserial")
+    p.add_argument("--jetson-ip", default=os.getenv("X3PLUS_JETSON_HOST", "127.0.0.1"))
+    p.add_argument("--rear-stream", default=None)
+    p.add_argument("--arm-stream", default=None)
+    p.add_argument("--class-z", action="append", default=[])
+    p.add_argument("--class-height", action="append", default=[])
+    p.add_argument("--grasp-home-deg", default=None)
+    p.add_argument("--max-steps", type=int, default=300)
+    p.add_argument("--grasp-model", default=None,
+                   help="override the grasp .zip (default: from grasp/v21/manifest.json)")
+    p.add_argument("--grasp-vecnorm", default=None,
+                   help="override the grasp VecNormalize .pkl — must be the "
+                        "matching half of --grasp-model")
+    p.add_argument("--skip-model-hash", action="store_true",
+                   help="skip the manifest sha256 check (slow disks only)")
+
+    # Release: grasp/v21's _scripted_release. No bin pose and no aiming -- it
+    # reaches forward from wherever the arm is, stops as soon as FK says the pad
+    # would drop below the rim, opens, and comes home.
+    # 0 by default: the release just runs. Set it only if you want the reach to
+    # stop short for a tall bin; with 0 the only remaining check is that the jaw
+    # is not opened at floor level, which is a floor sanity margin, not a bin one.
+    p.add_argument("--bin-rim-height", type=float, default=0.0,
+                   help="bin rim height above the floor (m). 0 = ignore the bin")
+    p.add_argument("--release-clearance", type=float, default=0.03,
+                   help="pad bottom must stay this far above rim height (m)")
+    p.add_argument("--release-extend-steps", type=int, default=6)
+
+    # Handoff gate: how close the object must be to the aim point before the
+    # arm takes over. See MISSION.md for the three frames these numbers live in.
+    p.add_argument("--handoff-aim-x", type=float, default=0.24,
+                   help="policy-frame x we drive the object to (default 0.24 = "
+                        "centre of v21's documented 0.20-0.28 band)")
+    p.add_argument("--handoff-radius-m", type=float, default=0.04,
+                   help="object must be within this of the aim point to hand over")
+    p.add_argument("--detection-jump-m", type=float, default=0.35,
+                   help="a patrol detection further than this from the tracker's "
+                        "prediction restarts the confirmation streak")
+
+    p.add_argument("--blacklist-radius-m", type=float, default=1.0,
+                   help="after giving up on an object, ignore detections within "
+                        "this radius of where we gave up (0 disables)")
+    p.add_argument("--wait-start", action="store_true", default=None,
+                   help="wait for Enter before patrolling (default: on for --real)")
+    p.add_argument("--start-immediately", dest="wait_start", action="store_false",
+                   help="skip the confirmation prompt")
+    p.add_argument("--exit-on-pause", action="store_true")
+
+    p.add_argument("--i-confirm-serial-owner", action="store_true")
+    p.add_argument("--i-confirm-lidar-orientation", action="store_true")
+    p.add_argument("--i-confirm-arm-cam-pose", action="store_true")
+
+    args = p.parse_args(argv)
+    if args.real and args.dry_run:
+        p.error("--real and --dry-run are mutually exclusive")
+    if bool(args.grasp_model) != bool(args.grasp_vecnorm):
+        p.error("--grasp-model and --grasp-vecnorm must be given together: they "
+                "are one unit and mixing halves fails silently")
+    if not math.isfinite(args.nav_stop_dist) or args.nav_stop_dist <= 0.0:
+        p.error("--nav-stop-dist must be finite and > 0")
+    if args.detection_streak < 1:
+        p.error("--detection-streak must be >= 1")
+    if args.max_laps < 0:
+        p.error("--max-laps must be >= 0")
+    for name in ("release_clearance", "handoff_radius_m",
+                 "handoff_aim_x", "detection_jump_m"):
+        v = getattr(args, name)
+        if not math.isfinite(v) or v <= 0.0:
+            p.error(f"--{name.replace('_', '-')} must be finite and > 0")
+    if not math.isfinite(args.bin_rim_height) or args.bin_rim_height < 0.0:
+        p.error("--bin-rim-height must be finite and >= 0")
+    if not math.isfinite(args.blacklist_radius_m) or args.blacklist_radius_m < 0.0:
+        p.error("--blacklist-radius-m must be finite and >= 0")
+    if args.wait_start is None:
+        # Confirm before driving on hardware; dry-runs just go.
+        args.wait_start = bool(args.real)
+    if args.release_extend_steps < 1:
+        p.error("--release-extend-steps must be >= 1")
+    return args
+
+
+def main(argv=None) -> int:
+    args = parse_args(argv)
+    if args.selftest:
+        run_selftest()
+        return 0
+    if not (args.real or args.dry_run):
+        print("[mission] neither --real nor --dry-run given; assuming --dry-run.")
+        args.dry_run = True
+
+    return build_and_run(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

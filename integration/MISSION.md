@@ -1,0 +1,200 @@
+# 完整任務流程：巡航 → 辨識 → 走過去 → 夾取 → 送垃圾桶 → 續巡
+
+`mission_pipeline.py` 把導航（Navigation 交接包的 Route A/B/C）和夾取（v21）接成單一
+任務。單一 Python 3.8 程序擁有 `/dev/myserial`，ROS Melodic 只負責感測與定位。
+
+```
+本程序（唯一 /dev/myserial owner）          ROS Melodic（不得開底盤序列埠）
+  GraspController → 伺服機（v21）             robot_state_publisher
+  set_car_motion  → 輪子                      YDLIDAR TG30 → /scan
+  get_motion_data → /odom_setmotor + TF       map_server → /map
+  導航 PPO 55D→2D、夾取 PPO 28D→6D            AMCL → map→odom
+  MissionFSM                                  rosbridge_server
+```
+
+## 新增模組
+
+| 檔案 | 職責 | 離線自測 |
+|------|------|---------|
+| `map_goal_provider.py` | route.yaml 117 waypoint + AMCL pose → `(dist, bearing)`；到點/繞行/中斷續巡/禁區 | `--selftest`、`--validate` |
+| `feedback_odom.py` | `get_motion_data()` → odom pose（Route A 校正值 0.65 / 0.501） | `--selftest` |
+| `ros_io.py` | rosbridge 發 `/odom_setmotor`+TF、收 `/amcl_pose` | `--selftest`、`--probe` |
+| `mission_fsm.py` | 20 狀態任務機（純邏輯） | `--selftest`、`--diagram` |
+| `mission_pipeline.py` | 主程序，接起全部 | `--selftest` |
+
+全部離線可測：
+
+```bash
+for m in map_goal_provider feedback_odom ros_io mission_fsm mission_pipeline; do python3 integration/$m.py --selftest; done
+```
+
+## 狀態機
+
+```
+BOOT → SELF_CHECK → IDLE --start--> PATROL
+                                      │ 同一類別連續 3 幀（目標來源 map→相機，重置 nav）
+                                      ▼
+                            INVESTIGATE →(≤2.5m)→ APPROACH →(≤0.75m)→ ALIGN
+                                      │ 丟失/逾時            │ 丟失/逾時      │ 進入 v21 可夾框
+                                      └────→ RESUME ←────────┘                ▼
+                                               ▲                      STATIONARY_GATE
+                                               │                              ▼ 停穩
+                                               │                           LATCH → GRASP → VERIFY
+                                               │                    失敗 ↙                    ↘ 成功
+                                               │                  RETRY(≤3)              CARRY_HOME
+                                               │                    ↓                          ▼
+                                               │                APPROACH                   DELIVER
+                                               │                                              ▼
+                                               └──────────────── PLACE ← PLACE_ALIGN
+```
+
+任何狀態：感測器 stale → **PAUSED**（只有人能離開）；ESTOP／fault → 鎖定，不自動恢復。
+
+程式強制兩條硬體不變式，測試涵蓋：
+
+1. **輪子和手臂不會同時被允許動**。兩者共用一條 Rosmaster 序列匯流排和同一個重心；
+   手臂只在底盤確認停穩後才動（stationary gate）。
+2. **切換目標來源（地圖 waypoint ↔ 相機目標）一定重置 `ActionDelay` 和 `GoalTracker`**。
+   殘留的延遲命令是瞄準一個已經不存在的目標。
+
+## 上機啟動順序
+
+```bash
+# 0. 確認沒有別的程序佔序列埠（必須剛好一個 PID，就是本程序）
+sudo fuser -v /dev/myserial
+ps -ef | grep -E '[r]osmaster_main|[M]cnamu_driver|[a]i_motor_server_B|[r]oute_a_runtime'
+```
+
+```bash
+# 1. ROS 端（各自一個終端機）
+roscore
+roslaunch ydlidar_ros_driver TG.launch
+roslaunch <robot model>.launch                 # robot_state_publisher
+rosrun map_server map_server site_map.yaml
+roslaunch amcl.launch
+roslaunch rosbridge_server rosbridge_websocket.launch
+```
+
+RViz 用 **2D Pose Estimate 設緊初始化**（std 0.15 m / yaw 7°）。寬初始化實測在重複走廊
+跳 1.573 m，不會收斂。
+
+```bash
+# 2. 確認定位真的在動
+python3 integration/ros_io.py --probe --ros-host 127.0.0.1
+```
+
+```bash
+# 3. 確認 LiDAR 左右沒有反（前/左/右各放實物）
+python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
+```
+
+```bash
+# 4. 正式跑（--real 會先等你按 Enter 才開始巡航）
+source ~/grasp_venv/bin/activate
+python3 integration/mission_pipeline.py --real --show \
+  --route <route.yaml> \
+  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+```
+
+分段驗證見下方測試計畫。`--detection-streak 999` 讓它永遠不離開路線（只驗巡航）；
+`--no-deliver` 讓它夾到就停（不送桶）。
+
+## 上機前必須做的量測（程式會拒絕沒做的）
+
+| 項目 | 為什麼 | 怎麼做 |
+|------|--------|--------|
+| 序列埠唯一擁有者 | 兩個程序開同一條 UART = 命令交錯 | `fuser -v /dev/myserial` |
+| LiDAR 左右方向 | 反了 policy 會把左當右 | `nav_rl.py --probe` |
+| 靜止 feedback 雜訊 | stationary gate 的門檻是暫定值 | 靜止 5 秒記錄 `get_motion_data()` |
+
+## 已知落差
+
+- **手臂相機 C3 外參是 URDF 預測值**，啟動會警告 `theta/H/cam_x/cam_y PREDICTED`。
+  依 2026-08-04 的決定不處理：v21 用這組參數在實機上已經夾成功。若之後夾取落點
+  系統性偏移，這裡是第一個要回頭看的地方。
+- **巡航中發現物體並前往（PATROL→INVESTIGATE→APPROACH）尚未實車驗證**。這段
+  2026-08-04 修掉三個只會在實機上顯現成「它無視垃圾」的邏輯錯誤，見下方。
+- **v21 是 `candidate` 不是 approved**。`manifest.json` 的 `protocol_valid: false`
+  （正式評估的 home jitter 沒照協議跑）。成績是真的但沒有認證，簡報要照這個講法。
+- **`route.yaml` 需要重取樣**。宣告 0.75 m 間距，實際最小 0.049 m（0.049 m/cell 網格上
+  的正交 A* 階梯），117 個間隔裡 45 個不到 0.5 m，`patrol_001` 和 `patrol_116` 座標完全
+  相同。程式預設 `--resample-m 0.75`（117 → 83 點，最小間距 0.530 m）。取樣點都落在原折線
+  上，不會切出 0.35 m 安全走廊。要用原檔就 `--resample-m 0`，但那樣會在載入時被拒絕。
+- **地圖來自 GLB 渲染不是 SLAM 建圖**，現場家具/箱子/人不在圖上。48 束 policy 會避障，
+  但 AMCL 會被未建模障礙拉偏。
+- **丟失定位沒有自動恢復**。AMCL 發散 → covariance 超標 → PAUSED，要人重設初始位姿。
+- **`nav_rl_grasp_pipeline.py` / `vision_grasp_pipeline.py` 沒有設 v21 的模型路徑**，
+  用預設會死在 `SELECTED_MODEL_REQUIRED.zip`。`mission_pipeline.py` 從
+  `grasp/v21/manifest.json` 解析並驗證 SHA256（manifest 明講兩個檔是一組、不可混用；
+  混用不會報錯，只會讓 policy 拿到錯誤正規化的觀測然後夾錯地方）。
+
+## 座標系 — 交接距離講的是哪個原點
+
+三個常被混用的原點，數字用 `grasp/v21` 自己的 FK 量出來（2026-08-04），不是推算：
+
+```
+policy_x = base_footprint_x + 0.0199
+```
+
+| 參考點 | 在 base_footprint 前方 |
+|---|---|
+| 後輪軸 | −0.080 m |
+| **base_footprint / base_link** | **0**（前後輪軸的**正中間**，不是前輪軸） |
+| 前輪軸 | +0.080 m |
+| 手臂基座 `arm_link1` | +0.098 m（URDF 0.09825，FK 吻合） |
+
+`base_footprint` 是**底盤中心**：前輪 x=+0.08、後輪 x=−0.08，中點就是原點。
+
+## v21 可夾框 — 導航的實際規格
+
+導航要把車停到讓物體落在這個框裡（policy 座標）：
+
+| | policy x | 換算成 base_footprint 前方 | 換算成前輪軸前方 |
+|---|---|---|---|
+| 訓練區間 | 0.20 ~ 0.33 | 0.180 ~ 0.310 m | 0.100 ~ 0.230 m |
+| 正式評估過（程式用這個） | **0.20 ~ 0.28** | **0.180 ~ 0.260 m** | **0.100 ~ 0.180 m** |
+| C3 home 的 TCP 落點 | 0.226 | 0.206 m | 0.126 m |
+| C3 手臂相機看得到 | 0.205 ~ 0.317 | 0.185 ~ 0.297 m | 0.105 ~ 0.217 m |
+
+y 方向：正式評估過 −0.09 ~ +0.08 m。
+
+**相機看得到不代表 policy 夾得到** —— 可視帶的遠端 0.317 超出訓練區。
+`MissionRunner.envelope_ok()` 在 ALIGN 先擋，v21 的 `_check_target_envelope()` 再擋一次。
+
+交接門檻是兩層，兩層都要過：
+
+1. **訓練框**（硬性，v21 的契約，不要動）：policy x ∈ [0.20, 0.28]、y ∈ [−0.09, 0.08]
+2. **對準半徑**（可調，上機要調的就是這個）：距瞄準點 `--handoff-aim-x`（預設 0.24，
+   即訓練框中心）的直線距離 ≤ `--handoff-radius-m`（預設 0.04 m）
+
+RL 導航停在 0.75 m、到點半徑 0.35 m，和這個 8×17 cm 的框差一個數量級 ——
+**視覺精對位（ALIGN）不是可選項，是唯一能收斂到這個框的東西**。
+
+每一則被擋下來的訊息都會同時印出三個座標系的值，避免再對錯原點：
+
+```
+policy x=0.240 | base_footprint x=0.220 | front-axle x=0.140 | y=+0.000 m
+```
+
+## 丟垃圾 — 最簡化版
+
+到達 `route.yaml` 標註的 `trash_bin.approach` 點之後，直接跑 v21 的
+`run_release_only()`：**不看垃圾桶在哪、不瞄準、不需要量測越過桶子的手臂姿態**。
+
+桶口約 30 cm 寬，所以水平方向每邊都有約 10 cm 餘裕，物體直接掉下去就好。唯一會真的失敗的
+是「在夾爪低於桶緣時放開」——那會把物體掉在桶子外側 —— 所以往前伸的動作在 FK 判定夾爪
+墊片會低於「桶緣 + 餘裕」時就停下，並且如果當下位置已經低於桶緣，**寧可繼續抓著也不放**。
+
+```bash
+--bin-rim-height 0         # 預設 0 = 不管桶子多高，直接跑預設動作
+--release-clearance 0.03   # 剩下的唯一檢查：不要在貼近地面時開爪
+--release-extend-steps 6
+```
+
+桶緣預設 0，所以伸出動作不會被提早擋下。只有在你想讓它為了高桶子提早停手時才需要設。
+
+沒有放開的驗證。夾持判定靠「夾爪停在未完全閉合的角度」，一旦命令張開就一定讀成
+「已放開」。`released` 的意思是**放開的動作跑完了**，不是「東西在桶子裡」。
+
+`run_release_only()` 會先檢查夾爪裡是否真的有東西：沒有就回 `rejected` 並直接續巡 ——
+這同時也抓到「東西在半路掉了」的情況，而不是對著空夾爪演一次放開。
