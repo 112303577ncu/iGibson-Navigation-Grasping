@@ -1,13 +1,47 @@
-train: ../train/images
-val: ../valid/images
-test: ../test/images
+nc: 1
+names: ['sugarbox']
 
-nc: 2
-names: ['bottle-cap', 'paper-ball']
-
-roboflow:
-  workspace: new-workspace-cdskb
-  project: trash_identify-9jr6n
-  version: 3
-  license: CC BY 4.0
-  url: https://universe.roboflow.com/new-workspace-cdskb/trash_identify-9jr6n/dataset/3
+# ── Current model: sugarbox (blue box), installed 2026-08-01 ──
+# best.pt sha256: ca42c3f4988a57df8be61382ef5234cdb48ee88b115d9329425da0785325baff
+# Source release: C:\Users\user\Documents\repo\integration\yolo\sugarbox_yolo11_release
+#   (its own data.yaml: path D:/train_pic/dataset, names {0: sugarbox})
+# Training: YOLOv11 Nano, 410 augmented images (glare/shadow, colour-temperature
+#   shift, gaussian + motion blur, noise, synthetic backgrounds), 50 epochs.
+#   Reported mAP@50-95 = 0.995 on its own val split.
+#
+#   Treat that number as "the split was easy", not as expected field accuracy.
+#   410 images built by augmenting a smaller set almost certainly puts variants
+#   of the same photo in train and val, and 0.995 mAP@50-95 is close to the
+#   ceiling even for far larger datasets. More to the point, none of it predicts
+#   the C3 viewpoint: the arm camera looks almost straight down from 21 cm, at
+#   which range the box shows mostly its top face and fills a large part of the
+#   frame. If detection is unreliable on the robot, that is where to look first,
+#   and the fix is training images from that pose rather than a threshold tweak.
+#
+# MEASURED OBJECT GEOMETRY (used by the grasp side, not by YOLO):
+#   height = 0.065 m (65 mm, operator-stated 2026-08-01)
+#   centroid z = 0.0325 m  (height/2, valid only because the box is symmetric
+#                           and rests on the floor)
+#   width  = 0.023 m (23 mm, operator-measured 2026-08-02, across the jaw's
+#                     closing axis). Well inside the 0.06 m the jaw can open;
+#                     URDF FK on the pad links puts the predicted contact angle
+#                     at S6 ~164.5 deg, against the 180 deg fully-closed stop, so
+#                     a close that stalls near 164-165 is the object and a close
+#                     that reaches 180 is an empty jaw.
+#                     The bridge reports width from the silhouette and corrects
+#                     it for the object's height, so it should print ~2.3 cm; an
+#                     uncorrected reading would be ~2.8 cm.
+# Pass these to the grasp side explicitly:
+#   --class-height sugarbox=0.065 --class-z sugarbox=0.0325
+# A class name that this model does not predict is warned about but not fatal;
+# without the warning it would silently fall back to the default height.
+#
+# ── Previous models, kept alongside for rollback ──
+# best_eraser_detect_train11.pt.bak
+#   nc=1, names: ['eraser-detect']. Installed 2026-07-31, replaced 2026-08-01.
+#   Source: eraser_detect.v1i.yolov11, run trash_identify.v3i.yolov11 (1)/runs/detect/train11
+#   (150 epochs, yolo11n base, precision 1.0 / recall 0.995 / mAP50 0.997 / mAP50-95 0.874)
+# best_trash_identify_train5.pt.bak
+#   nc=2, names: ['bottle-cap', 'paper-ball']. The original dual-class model.
+#   This file has never been in git -- it is the only copy.
+# To roll back: rename the wanted .bak over best.pt and restore nc/names above.

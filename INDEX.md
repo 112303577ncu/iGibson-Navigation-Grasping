@@ -153,7 +153,8 @@ rg -n "mono_link|mono_joint|arm_joint|base_link" grasp/x3plus/yahboomcar.urdf
 - If `x/y` looks consistently shifted, tune camera-to-base offsets (`CAM_TO_BASE_X/Y` or bridge `--cam-x/--cam-y`).
 - If left/right is reversed, flip `SIGN_Y` or bridge `--sign-y`.
 - If distance scale changes with range, recalibrate camera `H/theta/FX/FY`.
-- `x3plus_deploy_bridge.py` is not used by the main deployment path.
+- `grasp/x3plus_deploy_bridge.py` was deleted 2026-08-01 (never imported; its own
+  docstring said so). Recover from git history if ever needed.
 - `/odom_setmotor` and `odom→base_footprint` are planned but not implemented in this repo yet.
 - The real LiDAR is YDLIDAR TG30. `/dev/rplidar` is only a udev alias; use the ROS `/scan`
   backend and `roslibpy`, not `rplidar-roboticia`.

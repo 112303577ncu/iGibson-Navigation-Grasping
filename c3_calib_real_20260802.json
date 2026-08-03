@@ -1,0 +1,51 @@
+{
+  "pose": "v21_c3_grasp_home",
+  "h_m": 0.215,
+  "observations": [
+    {
+      "base_x": 0.26,
+      "base_y": 0.0,
+      "u": 158.46,
+      "v": 164.51,
+      "samples": 20,
+      "spread_px": 21.96,
+      "class": "sugarbox"
+    },
+    {
+      "base_x": 0.26,
+      "base_y": 0.0,
+      "u": 122.91,
+      "v": 225.9,
+      "samples": 20,
+      "spread_px": 0.9,
+      "class": "sugarbox"
+    },
+    {
+      "base_x": 0.243,
+      "base_y": -0.02,
+      "u": 122.58,
+      "v": 225.66,
+      "samples": 20,
+      "spread_px": 0.78,
+      "class": "sugarbox"
+    },
+    {
+      "base_x": 0.257,
+      "base_y": -0.02,
+      "u": 320.63,
+      "v": 220.75,
+      "samples": 20,
+      "spread_px": 0.59,
+      "class": "sugarbox"
+    },
+    {
+      "base_x": 0.257,
+      "base_y": 0.035,
+      "u": 320.26,
+      "v": 220.74,
+      "samples": 20,
+      "spread_px": 0.39,
+      "class": "sugarbox"
+    }
+  ]
+}

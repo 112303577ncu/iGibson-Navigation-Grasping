@@ -1,0 +1,3258 @@
+{
+  "schema": "x3plus-grasp-selection-lock/v21",
+  "created": "2026-07-29T12:16:15+08:00",
+  "selector_source": {
+    "source_path": "training/select_v21_candidate.py",
+    "sha256": "13910f83b728cd1531e71cdac0013b698e4b99fdcd7bc0d0296de8a253833aec",
+    "bytes": 26736
+  },
+  "contract": "obs_28_incremental",
+  "formal_seed_reserved": 90210,
+  "formal_seed_used_for_selection": false,
+  "training_seeds": [
+    816,
+    817
+  ],
+  "screen_seed": 4242,
+  "full_dev_seeds": [
+    4242,
+    4343
+  ],
+  "screen_protocol": {
+    "episodes": 6,
+    "grid_episodes": 5,
+    "max_steps": 600
+  },
+  "full_dev_protocol": {
+    "episodes": 12,
+    "grid_episodes": 10,
+    "max_steps": 600
+  },
+  "selection_rule": [
+    "discard any screen with floor penetration",
+    "shortlist top four by grid_min, min(cap,mixed), overall, earlier checkpoint",
+    "require both full dev seeds to pass cap>=90%, mixed>=90%, every grid>=80%, floor=0",
+    "rank eligible by worst grid, worst min(cap,mixed), pooled overall, earlier checkpoint"
+  ],
+  "registry": {
+    "source_path": "training/eval_results/v21_dev_selection_20260729-115511/candidate_registry.json",
+    "sha256": "db6b0decb3888a81d1f94875c37debfd535dc6a733be5e0b4590f98f77463ac4",
+    "bytes": 10668
+  },
+  "training_runs": [
+    {
+      "seed": 816,
+      "metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "completed_at_utc": "2026-07-28T21:08:11.823999+00:00"
+    },
+    {
+      "seed": 817,
+      "metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "completed_at_utc": "2026-07-29T03:52:37.843927+00:00"
+    }
+  ],
+  "all_checkpoint_screens": [
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 50000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_50000.zip",
+        "sha256": "43f648826379b772461d260826f36c9949636b61538271b2d93d111dc55acf56",
+        "bytes": 179674
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_50000.pkl",
+        "sha256": "9e17d0f70c95fa8d54572714a1e3cc8c851e3c3bc8f91d7e2de43ae9ee8ebaf4",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt50000/eval_v19_20260729-115548.json",
+          "sha256": "127f950ab06b2b90a6f1c797092c24d27269125a3645db5f490f858dc19447d2",
+          "bytes": 79687
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 1,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": false,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 100000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_100000.zip",
+        "sha256": "7fc707db32b9be11ecb4d6c8f8a2c94368f0fffa7162582eae2d1c7dc3fb1322",
+        "bytes": 179675
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_100000.pkl",
+        "sha256": "4cb7731a96981915e568139d683170a3564547970e1f1c54a571a84bd3786e45",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt100000/eval_v19_20260729-115619.json",
+          "sha256": "24ca833084625353bdff2d4e6c0ea11f66e70219dec9fd3ba12795c090bd4456",
+          "bytes": 79681
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 68,
+          "episodes": 69,
+          "rate": 0.9855072463768116
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      },
+      "full_dev": [
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt100000_dev4242/eval_v19_20260729-120957.json",
+            "sha256": "119dd5a83c4863fc9e197ddeeb133b1459cb290814e99faebd70be0d50cc8d70",
+            "bytes": 155314
+          },
+          "seed": 4242,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 35,
+            "episodes": 36,
+            "rate": 0.9722222222222222
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            }
+          },
+          "grid_min_rate": 0.9,
+          "overall": {
+            "successes": 136,
+            "episodes": 138,
+            "rate": 0.9855072463768116
+          },
+          "floor_penetration_episodes": 1,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": true,
+            "floor_penetration_zero": false,
+            "all_dev_gates": false
+          }
+        },
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt100000_dev4343/eval_v19_20260729-121044.json",
+            "sha256": "057df1978b4353b6ef933d354edbcc8e16cdfcbebe828958661b7b6b45be2b22",
+            "bytes": 154985
+          },
+          "seed": 4343,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 36,
+            "episodes": 36,
+            "rate": 1.0
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            }
+          },
+          "grid_min_rate": 1.0,
+          "overall": {
+            "successes": 138,
+            "episodes": 138,
+            "rate": 1.0
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": true,
+            "floor_penetration_zero": true,
+            "all_dev_gates": true
+          }
+        }
+      ]
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 150000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_150000.zip",
+        "sha256": "ce1162b7bc72c15ace5cc6f3f2264921d556a7598fc6a0aac7fab0e8db15eb29",
+        "bytes": 179686
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_150000.pkl",
+        "sha256": "c3be2af4bc86551a5bf894d48962a3d71b4e6f9774bbace3521e9ffaebf568d6",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt150000/eval_v19_20260729-115652.json",
+          "sha256": "56e2c2b6e48253164bf4c9ce9c514a365f72b8996478427102719b345aa70dc7",
+          "bytes": 79718
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 17,
+          "episodes": 18,
+          "rate": 0.9444444444444444
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 62,
+          "episodes": 69,
+          "rate": 0.8985507246376812
+        },
+        "floor_penetration_episodes": 3,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": false,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 200000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_200000.zip",
+        "sha256": "958ad243ea177e9b9c18675a983ebb242849e5e38c918b6854ecca58ff29bd67",
+        "bytes": 179686
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_200000.pkl",
+        "sha256": "0d804aa2e97e0dad2b36c7ab5bec19f859b3108d90d79ab0186fb73de7757414",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt200000/eval_v19_20260729-115724.json",
+          "sha256": "4d4d0fe00df7888cfbc35db18fc0b714b7bb89c18b575aaacd5c5dfc889492b6",
+          "bytes": 79699
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 1,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": false,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 250000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_250000.zip",
+        "sha256": "c6f2568bfb5f35bc49d30fc8d4f260074a3b9307d51c0f1d92f9224b42731529",
+        "bytes": 179687
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_250000.pkl",
+        "sha256": "d8dbb44bbe450efeb5910ae0d167c3558a00637c98c4f09f8b26659e337946fe",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt250000/eval_v19_20260729-115757.json",
+          "sha256": "1f07598540c62500874102a57aa5bf76d7947c7e4a3162efb8620dced1c1a004",
+          "bytes": 79643
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 300000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_300000.zip",
+        "sha256": "ddb6edd20fb9df59b6e0b4a23bddb28c58b62c2c83e11036c23d76f734c98528",
+        "bytes": 179687
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_300000.pkl",
+        "sha256": "89f87936b905ec18e73056366612df3980af6dd258d42d0a5d6081f028f7e109",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt300000/eval_v19_20260729-115832.json",
+          "sha256": "317510b838388c8b6bf8bb3c97e99b8fb293b4f1dcfc6170d2b9337abd8db8ce",
+          "bytes": 79644
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 64,
+          "episodes": 69,
+          "rate": 0.927536231884058
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 350000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_350000.zip",
+        "sha256": "154b9623d66afe593f32371a54271904fa6d1918e677ab93929a3693538c3b24",
+        "bytes": 179687
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_350000.pkl",
+        "sha256": "3a3be3d1427d82f8028011647b3b2f50801e3db204c9c6119e357942d69cffc2",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt350000/eval_v19_20260729-115907.json",
+          "sha256": "8cadb2a28c02a1368332a6fc3d43542e03157e366e619db3c0fb0047e1515a93",
+          "bytes": 79698
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.28_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 64,
+          "episodes": 69,
+          "rate": 0.927536231884058
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 400000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_400000.zip",
+        "sha256": "3d2811c0f9b313db01caa7f9485c443c052efcd14e595b414dd04bc5fd8d8a23",
+        "bytes": 179688
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_400000.pkl",
+        "sha256": "89e1311c050e542175cb52bbf529c81775082164704d267a20a06b08751870d9",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt400000/eval_v19_20260729-115944.json",
+          "sha256": "ae7b140e5cfe9f7ae7c7f6402dbce6b2dd6ecf7ba0d9dec17a2e77f0ce4f248f",
+          "bytes": 79606
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 2,
+            "episodes": 5,
+            "rate": 0.4
+          },
+          "0.28_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          }
+        },
+        "grid_min_rate": 0.4,
+        "overall": {
+          "successes": 60,
+          "episodes": 69,
+          "rate": 0.8695652173913043
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 450000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_450000.zip",
+        "sha256": "b9cd336c22e11f4773cb1c786c858c8dfacee3206d54a289178147b673e70f33",
+        "bytes": 179688
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_450000.pkl",
+        "sha256": "f9e767f0588b4aa26b48d01cb7e44468080cb34e9d2e5570b8db19919cddc4c7",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt450000/eval_v19_20260729-120019.json",
+          "sha256": "e69378dd5e49294e3f5b1fa4efd9308aca5e9aa7d095c7749194c75294952e89",
+          "bytes": 79686
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 500000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_500000.zip",
+        "sha256": "054fe9c57a5ed35ac7f98b63ac43570ab15c90dca0036f9e04af66a29eaedf3d",
+        "bytes": 179688
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_500000.pkl",
+        "sha256": "00bc0afaa097777a96718d49438fe8c93bd7974dff184664aa2781e55692418f",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt500000/eval_v19_20260729-120054.json",
+          "sha256": "59e4ae4eff374ec911afea6d09bd8398a2b253fb546283aed6773e35d5fadad2",
+          "bytes": 79702
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 550000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_550000.zip",
+        "sha256": "3a7137712669725b2b97cbe68cfceb76c09a52b6f9cc1df73f682ae0277843ab",
+        "bytes": 179688
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_550000.pkl",
+        "sha256": "f986d8463577d20cec3c157a932665f2a1c61edd23a4d6aa23095cecb925bca0",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt550000/eval_v19_20260729-120130.json",
+          "sha256": "6e39603dfd5221e861fbdabd04a82f77119ed9e8833c3886e2b4521c0d7e6a3b",
+          "bytes": 79659
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 17,
+          "episodes": 18,
+          "rate": 0.9444444444444444
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      },
+      "full_dev": [
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt550000_dev4242/eval_v19_20260729-121142.json",
+            "sha256": "fd1cb518b36f7651412a25378267e6a788d2a70b220d6315e5c20856b5ed1b37",
+            "bytes": 155250
+          },
+          "seed": 4242,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 35,
+            "episodes": 36,
+            "rate": 0.9722222222222222
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            }
+          },
+          "grid_min_rate": 0.9,
+          "overall": {
+            "successes": 135,
+            "episodes": 138,
+            "rate": 0.9782608695652174
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": true,
+            "floor_penetration_zero": true,
+            "all_dev_gates": true
+          }
+        },
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt550000_dev4343/eval_v19_20260729-121237.json",
+            "sha256": "34c2c98e03e80a04bca8739cd36e93f8f31207f193b6cbc7247d66270442addb",
+            "bytes": 154998
+          },
+          "seed": 4343,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 36,
+            "episodes": 36,
+            "rate": 1.0
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 8,
+              "episodes": 10,
+              "rate": 0.8
+            }
+          },
+          "grid_min_rate": 0.8,
+          "overall": {
+            "successes": 135,
+            "episodes": 138,
+            "rate": 0.9782608695652174
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": true,
+            "floor_penetration_zero": true,
+            "all_dev_gates": true
+          }
+        }
+      ]
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 600000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_600000.zip",
+        "sha256": "012a982b3a7c838b09aa7b8f48a8e85abe115867d9b9b04156d9da90851bc389",
+        "bytes": 179688
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/vec_600000.pkl",
+        "sha256": "062f69afaf7a843e49623ba4e1046949acabb8a38eaf5b98f5043fcccb1099d5",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+        "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+        "bytes": 13203
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed816_ckpt600000/eval_v19_20260729-120207.json",
+          "sha256": "f546b0e6b75bdd6274a36adf894f8740052d3e6747eddf21f1a456794b6091bb",
+          "bytes": 79696
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 68,
+          "episodes": 69,
+          "rate": 0.9855072463768116
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      },
+      "full_dev": [
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt600000_dev4242/eval_v19_20260729-121337.json",
+            "sha256": "0f5ddbb06a348da39fdd60e71c314f6d2cf868f97f021080cfeddad4f98dc600",
+            "bytes": 155182
+          },
+          "seed": 4242,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 35,
+            "episodes": 36,
+            "rate": 0.9722222222222222
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 5,
+              "episodes": 10,
+              "rate": 0.5
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 8,
+              "episodes": 10,
+              "rate": 0.8
+            }
+          },
+          "grid_min_rate": 0.5,
+          "overall": {
+            "successes": 129,
+            "episodes": 138,
+            "rate": 0.9347826086956522
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": false,
+            "floor_penetration_zero": true,
+            "all_dev_gates": false
+          }
+        },
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt600000_dev4343/eval_v19_20260729-121434.json",
+            "sha256": "d769dbe42f15ca6ddeb49cdcff8ff4a3b37438884d7af051e487b59e419b0557",
+            "bytes": 154983
+          },
+          "seed": 4343,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 36,
+            "episodes": 36,
+            "rate": 1.0
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 7,
+              "episodes": 10,
+              "rate": 0.7
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 8,
+              "episodes": 10,
+              "rate": 0.8
+            }
+          },
+          "grid_min_rate": 0.7,
+          "overall": {
+            "successes": 133,
+            "episodes": 138,
+            "rate": 0.9637681159420289
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": false,
+            "floor_penetration_zero": true,
+            "all_dev_gates": false
+          }
+        }
+      ]
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 50000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_50000.zip",
+        "sha256": "e87ae905ab761623a24bc1be6486518ce55362d113fcc764b69d3b418f0de938",
+        "bytes": 179709
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_50000.pkl",
+        "sha256": "56d9c7922fb377c6a034a3201a4c756c52737596c305ee26bc1f3ff0138b083f",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt50000/eval_v19_20260729-120241.json",
+          "sha256": "c0d74033faac4b6803abd35df5c65942282245d827dd98838d66b51ba3e504a0",
+          "bytes": 79662
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 2,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": false,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 100000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_100000.zip",
+        "sha256": "593d03a7b56afd29e800d91a3e0effb1901c6cd97cdfc5de9a3d986941eeb1b9",
+        "bytes": 179710
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_100000.pkl",
+        "sha256": "dec49132b357021824c68ca2e51561806d432c31b6302f65a6b9f78663c66583",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt100000/eval_v19_20260729-120312.json",
+          "sha256": "3acb3798729f3a8b9f7ab1d3c46b7b458d3f26f6bb580e8b1cbc6664c54fc219",
+          "bytes": 79684
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 68,
+          "episodes": 69,
+          "rate": 0.9855072463768116
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      },
+      "full_dev": [
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed817_ckpt100000_dev4242/eval_v19_20260729-121521.json",
+            "sha256": "fc46be9e114ab513065851bcd08ccf9ee88bfea39c3a076028f82e27ec649a4c",
+            "bytes": 155319
+          },
+          "seed": 4242,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 36,
+            "episodes": 36,
+            "rate": 1.0
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 9,
+              "episodes": 10,
+              "rate": 0.9
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            }
+          },
+          "grid_min_rate": 0.9,
+          "overall": {
+            "successes": 137,
+            "episodes": 138,
+            "rate": 0.9927536231884058
+          },
+          "floor_penetration_episodes": 1,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": true,
+            "floor_penetration_zero": false,
+            "all_dev_gates": false
+          }
+        },
+        {
+          "evidence": {
+            "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed817_ckpt100000_dev4343/eval_v19_20260729-121610.json",
+            "sha256": "4abe72b5325e32392d0e824b31e8145a1855b1be805d2265176af33ed4886db2",
+            "bytes": 154937
+          },
+          "seed": 4343,
+          "bottle_cap": {
+            "successes": 12,
+            "episodes": 12,
+            "rate": 1.0
+          },
+          "mixed_heights": {
+            "successes": 36,
+            "episodes": 36,
+            "rate": 1.0
+          },
+          "grid_cells": {
+            "0.20_-0.09": {
+              "successes": 7,
+              "episodes": 10,
+              "rate": 0.7
+            },
+            "0.20_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.20_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.24_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_-0.09": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.00": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            },
+            "0.28_+0.08": {
+              "successes": 10,
+              "episodes": 10,
+              "rate": 1.0
+            }
+          },
+          "grid_min_rate": 0.7,
+          "overall": {
+            "successes": 135,
+            "episodes": 138,
+            "rate": 0.9782608695652174
+          },
+          "floor_penetration_episodes": 0,
+          "gates": {
+            "bottle_cap_ge_90": true,
+            "mixed_ge_90": true,
+            "grid_all_ge_80": false,
+            "floor_penetration_zero": true,
+            "all_dev_gates": false
+          }
+        }
+      ]
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 150000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_150000.zip",
+        "sha256": "a06f7177930d0fa45297de9fe98f4cb6e398c4d7b023f7bc973cec133e3e0ccf",
+        "bytes": 179721
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_150000.pkl",
+        "sha256": "442f5f87bf0059366dbf61b422669fa79ec6e87399eb48d8c5daca48e676d7b3",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt150000/eval_v19_20260729-120344.json",
+          "sha256": "5efcf45344815770f327511b70775ece18a810ae9d79c14bddc5d463d0ad9bff",
+          "bytes": 79648
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 200000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_200000.zip",
+        "sha256": "2c45c2fe01693299b70336136e1da27fe8d3b99600ec6e1f0f6d3a1e96de0abb",
+        "bytes": 179721
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_200000.pkl",
+        "sha256": "87c5f4d8780232d22e2cad863203ce236b6cfd87ed06b78e03c848df7cfa88a7",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt200000/eval_v19_20260729-120417.json",
+          "sha256": "c20505aaaff0d5d8107cebe02dd56c8c61fd8a4c6ee9cab419568dfe7c344cbf",
+          "bytes": 79664
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 65,
+          "episodes": 69,
+          "rate": 0.9420289855072463
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 250000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_250000.zip",
+        "sha256": "620a14d911f1796805fedb0cfc5ce3569313720fac9418f05d2cd5b9601533a5",
+        "bytes": 179722
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_250000.pkl",
+        "sha256": "9a145f5d059b3e87e374b0d7a550efaafce5bc25c5a19a0d626f1e65c9894893",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt250000/eval_v19_20260729-120450.json",
+          "sha256": "24d4f241456022cace2c3525f632ed78f96bbec4d992da309e416d04b4b71613",
+          "bytes": 79676
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 65,
+          "episodes": 69,
+          "rate": 0.9420289855072463
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 300000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_300000.zip",
+        "sha256": "6140bdd4078734d8116338110a6434157aeebcb51b0429c569983db08661066e",
+        "bytes": 179722
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_300000.pkl",
+        "sha256": "6d3a8e78dfd31804be4b8fd8900ea6aeaaa857d1f2e1bb1e8bc70af4ecb5e642",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt300000/eval_v19_20260729-120525.json",
+          "sha256": "d019785a3c514ba8bb0ac249ecca736606993ae738557af87d96356f14fd2284",
+          "bytes": 79661
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 350000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_350000.zip",
+        "sha256": "b329a049a6e4c9e688a0a7aa47c65258dd0ed32875e9885e032b57cc74e40e4e",
+        "bytes": 179722
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_350000.pkl",
+        "sha256": "1287908db5acf4f687b9a56706e3c033814f35993f7edab1a0c1a9402a3d89cb",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt350000/eval_v19_20260729-120600.json",
+          "sha256": "8b2fea616036e5926e830d40b2d1f5d7659d9feefadc88b19ba10c12bdfc343d",
+          "bytes": 79672
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 65,
+          "episodes": 69,
+          "rate": 0.9420289855072463
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 400000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_400000.zip",
+        "sha256": "7ba73501366e0abfabd3891da44ef350036ce914122d855c0db76c51737979d7",
+        "bytes": 179723
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_400000.pkl",
+        "sha256": "6b5a686d19e6b977a37aa7632677edd549891214c5e4d3e659e23f4f0101cbe3",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt400000/eval_v19_20260729-120635.json",
+          "sha256": "a1160b501e80ee25fdff8ad741fbd2a2ae189e5ffb120370a72ce4e1b9ef4bab",
+          "bytes": 79627
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 450000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_450000.zip",
+        "sha256": "c6f8cc1fcde42c7509aee39f28523994f4290f0ee4ac72596d8b143d300a05e5",
+        "bytes": 179723
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_450000.pkl",
+        "sha256": "d1d6cfa8d6ef77603f55bc059b849f16b73e77cbf3824be6296b8d4fdfc78355",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt450000/eval_v19_20260729-120710.json",
+          "sha256": "01edcadcf7639446bc8906b1f627097973ea3747baa7df9ae9dc37e145699d8b",
+          "bytes": 79649
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 18,
+          "episodes": 18,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 3,
+            "episodes": 5,
+            "rate": 0.6
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.6,
+        "overall": {
+          "successes": 67,
+          "episodes": 69,
+          "rate": 0.9710144927536232
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 500000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_500000.zip",
+        "sha256": "9fd7e67bab2eeff7efa5c0856af795f6fdca89ef21d94460a554d51d1772d591",
+        "bytes": 179723
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_500000.pkl",
+        "sha256": "57b60f37fa3b710d892767bd12732568768063fa97738ed1e5afe2b7b8531e50",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt500000/eval_v19_20260729-120752.json",
+          "sha256": "a09e161881f966a9f801df8527fc198cbaf1dd87dcaf3919a6ae279e7951c088",
+          "bytes": 79660
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 5,
+          "episodes": 6,
+          "rate": 0.8333333333333334
+        },
+        "mixed_heights": {
+          "successes": 17,
+          "episodes": 18,
+          "rate": 0.9444444444444444
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 2,
+            "episodes": 5,
+            "rate": 0.4
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.4,
+        "overall": {
+          "successes": 64,
+          "episodes": 69,
+          "rate": 0.927536231884058
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": false,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 550000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_550000.zip",
+        "sha256": "204a531088ba02e4ef3218aa3a95d5f4476395d3f4e8ce6f31f13eac2948482c",
+        "bytes": 179723
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_550000.pkl",
+        "sha256": "476104a3feacc0909da6c203592bbd918b50f6442b74c14a78051cf40044e126",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt550000/eval_v19_20260729-120830.json",
+          "sha256": "c8fa1006c9b7755b1a3be30a2c25dfa0b37ae37d4abfa6376c9c9700073e5454",
+          "bytes": 79697
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 4,
+          "episodes": 6,
+          "rate": 0.6666666666666666
+        },
+        "mixed_heights": {
+          "successes": 17,
+          "episodes": 18,
+          "rate": 0.9444444444444444
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 64,
+          "episodes": 69,
+          "rate": 0.927536231884058
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": false,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 600000,
+      "model": {
+        "source_path": "training/codex_runs/v21_seed817_full/ckpt_600000.zip",
+        "sha256": "d797f414368e2d5636d699fac0a6d4854d44532cf267f3c2f45dc6a633df98bd",
+        "bytes": 179723
+      },
+      "vecnormalize": {
+        "source_path": "training/codex_runs/v21_seed817_full/vec_600000.pkl",
+        "sha256": "77a9d881921e75ed8618837b9fb19ba4fd84395ec1aa1e1f61fee5cbc9e95c2e",
+        "bytes": 2390
+      },
+      "training_metadata": {
+        "source_path": "training/codex_runs/v21_seed817_full/training_metadata.json",
+        "sha256": "4f9c31b70508c517ed5b40a879a281ac2b9b481b4235cb47ab5d3bd0e4c905cd",
+        "bytes": 13594
+      },
+      "screen": {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/screens/seed817_ckpt600000/eval_v19_20260729-120907.json",
+          "sha256": "d938b7e3bc58975ac1fdb9f0879c3656ce6e9f88f86e891d5f5607ca1cb349bb",
+          "bytes": 79658
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 6,
+          "episodes": 6,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 16,
+          "episodes": 18,
+          "rate": 0.8888888888888888
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 4,
+            "episodes": 5,
+            "rate": 0.8
+          },
+          "0.20_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 5,
+            "episodes": 5,
+            "rate": 1.0
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 66,
+          "episodes": 69,
+          "rate": 0.9565217391304348
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": false,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": false
+        }
+      }
+    }
+  ],
+  "shortlist": [
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 100000
+    },
+    {
+      "run_seed": 817,
+      "checkpoint_steps": 100000
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 600000
+    },
+    {
+      "run_seed": 816,
+      "checkpoint_steps": 550000
+    }
+  ],
+  "selected": {
+    "run_seed": 816,
+    "checkpoint_steps": 550000,
+    "model": {
+      "source_path": "training/codex_runs/v21_seed816_full_r2/ckpt_550000.zip",
+      "sha256": "3a7137712669725b2b97cbe68cfceb76c09a52b6f9cc1df73f682ae0277843ab",
+      "bytes": 179688
+    },
+    "vecnormalize": {
+      "source_path": "training/codex_runs/v21_seed816_full_r2/vec_550000.pkl",
+      "sha256": "f986d8463577d20cec3c157a932665f2a1c61edd23a4d6aa23095cecb925bca0",
+      "bytes": 2390
+    },
+    "training_metadata": {
+      "source_path": "training/codex_runs/v21_seed816_full_r2/training_metadata.json",
+      "sha256": "0b981bdd5ed3318a7dd6f61c92ab2d13d3fb2c9154fa82399b40c676bad6838a",
+      "bytes": 13203
+    },
+    "full_dev": [
+      {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt550000_dev4242/eval_v19_20260729-121142.json",
+          "sha256": "fd1cb518b36f7651412a25378267e6a788d2a70b220d6315e5c20856b5ed1b37",
+          "bytes": 155250
+        },
+        "seed": 4242,
+        "bottle_cap": {
+          "successes": 12,
+          "episodes": 12,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 35,
+          "episodes": 36,
+          "rate": 0.9722222222222222
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.20_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 9,
+            "episodes": 10,
+            "rate": 0.9
+          },
+          "0.24_-0.09": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 9,
+            "episodes": 10,
+            "rate": 0.9
+          }
+        },
+        "grid_min_rate": 0.9,
+        "overall": {
+          "successes": 135,
+          "episodes": 138,
+          "rate": 0.9782608695652174
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      },
+      {
+        "evidence": {
+          "source_path": "training/eval_results/v21_dev_selection_20260729-115511/full_dev/seed816_ckpt550000_dev4343/eval_v19_20260729-121237.json",
+          "sha256": "34c2c98e03e80a04bca8739cd36e93f8f31207f193b6cbc7247d66270442addb",
+          "bytes": 154998
+        },
+        "seed": 4343,
+        "bottle_cap": {
+          "successes": 12,
+          "episodes": 12,
+          "rate": 1.0
+        },
+        "mixed_heights": {
+          "successes": 36,
+          "episodes": 36,
+          "rate": 1.0
+        },
+        "grid_cells": {
+          "0.20_-0.09": {
+            "successes": 9,
+            "episodes": 10,
+            "rate": 0.9
+          },
+          "0.20_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.20_+0.08": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.24_-0.09": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.24_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.24_+0.08": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_-0.09": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_+0.00": {
+            "successes": 10,
+            "episodes": 10,
+            "rate": 1.0
+          },
+          "0.28_+0.08": {
+            "successes": 8,
+            "episodes": 10,
+            "rate": 0.8
+          }
+        },
+        "grid_min_rate": 0.8,
+        "overall": {
+          "successes": 135,
+          "episodes": 138,
+          "rate": 0.9782608695652174
+        },
+        "floor_penetration_episodes": 0,
+        "gates": {
+          "bottle_cap_ge_90": true,
+          "mixed_ge_90": true,
+          "grid_all_ge_80": true,
+          "floor_penetration_zero": true,
+          "all_dev_gates": true
+        }
+      }
+    ],
+    "rank": {
+      "worst_grid_rate": 0.8,
+      "worst_cap_or_mixed_rate": 0.9722222222222222,
+      "pooled_overall_rate": 0.9782608695652174
+    }
+  }
+}

@@ -43,6 +43,9 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import arm_cam_geometry as acg  # noqa: E402  (pure math, no cv2/torch)
+
 # Heavy / platform deps (cv2, ultralytics, the grasp module with torch+pybullet)
 # are imported lazily inside the classes/functions that need them, so this file
 # imports — and --selftest runs — on a plain dev machine.
@@ -71,18 +74,27 @@ CY_REAR = 244.79
 FX_REAR = 544.16
 CX_REAR = 316.98
 
-# Arm camera distance model (arm_cam_intrinsics.json, RMS 0.495px), valid at
-# nav home only (camera rides on arm_link4). Ground model validated
-# 0.25–0.50m, max error 0.43cm — measured on UNDISTORTED pixels, and the
-# distortion moves the bbox bottom-center by ~9px, so (cx_box, y2) MUST go
-# through undistort_pixel() before this model (theta was solved that way).
-THETA_ARM = 36.40
-H_ARM = 0.332
-FY_ARM = 919.41
-CY_ARM = 168.42
-FX_ARM = 919.08
-CX_ARM = 212.23
-DIST_ARM = (-0.3764, -0.0748, -0.0015, 0.0035, 0.4793)  # k1 k2 p1 p2 k3
+# ── Arm camera: everything comes from integration/arm_cam_geometry.py ─────────
+# That module is the single source of truth for the arm camera's intrinsics,
+# distortion, and per-pose extrinsics, and it also carries the corrected ground
+# model. The names below are kept as module-level aliases because callers
+# (nav_rl_grasp_pipeline, the tests, --dump-frame) refer to them, but they are
+# views onto the registry, not a second copy of the numbers.
+#
+# ARM_CAM_POSE decides which extrinsic set is in force. It defaults to the pose
+# the v21 stack actually starts from (C3), NOT the v17 nav home the numbers were
+# originally measured at -- see check_arm_cam_pose() for what happens when the
+# arm is somewhere else.
+ARM_CAM_POSE = acg.DEFAULT_POSE
+THETA_ARM = ARM_CAM_POSE.theta_deg
+H_ARM = ARM_CAM_POSE.h_m
+ARM_CAM_CALIBRATED_AT_HOME_DEG = ARM_CAM_POSE.arm_deg
+ARM_CAM_POSE_TOL_DEG = acg.POSE_TOL_DEG
+FY_ARM = acg.FY
+CY_ARM = acg.CY
+FX_ARM = acg.FX
+CX_ARM = acg.CX
+DIST_ARM = acg.DIST  # k1 k2 p1 p2 k3
 
 # Chassis speed calibration: vx ≈ KX*speed (m/s), wz ≈ KZ*speed (rad/s)
 KX = 0.006995
@@ -131,15 +143,21 @@ ARM_MAX_WZ = 0.35
 ARM_MIN_TURN_SPEED = 24
 
 # ── pipeline-specific (new) ──
-# Camera -> arm-base frame mapping for the latched grasp target (Phase 3,
-# measured 2026-07-16; same convention as vision_grasp_bridge.py).
-CAM_TO_BASE_X = 0.1639  # forward offset added to arm-cam distance -> grasp X (m)
-CAM_TO_BASE_Y = 0.0331  # lateral offset -> grasp Y (m)
-SIGN_Y = -1.0           # arm-cam right-positive offset -> grasp/base +Y
-OBJ_Z_FIXED = 0.02      # training default; tune per class from Phase-4 real grasps
+# Camera -> arm-base frame mapping for the latched grasp target. These now come
+# from the active pose in arm_cam_geometry rather than being hard zeros. The old
+# CAM_TO_BASE_X = 0.0 was survivable at the nav home, where the ground distance
+# is ~45 cm and the offset is a correction; at the C3 pose the ground distance is
+# only +-4 cm, so cam_x IS the answer and a zero would put the target on top of
+# the arm base.
+CAM_TO_BASE_X = ARM_CAM_POSE.cam_x_m
+CAM_TO_BASE_Y = ARM_CAM_POSE.cam_y_m
+SIGN_Y = ARM_CAM_POSE.sign_y   # +1 or -1: image-right -> grasp +Y
+OBJ_Z_FIXED = 0.02      # object centroid z in the grasp frame (m)
 # Width gate: an object wider than the gripper can open is physically
-# ungraspable — abort immediately instead of wasting retries. Should match the
-# gripper's real max opening (grasp DeployConfig.grip_max_object_width_m=0.06).
+# ungraspable — abort immediately instead of wasting retries. This is a pipeline-side
+# constant: v21 has no width-sizing config of its own (v17's
+# DeployConfig.grip_max_object_width_m is gone along with --width-grip), so this
+# number must be maintained here against the gripper's measured max opening.
 MAX_GRASP_WIDTH_M = 0.06
 VERIFY_TOL_M = 0.06     # re-detected object within this of latched pos ⇒ grasp failed
 TARGET_LOST_TIMEOUT_S = 4.0   # give up approach if nothing seen this long
@@ -153,18 +171,119 @@ def clamp(v, lo, hi):
 
 
 def parse_class_z(values: List[str], fallback_z: float) -> Dict[str, float]:
-    """Parse repeated --class-z entries like bottle-cap=0.012."""
+    """Parse repeated --class-z entries like sugarbox=0.0325.
+
+    The value is the object's CENTROID z in the grasp frame, NOT its height --
+    see parse_class_height. They coincide only via height = 2*centroid_z, and only
+    for a symmetric object resting on the floor.
+
+    NAME must match a class the loaded detection/models/best.pt actually reports
+    (check with `YOLO('detection/models/best.pt').names`) -- an unmatched name
+    falls back to fallback_z, so warn_unknown_classes() below exists to make a
+    stale name from before a model swap visible. best.pt has been, in order:
+    bottle-cap/paper-ball (train5), eraser-detect (train11, 2026-07-31), and
+    sugarbox (2026-08-01).
+    """
     out: Dict[str, float] = {}
     for raw in values:
         if "=" not in raw:
-            raise ValueError(f"--class-z must be NAME=HEIGHT_M, got: {raw}")
+            raise ValueError(f"--class-z must be NAME=CENTROID_Z_M, got: {raw}")
         name, value = raw.split("=", 1)
         name = name.strip()
         if not name:
             raise ValueError(f"--class-z has an empty class name: {raw}")
-        out[name] = float(value)
+        z = float(value)
+        if not math.isfinite(z) or z < 0.0:
+            raise ValueError(f"--class-z value must be finite and non-negative: {raw}")
+        out[name] = z
     out.setdefault("_fallback", float(fallback_z))
     return out
+
+
+def parse_class_height(values: List[str]) -> Dict[str, float]:
+    """Parse repeated --class-height entries like sugarbox=0.065.
+
+    The value is the object's FULL Z EXTENT (top minus floor) in metres. The grasp
+    side uses it for wrist_z_offset and the engagement-depth gates.
+
+    Deliberately has NO fallback. An undeclared class sends no height at all, and
+    the grasp side applies its own documented symmetric-object estimate; that is a
+    known, inspectable behaviour. A fallback height would instead hand the grasp
+    side a number indistinguishable from a measurement.
+    """
+    out: Dict[str, float] = {}
+    for raw in values:
+        if "=" not in raw:
+            raise ValueError(f"--class-height must be NAME=HEIGHT_M, got: {raw}")
+        name, value = raw.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise ValueError(f"--class-height has an empty class name: {raw}")
+        h = float(value)
+        if not math.isfinite(h) or h <= 0.0:
+            raise ValueError(f"--class-height must be finite and positive: {raw}")
+        out[name] = h
+    return out
+
+
+def check_arm_cam_pose(detect_home_deg, *, real: bool, acknowledged: bool = False) -> bool:
+    """Refuse to run --real when detection happens at a pose the camera isn't calibrated for.
+
+    Returns True if the pose matches ARM_CAM_CALIBRATED_AT_HOME_DEG. Under --real a
+    mismatch raises SystemExit unless explicitly acknowledged, because there is no
+    downstream check that can catch it: the distance model returns a plausible number
+    at any pose, and the arm then grasps confidently in the wrong place.
+    """
+    cur = tuple(float(v) for v in detect_home_deg)
+    if ARM_CAM_POSE.matches(cur, ARM_CAM_POSE_TOL_DEG):
+        # Right pose — but the extrinsics for it may still be a URDF prediction
+        # rather than a measurement, which is its own refusal.
+        return ARM_CAM_POSE.require_measured(real=real, acknowledged=acknowledged)
+
+    other = acg.pose_for_arm_deg(cur, ARM_CAM_POSE_TOL_DEG)
+    hint = (f"    That pose IS registered as {other.name!r}; select it instead of\n"
+            f"    {ARM_CAM_POSE.name!r}.\n" if other is not None else "")
+    msg = (
+        "arm-camera geometry does not belong to this detection pose.\n"
+        f"    detection pose (cfg.home_deg) : {list(cur)}\n"
+        f"    active extrinsics            : {ARM_CAM_POSE.describe()}\n"
+        + hint +
+        "    The camera rides on arm_link4, so theta/H/cam_x/cam_y are mounting\n"
+        "    geometry valid at ONE pose only, and nothing downstream can catch a\n"
+        "    mismatch: the model returns a confident number at any pose and the arm\n"
+        "    then grasps precisely in the wrong place.\n"
+        "    Fix: re-measure at the pose you actually detect from (CALIBRATION_PLAN.md\n"
+        "    Phase 1/2 + 3 — intrinsics and distortion carry over unchanged), or drive\n"
+        "    the arm to a calibrated pose for detection via --nav-home-deg and set\n"
+        "    --grasp-home-deg to the trained C3 pose."
+    )
+    if real and not acknowledged:
+        raise SystemExit("[pipeline] REFUSED: " + msg)
+    print("[pipeline] WARN: " + msg)
+    return False
+
+
+def warn_unknown_classes(model, tables) -> List[str]:
+    """Warn about class names the loaded model does not predict. Returns the names.
+
+    A typo'd or stale class name is otherwise silent: the lookup misses, the
+    fallback is used, and the whole run looks normal while the arm approaches at
+    the wrong height. Not fatal -- a mixed-model workflow is legitimate -- but it
+    must be visible.
+    """
+    try:
+        names = model.names
+        known = set(names.values() if isinstance(names, dict) else names)
+    except Exception:
+        return []
+    unknown = []
+    for flag, table in tables:
+        for name in table:
+            if name != "_fallback" and name not in known:
+                unknown.append(name)
+                print(f"[pipeline] WARN: {flag} names {name!r}, which this model does "
+                      f"not predict. Known classes: {sorted(known)}")
+    return unknown
 
 
 def class_name_for_box(model, box) -> str:
@@ -489,6 +608,7 @@ class Navigator:
     def __init__(self, device, model, *, show=False, dry_run=False,
                  rear_url=URL_REAR, arm_url=URL_ARM,
                  class_z_m: Optional[Dict[str, float]] = None,
+                 class_height_m: Optional[Dict[str, float]] = None,
                  cam_to_base_x: float = CAM_TO_BASE_X,
                  cam_to_base_y: float = CAM_TO_BASE_Y,
                  sign_y: float = SIGN_Y):
@@ -503,13 +623,20 @@ class Navigator:
         self.dry_run = dry_run
         self.rear_url, self.arm_url = rear_url, arm_url
         self.class_z_m = class_z_m or {"_fallback": OBJ_Z_FIXED}
+        # Per-class object HEIGHT (full z extent). Empty is legitimate: the grasp side
+        # then applies its own symmetric-object estimate. Deliberately has no
+        # "_fallback" -- a height guessed for an unrecognised class is worse than no
+        # height, because the grasp side cannot tell a guess from a measurement.
+        self.class_height_m = dict(class_height_m or {})
         self.cam_to_base_x = float(cam_to_base_x)
         self.cam_to_base_y = float(cam_to_base_y)
         self.sign_y = float(sign_y)
         self._rear = None
         self._arm = None
         # last ARM detection captured at hand-off (for latch)
-        self._last_arm = None         # dict: dist, offset, box_w_px, class_name
+        self._last_arm = None         # dict: dist, offset, box_w_px, class_name, depth
+        self._last_arm_hit = None     # arm_cam_geometry.GroundHit from the last detect
+        self._last_arm_height = None  # declared height used for that hit, if any
 
     # ── camera lifecycle ──
     def open_cameras(self):
@@ -563,18 +690,38 @@ class Navigator:
         box = select_largest_box(res)
         if box is None:
             return False, -1.0, 0.0, 0.0, None
+        if not getattr(self, "_arm_frame_size_checked", False):
+            self._arm_frame_size_checked = True
+            problem = acg.frame_size_mismatch(frame.shape[1], frame.shape[0])
+            if problem:
+                raise SystemExit("[pipeline] REFUSED: " + problem)
         class_name = class_name_for_box(self.model, box)
         x1, y1, x2, y2 = (int(box.xyxy[0][i]) for i in range(4))
+        clipped = acg.bbox_touches_border(x1, y1, x2, y2)
+        if clipped:
+            print(f"[nav] arm detection dropped: {clipped}")
+            return False, -1.0, 0.0, 0.0, None
         cx_box = (x1 + x2) / 2.0
         box_w_px = max(1, x2 - x1)
-        # Arm-cam distortion is ~9px at the bbox bottom-center; theta was
-        # solved on undistorted pixels, so undistort before the ground model.
-        cx_u, y2_u = undistort_pixel(cx_box, y2, FX_ARM, FY_ARM, CX_ARM, CY_ARM, DIST_ARM)
-        dist = estimate_ground_distance(y2_u, THETA_ARM, H_ARM, FY_ARM, CY_ARM)
-        offset = estimate_pitched_offset_x(
-            cx_u, dist, FX_ARM, CX_ARM, THETA_ARM, H_ARM
-        )
-        return True, dist, offset, box_w_px, class_name
+        # Locate the object the same way vision_grasp_bridge does. With a declared
+        # height that is the silhouette centre against the object's half-height
+        # plane; the bbox bottom-centre against the floor is off by -11 to -45 mm
+        # at the near-vertical C3 pose, because the lowest pixel of the silhouette
+        # is often the object's TOP face (arm_cam_geometry.silhouette_centre_target).
+        # Mode A and mode B disagreeing about this is how the 2026-08-01 pose guard
+        # ended up in one and not the other.
+        obj_h = self.class_height_m.get(class_name)
+        try:
+            if obj_h is not None:
+                hit = acg.silhouette_centre_target(x1, y1, x2, y2, ARM_CAM_POSE, obj_h)
+            else:
+                hit = acg.ground_hit_from_raw(cx_box, y2, ARM_CAM_POSE)
+        except acg.GroundGeometryError as e:
+            print(f"[nav] arm detection dropped: {e}")
+            return False, -1.0, 0.0, 0.0, None
+        self._last_arm_hit = hit
+        self._last_arm_height = obj_h
+        return True, hit.ground_dist_m, hit.lateral_m, box_w_px, class_name
 
     def _detect_rear(self):
         ok, frame, ts = self._rear.read()
@@ -646,6 +793,10 @@ class Navigator:
                             "offset": offset,
                             "box_w_px": box_w,
                             "class_name": class_name,
+                            "depth": (self._last_arm_hit.depth_m
+                                      if self._last_arm_hit is not None else None),
+                            "hit": self._last_arm_hit,
+                            "obj_h": self._last_arm_height,
                         }
                         print(f"[nav] HANDOFF: class={class_name} dist={dist_arm:.3f} "
                               f"off={offset:+.3f} box_w={box_w}px")
@@ -681,23 +832,46 @@ class Navigator:
             pass
 
     # ── grasp target latch + verify ──
-    def latch_arm_object(self) -> Tuple[list, Optional[float]]:
-        """Map the hand-off arm detection to a grasp-frame target + width."""
+    def latch_arm_object(self) -> Tuple[list, Optional[float], Optional[float]]:
+        """Map the hand-off arm detection to a grasp-frame target + width + height.
+
+        Returns (pos, width_m, height_m). height_m is None unless --class-height
+        declared one for this class; the grasp side then falls back to its own
+        documented symmetric-object estimate rather than being handed a guess.
+
+        Height cannot be derived from the bbox: the arm camera looks down at a fixed
+        pitch, so bbox pixel height mixes the object's height with its depth. Width
+        can, because it is measured across the image plane at a known distance.
+        """
         if self._last_arm is None:
             # fall back to a sane straight-ahead target
-            return [0.25 + self.cam_to_base_x, self.cam_to_base_y, OBJ_Z_FIXED], None
+            return [0.25 + self.cam_to_base_x, self.cam_to_base_y, OBJ_Z_FIXED], None, None
         d = self._last_arm["dist"]
         off = self._last_arm["offset"]
         class_name = self._last_arm.get("class_name")
         obj_x = d + self.cam_to_base_x
         obj_y = self.sign_y * off + self.cam_to_base_y
         obj_z = self.class_z_m.get(class_name, self.class_z_m.get("_fallback", OBJ_Z_FIXED))
-        width_m = estimate_pitched_width(
-            self._last_arm["box_w_px"], d, FX_ARM, THETA_ARM, H_ARM
-        )
+        obj_h = self.class_height_m.get(class_name)
+        # Metric width scales with the OPTICAL DEPTH, not the ground distance (using
+        # d under-reports by cos(theta+alpha) -- 20% at the nav home, ~100% at C3),
+        # and it then needs correcting for the object's height, because the widest
+        # part of the silhouette is the TOP face and that is magnified more.
+        hit = self._last_arm.get("hit")
+        obj_h_seen = self._last_arm.get("obj_h")
+        if hit is not None and obj_h_seen:
+            width_m = acg.silhouette_width_to_object_width(
+                self._last_arm["box_w_px"], hit, ARM_CAM_POSE, obj_h_seen)
+        else:
+            depth = self._last_arm.get("depth")
+            if depth is None:
+                depth = abs(d)   # only via a hand-built _last_arm (see --dump-frame)
+            width_m = self._last_arm["box_w_px"] * depth / FX_ARM
         pos = [round(obj_x, 4), round(obj_y, 4), round(obj_z, 4)]
-        print(f"[nav] latched grasp target class={class_name} pos={pos} width={width_m:.3f}m")
-        return pos, round(width_m, 4)
+        print(f"[nav] latched grasp target class={class_name} pos={pos} "
+              f"width={width_m:.3f}m height="
+              + (f"{obj_h:.3f}m" if obj_h is not None else "None (grasp side estimates)"))
+        return pos, round(width_m, 4), (round(obj_h, 4) if obj_h is not None else None)
 
     def verify_grasp(self, latched_pos) -> bool:
         """Re-detect from the arm cam. Object still at the same spot ⇒ failed.
@@ -708,8 +882,14 @@ class Navigator:
         time.sleep(0.3)
         hits = 0
         for _ in range(5):
+            # No `dist > 0` filter here. Ground distance is measured from the
+            # camera's own ground projection and is legitimately negative for
+            # anything behind it -- 64% of the image at the C3 pose. Filtering on
+            # it would report "object gone" for a still-present object, i.e. turn a
+            # failed grasp into a reported success. _detect_arm() already returns
+            # found=False when the geometry is genuinely unusable.
             found, dist, offset, _w, _class_name = self._detect_arm()
-            if found and dist > 0:
+            if found:
                 obj_x = dist + self.cam_to_base_x
                 obj_y = self.sign_y * offset + self.cam_to_base_y
                 if (abs(obj_x - latched_pos[0]) <= VERIFY_TOL_M
@@ -728,8 +908,17 @@ class Navigator:
 # ════════════════════════════════════════════════════════════════════════════
 
 def _load_grasp_module():
-    """Import GraspController/DeployConfig from ../grasp (added to sys.path)."""
-    grasp_dir = Path(__file__).resolve().parent.parent / "grasp"
+    """Import GraspController/DeployConfig from ../grasp/v21 (added to sys.path).
+
+    2026-07-31: repointed from ../grasp (v17: absolute arm actions, arm_link5 TCP)
+    to ../grasp/v21 (v21: incremental actions, gripper_center TCP, contact-based
+    grasp confirmation instead of manual width sizing) -- v21 is the stack with
+    hardware evidence (first_real_grasp_logged in grasp/v21/manifest.json); v17
+    never had a confirmed physical grasp. v21's own sys.path handling (for
+    Rosmaster_Lib in the shared grasp/ directory) resolves relative to its own
+    __file__, so it works correctly regardless of which script imports it here.
+    """
+    grasp_dir = Path(__file__).resolve().parent.parent / "grasp" / "v21"
     sys.path.insert(0, str(grasp_dir))
     import x3plus_real_grasp as g
     return g
@@ -753,14 +942,34 @@ def run_pipeline(args):
     model = YOLO(str(model_path))
 
     cfg = g.DeployConfig(serial_port=args.port)
-    cfg.grip_width_control = True   # use the latched width to size the gripper
+    # v21 has no manual width-based closure sizing (grip_width_control) -- its jaw
+    # closes on CONTACT (detected by command-vs-encoder divergence during the close;
+    # see grasp/v21/x3plus_real_grasp.py's attempt_close/_park_jaw_hold) and holds at
+    # contact + a bias, regardless of the object's width. That is a strict
+    # improvement over sizing the angle in advance from a vision-estimated width: it
+    # needs no width estimate and adapts to whatever is actually between the
+    # fingers. The width from nav.latch_arm_object() below is still used for the
+    # too-wide-to-grasp pre-check.
     if args.nav_home_deg is not None:
         cfg.home_deg = g.parse_deg6_csv(args.nav_home_deg)
     if args.grasp_home_deg is not None:
         cfg.grasp_home_deg = g.parse_deg6_csv(args.grasp_home_deg)
     class_z_m = parse_class_z(args.class_z, OBJ_Z_FIXED)
     if args.class_z:
-        print(f"[pipeline] class z overrides: {class_z_m}")
+        print(f"[pipeline] class centroid-z overrides: {class_z_m}")
+    class_height_m = parse_class_height(args.class_height)
+    if class_height_m:
+        print(f"[pipeline] class heights (drive v21 wrist_z_offset): {class_height_m}")
+    else:
+        print("[pipeline] no --class-height given: the grasp side will estimate height "
+              "as 2*(centroid_z-ground_z). Correct only for a symmetric object resting "
+              "on the floor whose --class-z is its true centroid.")
+    warn_unknown_classes(model, [("--class-z", class_z_m),
+                                 ("--class-height", class_height_m)])
+    # Detection happens at cfg.home_deg (controller.move_home() puts the arm there
+    # before nav.approach()), so that is the pose the camera constants must match.
+    check_arm_cam_pose(cfg.home_deg, real=args.real,
+                       acknowledged=args.i_confirm_arm_cam_pose)
     if args.handoff_dist is not None:
         globals()["ARM_BLIND_START_DIST_M"] = args.handoff_dist
     print(f"[pipeline] camera->base mapping: x={args.cam_x:+.4f}m "
@@ -774,6 +983,7 @@ def run_pipeline(args):
             show=args.show,
             dry_run=not args.real,
             class_z_m=class_z_m,
+            class_height_m=class_height_m,
             cam_to_base_x=args.cam_x,
             cam_to_base_y=args.cam_y,
             sign_y=args.sign_y,
@@ -790,14 +1000,16 @@ def run_pipeline(args):
             print("=" * 60)
 
             print(f"[pipeline] moving arm to navigation home {list(cfg.home_deg)}")
-            controller.servo.move_to_home()
-            time.sleep(cfg.nav_home_wait_sec)
+            # move_home() is guarded (FloorGuard) and blocks until the encoders
+            # confirm arrival, unlike v17's fire-and-forget servo.move_to_home() --
+            # so no fixed-duration sleep is needed after it.
+            controller.move_home()
 
             if not nav.approach():
                 print("[pipeline] no object reachable — stopping.")
                 break
 
-            obj_pos, width = nav.latch_arm_object()
+            obj_pos, width, height = nav.latch_arm_object()
 
             # Width gate: if the object is wider than the gripper can open, no
             # arm pose will ever grasp it — abort the whole run (retrying the
@@ -807,7 +1019,15 @@ def run_pipeline(args):
                       f"max {MAX_GRASP_WIDTH_M*100:.1f}cm — aborting (cannot grasp).")
                 break
 
-            controller.obj_provider = (lambda p=obj_pos, w=width: (p, w))
+            # v21's obj_provider second element is the object's HEIGHT in metres --
+            # NOT width. It drives wrist_z_offset and the engagement-depth geometry.
+            # Comes from --class-height, which the operator measures; None when the
+            # class was not declared, in which case v21 applies its own documented
+            # symmetric-object estimate (2*(centroid_z-ground_z)) exactly as a bare
+            # --obj-x/y/z run does. The bbox-derived `width` must never be passed
+            # here: it is an unrelated image-plane quantity and would silently
+            # corrupt the approach geometry.
+            controller.obj_provider = (lambda p=obj_pos, h=height: (p, h))
 
             grasp_seq_ok = controller.run(max_steps=args.max_steps)
 
@@ -819,7 +1039,7 @@ def run_pipeline(args):
                 success = True
                 break
             print("[pipeline] FAILED grasp — retreating and retrying.")
-            controller.servo.move_to_home()   # ensure gripper open for retry
+            controller.move_home()   # guarded; ensures gripper open for retry
             time.sleep(1.0)
             nav.back_off()
 
@@ -863,56 +1083,80 @@ def run_selftest():
     for d, off in [(0.60, 0.0), (0.40, 0.10), (0.30, -0.05), (0.22, 0.02), (0.22, 0.20)]:
         print(f"  dist={d:.2f} off={off:+.2f} -> {decide_arm_action_by_distance(True, off, d)}")
 
-    print("\n== latch mapping (dist=0.22, off=+0.03, box_w=90px) ==")
-    d, off, bw = 0.22, 0.03, 90
-    obj_x = d + CAM_TO_BASE_X
-    obj_y = SIGN_Y * off + CAM_TO_BASE_Y
-    width = estimate_pitched_width(bw, d, FX_ARM, THETA_ARM, H_ARM)
-    print(f"  pos=({obj_x:.3f},{obj_y:.3f},{OBJ_Z_FIXED}) width={width*100:.2f}cm")
+    print("\n== latch mapping: a real pixel through the active pose ==")
+    # Driven from an actual image row rather than a made-up distance, so the
+    # numbers below are the ones the arm would really be handed. The object is
+    # placed 60 px right of centre, two thirds of the way down the frame.
+    probe = acg.ground_hit_from_raw(acg.CX + 60.0, 320.0, ARM_CAM_POSE)
+    d, off, bw = probe.ground_dist_m, probe.lateral_m, 90
+    print(f"  pixel(u={acg.CX+60:.0f}, v=320) -> d={d:+.4f}m lateral={off:+.4f}m "
+          f"depth={probe.depth_m:.4f}m")
+    print(f"  pos=({probe.obj_x:.3f},{probe.obj_y:.3f},{OBJ_Z_FIXED}) "
+          f"width={probe.metric_size(bw)*100:.2f}cm")
+    print(f"  the same bbox scaled by ground distance instead of depth would read "
+          f"{abs(bw * d / FX_ARM)*100:.2f}cm")
+
+    print("\n== class-height plumbing (sugarbox: 6.5cm tall, centroid 3.25cm) ==")
+    nav = Navigator(None, None, dry_run=True,
+                    class_z_m={"sugarbox": 0.0325, "_fallback": OBJ_Z_FIXED},
+                    class_height_m={"sugarbox": 0.065})
+    for cname in ("sugarbox", "undeclared-class"):
+        nav._last_arm = {"dist": d, "offset": off, "box_w_px": bw,
+                         "class_name": cname, "depth": probe.depth_m}
+        pos, w, h = nav.latch_arm_object()
+        est = 2.0 * (pos[2] - 0.0)   # what the grasp side would assume if h is None
+        print(f"  class={cname:18s} z={pos[2]:.4f} height="
+              + (f"{h:.4f} (declared)" if h is not None
+                 else f"None -> grasp side estimates {est:.4f}"))
+    print("  NOTE: with --class-z 0.0325 the estimate happens to equal the declared")
+    print("        0.065, because the box is symmetric and floor-resting. That")
+    print("        coincidence is not a substitute for declaring the height: it")
+    print("        breaks silently for any object that is not both.")
+
+    print("\n== width gate ==")
+    print(f"  MAX_GRASP_WIDTH_M = {MAX_GRASP_WIDTH_M:.3f}m "
+          f"({MAX_GRASP_WIDTH_M*100:.1f}cm) — measure the object across the jaw's")
+    print("  closing axis; anything wider aborts the run instead of retrying.")
 
     print("\n== rear blind plan ==")
     for d in [0.90, 1.20]:
         print(f"  dist_front={d:.2f} -> (blind_dist, blind_time)={tuple(round(x,3) for x in compute_rear_blind_plan(d))}")
 
     print("\n== arm-cam undistort round-trip + ground model ==")
-    # Phase 2 measured points (raw clicks): D=0.25m@(286,428) ... D=0.50m@(238,126)
+    # Phase 2's measured points belong to the NAV HOME, so they are checked against
+    # that pose explicitly rather than against whatever pose is currently active.
+    # Pinning them to ARM_CAM_POSE would make this assertion "prove" the constants
+    # right no matter which pose they came from -- exactly the confusion that let
+    # nav-home extrinsics survive the move to C3.
+    nav = acg.V17_NAV_HOME
     for d_true, u, v in [(0.25, 286, 428), (0.30, 280, 352), (0.40, 249, 220),
                          (0.50, 238, 126)]:
         uu, vv = undistort_pixel(u, v, FX_ARM, FY_ARM, CX_ARM, CY_ARM, DIST_ARM)
         ur, vr = distort_pixel(uu, vv, FX_ARM, FY_ARM, CX_ARM, CY_ARM, DIST_ARM)
         rt_err = max(abs(ur - u), abs(vr - v))
         assert rt_err < 0.05, f"undistort round-trip {rt_err:.3f}px at ({u},{v})"
-        d_est = estimate_ground_distance(vv, THETA_ARM, H_ARM, FY_ARM, CY_ARM)
-        d_err = abs(d_est - d_true)
+        hit = acg.ground_hit(uu, vv, nav)
+        d_err = abs(hit.ground_dist_m - d_true)
         assert d_err < 0.01, f"ground model err {d_err*100:.2f}cm at D={d_true}"
         print(f"  D={d_true:.2f} raw({u},{v}) -> undist({uu:6.1f},{vv:6.1f}) "
-              f"est={d_est:.4f}m (err {d_err*100:.2f}cm, rt {rt_err:.4f}px)")
+              f"est={hit.ground_dist_m:.4f}m (err {d_err*100:.2f}cm, rt {rt_err:.4f}px) "
+              f"depth={hit.depth_m:.4f}m")
+    # The depth/distance gap is the bug the old code had: it used the ground
+    # distance as the projection depth for lateral offset and metric width.
+    hit = acg.ground_hit(acg.CX, acg.CY, nav)
+    ratio = hit.ground_dist_m / hit.depth_m
+    print(f"  at the nav home, ground/depth = {ratio:.3f} -> the old lateral and "
+          f"width were {100*(1-ratio):.0f}% low")
 
-    print("\n== Phase-3 camera-to-base regression (2026-07-16 real measurements) ==")
-    # Post-fix bridge outputs at four measured base-frame positions.  This
-    # locks the deployed camera-to-base defaults and guards both lateral sign
-    # and forward-distance drift.
-    phase3_rows = [
-        ("front", 0.4219, +0.0182, 0.2593, +0.0127),
-        ("left",  0.4219, +0.0682, 0.2610, -0.0330),
-        ("right", 0.4219, -0.0318, 0.2592, +0.0636),
-        ("far",   0.5219, +0.0182, 0.3525, +0.0163),
-    ]
-    max_error_x = 0.0
-    max_error_y = 0.0
-    for label, base_x, base_y, raw_x, raw_right in phase3_rows:
-        predicted_x = raw_x + CAM_TO_BASE_X
-        predicted_y = SIGN_Y * raw_right + CAM_TO_BASE_Y
-        error_x = abs(base_x - predicted_x)
-        error_y = abs(base_y - predicted_y)
-        max_error_x = max(max_error_x, error_x)
-        max_error_y = max(max_error_y, error_y)
-        print(f"  {label:>5}: pred=({predicted_x:.4f},{predicted_y:+.4f})m "
-              f"base=({base_x:.4f},{base_y:+.4f})m "
-              f"err=({error_x*100:.2f},{error_y*100:.2f})cm")
-
-    assert max_error_x < 0.02, f"Phase-3 X residual {max_error_x*100:.2f}cm"
-    assert max_error_y < 0.02, f"Phase-3 Y residual {max_error_y*100:.2f}cm"
+    print("\n== active arm-cam pose ==")
+    print(f"  {ARM_CAM_POSE.describe()}")
+    lo = acg.ground_hit(acg.CX, 0.0, ARM_CAM_POSE)
+    hi = acg.ground_hit(acg.CX, 479.0, ARM_CAM_POSE)
+    xs = sorted((lo.obj_x, hi.obj_x))
+    print(f"  visible ground band along base X: {xs[0]:.3f} .. {xs[1]:.3f} m")
+    print(f"  ground distance at the image centre: {acg.ground_hit(acg.CX, acg.CY, ARM_CAM_POSE).ground_dist_m:+.4f} m")
+    if not ARM_CAM_POSE.fully_measured:
+        print("  NOTE: these extrinsics are a URDF prediction, not a measurement.")
     print("\n[selftest] OK")
 
 
@@ -930,14 +1174,28 @@ def parse_args():
     p.add_argument("--grasp-home-deg", type=str, default=None,
                    help="PPO grasp initial servo degrees as S1,...,S6")
     p.add_argument("--class-z", action="append", default=[],
-                   help="YOLO class height override, NAME=HEIGHT_M. Repeatable; "
-                        "unlisted classes use OBJ_Z_FIXED.")
+                   help="YOLO class CENTROID-Z override, NAME=CENTROID_Z_M. "
+                        "Repeatable; unlisted classes use OBJ_Z_FIXED. Not the height.")
+    p.add_argument("--class-height", action="append", default=[],
+                   help="YOLO class object HEIGHT (full z extent), NAME=HEIGHT_M. "
+                        "Repeatable. Drives the grasp side's wrist_z_offset and "
+                        "engagement gates. Cannot be measured from the bbox (the arm "
+                        "camera looks down at a fixed pitch, so bbox pixel height mixes "
+                        "height with depth) -- measure the object and state it. "
+                        "Undeclared classes send no height and the grasp side falls "
+                        "back to 2*(centroid_z-ground_z).")
     p.add_argument("--cam-x", type=float, default=CAM_TO_BASE_X,
                    help="calibrated camera-origin to PPO base_link X offset (m)")
     p.add_argument("--cam-y", type=float, default=CAM_TO_BASE_Y,
                    help="calibrated camera-origin to PPO base_link Y offset (m)")
     p.add_argument("--sign-y", type=float, choices=(-1.0, 1.0), default=SIGN_Y,
                    help="camera-right to PPO base_link Y sign")
+    p.add_argument("--i-confirm-arm-cam-pose", action="store_true",
+                   help="Acknowledge that H_ARM/THETA_ARM were re-measured at the pose "
+                        "detection actually runs from (cfg.home_deg). Without this, "
+                        "--real refuses when that pose differs from "
+                        f"{list(ARM_CAM_CALIBRATED_AT_HOME_DEG)}, the pose they were "
+                        "calibrated at on 2026-07-08.")
     p.add_argument("--i-confirm-camera-frame", action="store_true",
                    help="confirm Phase-3 camera->base mapping was measured on the real robot")
     p.add_argument("--selftest", action="store_true", help="run pure-logic self-test and exit")

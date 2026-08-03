@@ -1,0 +1,109 @@
+{
+  "package": "grasp-v18",
+  "status": "sim-approved",
+  "status_note": "NOT hardware-approved. C3 ruler FOV, real reach, C3 homography and Jetson dry-run are all still outstanding. Do not run --real with this pair until those gates pass.",
+  "created": "2026-07-18",
+  "source": {
+    "repo": "koala915/igibson_x3_test",
+    "branch": "grasp-home-fov-v18",
+    "commit": "af9f476c0466e13def3a7d73cab356a7e2bed7fc",
+    "pull_request": 2,
+    "report": "training/GRASP_HOME_FOV_GATE0_REPORT.md"
+  },
+  "artifacts": {
+    "model": {
+      "file": "ppo_6d_final_ready_for_real_robot.zip",
+      "sha256": "077df27b19e8b4d1d732a4fb8ef51264a1776f464ef897d986069088c6625dbb",
+      "bytes": 179431
+    },
+    "vecnormalize": {
+      "file": "vecnormalize_6d_final.pkl",
+      "sha256": "61a4ac37a39fbff1d0a7d581fa414792ab805cc660f9cb05dd116188810d5b05",
+      "bytes": 2221
+    },
+    "pairing_rule": "These two files are one unit. Never load this model with another VecNormalize, or this VecNormalize with another model."
+  },
+  "contract": {
+    "observation_dim": 28,
+    "action_dim": 6,
+    "grasp_home": {
+      "sim_rad": [0.0, -0.4, -1.4, -1.4, 0.0],
+      "api_deg": [90.0, 67.08, 9.79, 9.79, 90.0, 30.0],
+      "app_display_deg": [90.0, 112.92, 170.21, 170.21, 90.0, 30.0],
+      "note": "api_deg is what you SEND to Rosmaster. The teleop App shows 180-api for S2/S3/S4, hence the different display row. Episode start MUST be this pose."
+    },
+    "api_mapping": "api_deg = 90 + sim_deg for every arm joint",
+    "arm_hw_invert": [false, false, false, false, false],
+    "gripper": {
+      "open_deg": 30,
+      "closed_deg": 180
+    },
+    "urdf": {
+      "laptop_path": "x3plus/grasp/x3plus/yahboomcar.urdf",
+      "desktop_path": "training/x3plus/yahboomcar.urdf",
+      "sha256_lf_normalized": "0a43968783b178d2f270572dc2e01c684722864af1bf8a0c52f05a66fe9d2be2",
+      "git_blob_sha1": "b5f21e2af19be2204b123cf533b5fe1ffaa17e28",
+      "verified_identical": true,
+      "verification_note": "Hash the git blob content (git cat-file blob HEAD:<path>), NOT the working file. On Windows, autocrlf rewrites line endings on checkout and the working-file sha256 will differ spuriously."
+    },
+    "sim_spawn_region": {
+      "x_m": [0.20, 0.33],
+      "y_m": [-0.10, 0.10],
+      "frame": "base_footprint, +X forward",
+      "note": "This is the SIM region. The real deployable region must be re-derived on hardware as (real C3 FOV window) INTERSECT (real reach). See open_questions.fov_offset."
+    },
+    "object_z": {
+      "sim_trained_with_m": 0.035,
+      "sim_note": "YCB wood_block scale 0.3, ~6.6cm tall, centre z ~0.033-0.037 after settling",
+      "real_previous_convention_m": 0.02,
+      "status": "UNRESOLVED - v17 deployment used 0.02 for bottle caps (1.3cm tall). Decide and record during hardware validation; do not silently reuse either value."
+    }
+  },
+  "acceptance_sim": {
+    "protocol": "deterministic, single object, deployment-style, held-out seed 777",
+    "full_region_100ep": "97/100 = 97.0%",
+    "bins_3x3": "all >= 83%, 7 of 9 = 100%",
+    "nominal_point_0.25_0": "10/10",
+    "cracker_box_20ep": "20/20",
+    "teacher_4d_reference": "83% (student exceeds teacher)",
+    "failures": "3, all at the reach-envelope edge (x>=0.326 or y<=-0.089)"
+  },
+  "why_v18": {
+    "problem": "v17 grasp-home was too low: camera 14.6cm, ground view abs x 0.185-0.274m, so objects ~10cm ahead of the grasp centre were OUT of frame and YOLO could not accumulate detections.",
+    "fix": "C3 raises the camera to 22.7cm and the pitch to 86.7deg (near-vertical), ground view abs x 0.196-0.330m = 84% of the graspable band (v17: 56%).",
+    "cost": "grasp_center rises 7.5cm -> 14.5cm, so the policy had to learn a ~2x longer descent. That is what the retrain delivered."
+  },
+  "arming_checklist": {
+    "warning": "This package is STAGED ONLY. Nothing in this repo currently loads it. The deployment controller still points at v17 and remains a coherent v17 setup.",
+    "danger": "Never run v18 weights from the v17 home pose (or v17 weights from C3). The first observation would be out of distribution and the arm can dive at the floor. Weights and pose switch together, or not at all.",
+    "steps": [
+      "1. Hardware FOV: drive to C3 (api 90,67.08,9.79,9.79,90,30) via validated waypoints, measure the real ground view with a ruler.",
+      "2. Hardware reach: measure the real nearest/farthest reachable ground point at C3.",
+      "3. Set the real deployable region = FOV window INTERSECT reach; re-measure the reach guard (the old 0.15m 3D guard is not valid for this pose).",
+      "4. Redo the pose-bound homography for C3 (9+ fit points, 3+ holdout).",
+      "5. Only then: switch grasp_home_deg -> C3 and model/vecnorm paths -> trained_6d_models_v18/, together in one change.",
+      "6. Dry rollout, then one low-speed central grasp, then the grid."
+    ]
+  },
+  "transition_waypoints_api_deg": {
+    "note": "nav-home -> C3, validated offline against the field-proven nav->v17 path (equal or better clearance at every sample). Execute in order, <=3 deg per step, S6=30. First on-robot run: hand on e-stop, workspace clear.",
+    "sequence": [
+      [90.0, 140.0, 0.0, 0.0, 90.0, 30.0],
+      [90.0, 125.42, 1.96, 1.96, 90.0, 30.0],
+      [90.0, 110.83, 3.91, 3.91, 90.0, 30.0],
+      [90.0, 96.25, 5.87, 5.87, 90.0, 30.0],
+      [90.0, 81.67, 7.83, 7.83, 90.0, 30.0],
+      [90.0, 67.08, 9.79, 9.79, 90.0, 30.0]
+    ]
+  },
+  "open_questions": {
+    "fov_offset": "User-measured real v17 FOV is +8~+20cm forward of the v17 grasp-centre projection, while the URDF model gives -1~+8cm. The real camera window sits ~9-12cm FARTHER forward than modelled. Expect C3's real window around +9~+22cm rather than the sim 0-13cm. Measure, do not assume.",
+    "reach_limit": "User reports the arm cannot reach ~25cm in practice. The sim spawn region assumes x up to 0.33m. The real limit must bound the deployable region.",
+    "lateral_sign": "The evaluator's lateral (L) sign convention is not hardware-confirmed. It does not affect any forward-distance conclusion, but confirm left/right during the ruler check."
+  },
+  "rollback": {
+    "pair": "x3plus/grasp/trained_6d_models_v17/",
+    "grasp_home_api_deg": [90.0, 32.704, 9.786, 32.704, 90.0, 30.0],
+    "note": "v17 remains untouched and is the currently active configuration."
+  }
+}

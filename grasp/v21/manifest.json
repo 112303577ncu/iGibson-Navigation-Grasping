@@ -1,0 +1,380 @@
+{
+  "package": "grasp-v21-candidate",
+  "status": "candidate",
+  "status_note": "NOT sim-approved and NOT hardware-approved. The one-shot formal evaluation returned protocol_valid=false (case_plan_valid.home_jitter_exact == false), so the performance numbers below are real but carry no certification. Per MODEL_RELEASE_WORKFLOW.md this stays 'candidate' until the training side re-runs a valid protocol. Never relabel this 'sim-approved' or 'ready_for_real_robot'.",
+  "created": "2026-07-30",
+  "staged_from": "X3PLUS_GRASP_DEPLOY_v21candidate_20260729 handoff package (packaged 2026-07-29)",
+  "source": {
+    "repo": "koala915/igibson_x3_test",
+    "branch": "main",
+    "git_head": "5f0f9b144f41461d986cbdda89ffd23dae977412",
+    "working_tree_clean": false,
+    "working_tree_note": "Training ran from a DIRTY tree: robot_grasp_env.py, run_6d_distill.py, train_distillation_dagger.py, x3plus_ground_grasp_env.py and x3plus_real_grasp.py were all modified relative to git_head. The commit hash alone does not reproduce this run. evidence/v21_seed816_training_metadata.json carries source_sha256 for the actual files used.",
+    "seed": 816,
+    "checkpoint": 550000,
+    "rl_steps_configured": 600000,
+    "trained": "2026-07-28T19:49:07Z to 2026-07-28T21:08:11Z",
+    "python": "3.8.10",
+    "entrypoint": "training/run_6d_distill.py"
+  },
+  "artifacts": {
+    "model": {
+      "file": "models/candidate_v21_seed816_ckpt550000.zip",
+      "sha256": "3a7137712669725b2b97cbe68cfceb76c09a52b6f9cc1df73f682ae0277843ab"
+    },
+    "vecnormalize": {
+      "file": "models/candidate_v21_seed816_ckpt550000_vec.pkl",
+      "sha256": "f986d8463577d20cec3c157a932665f2a1c61edd23a4d6aa23095cecb925bca0"
+    },
+    "pairing_rule": "These two files are one unit. Never load this model with another VecNormalize, or this VecNormalize with another model.",
+    "integrity_verified": "2026-07-30, laptop. Both hashes match evidence/v21_formal_claim.json, evidence/v21_selection_lock.json and the formal report's integrity_start/integrity_end.",
+    "vecnormalize_note": "The .pkl itself stores training=True / norm_reward=True. x3plus_real_grasp.py overrides both to False after loading (see lines ~901-902). Do NOT load this pkl through any other code path without applying the same override.",
+    "gitignore_note": "The repo-root .gitignore line 29 ignores *.zip as a blanket large-binary rule, so the model weights must be force-added (git add -f), exactly like grasp/trained_6d_models_v17/ and integration/nav_best_model/. It fails silently: git status will not mention the file. After committing a new model pair, confirm the .zip actually appears in git show --stat. The .pkl is not affected."
+  },
+  "contract": {
+    "name": "obs_28_incremental",
+    "observation_dim": 28,
+    "action_dim": 6,
+    "arm_action_mode": "incremental",
+    "arm_step_rad": 0.08,
+    "arm_action_semantics": "desired[i] = current[i] + action[i] * 0.08 rad, for all five arm joints",
+    "gripper_action_mode": "absolute",
+    "action_contract_string": "6D_arm_incremental_gripper_absolute",
+    "tcp_definition": "gripper_center = midpoint of the two finger-pad links",
+    "fk_base_position": [
+      0.019896,
+      -0.003359,
+      -0.009072
+    ],
+    "fk_base_note": "URDF_TO_TRAINING_FRAME in deploy_contract.py. Corrects a 2.2 cm frame offset introduced by iGibson link merging during training. The URDF is loaded at this basePosition, NOT at the origin.",
+    "obs_layout": {
+      "0:5": "arm joint angles (sim rad)",
+      "5": "gripper angle (sim rad)",
+      "6:9": "TCP position (m), gripper_center",
+      "9:13": "TCP quaternion (x, y, z, w)",
+      "13:16": "object position (m)",
+      "16:19": "relative position = obj - tcp",
+      "19:22": "stage one-hot [s0, s1, s2]",
+      "22:28": "previous action (6D)"
+    },
+    "obs_layout_note": "Identical to the 28D layout documented in CLAUDE.md. Only the ACTION decode differs from the v17/v18 stack."
+  },
+  "grasp_home": {
+    "name": "C3",
+    "sim_rad": [
+      0.0,
+      -0.4,
+      -1.4,
+      -1.4,
+      0.0
+    ],
+    "api_deg": [
+      90.0,
+      67.08,
+      9.79,
+      9.79,
+      90.0,
+      30.0
+    ],
+    "app_display_deg": [
+      90.0,
+      112.92,
+      170.21,
+      170.21,
+      90.0,
+      30.0
+    ],
+    "note": "api_deg is what you SEND to Rosmaster. The teleop App shows 180-api for S2/S3/S4. Identical to the C3 pose in the v18 package manifest. In this stack it is DeployConfig.home_deg -- there is no separate nav-home/grasp-home split.",
+    "startup_transition": "run() reads the real servo angles first, refuses to move if they cannot be read, then walks to C3 through move_guarded_and_verified: the move is split into <= max_delta_deg segments, each one FK floor-swept and read-back verified. This supersedes the precomputed waypoint list in the v18 manifest. First on-robot run: hand on e-stop, workspace clear."
+  },
+  "servo_mapping": {
+    "api_mapping": "api_deg = 90 + sim_deg for every arm joint",
+    "arm_hw_invert": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "gripper": {
+      "open_deg": 30,
+      "closed_deg": 180
+    },
+    "max_delta_deg": 8.0,
+    "max_delta_note": "Raised from the v17 stack's 3.0. One full-magnitude incremental step is 0.08 rad = 4.58 deg, so a 3.0 deg limiter would saturate on every step and silently throttle the policy. Safety is instead carried by the preventive FloorGuard, which sweeps the whole commanded path before sending."
+  },
+  "urdf": {
+    "path": "../x3plus/yahboomcar.urdf",
+    "sha256_lf_normalized": "0a43968783b178d2f270572dc2e01c684722864af1bf8a0c52f05a66fe9d2be2",
+    "git_blob_sha1": "b5f21e2af19be2204b123cf533b5fe1ffaa17e28",
+    "verified_identical": true,
+    "verification_note": "Verified 2026-07-30 against the URDF shipped in the handoff package. Hash the git blob (git cat-file blob HEAD:<path>), NOT the working file: core.autocrlf=true rewrites line endings on checkout and the working-file sha256 differs spuriously.",
+    "meshes": "Reused from grasp/x3plus/meshes/. All 38 meshes the URDF references were compared file-by-file against the package copies on 2026-07-30 and are byte-identical; the repo set is a superset. The package's 151 MB mesh copy is deliberately NOT duplicated here."
+  },
+  "acceptance_sim": {
+    "protocol": "seed 90210, 235 cases, deterministic=True",
+    "protocol_valid": false,
+    "protocol_invalid_reason": "case_plan_valid.home_jitter_exact == false -- home jitter was not executed the way the v21 protocol specifies. This is a protocol-execution defect, not a grasping-capability defect.",
+    "bottle_cap_1_3cm": "25/25 = 100.0% (gate >= 90%)",
+    "mixed_heights_1_3_3_5_6_6cm": "75/75 = 100.0% (gate >= 90%)",
+    "grid_3x3_x_0_20_to_0_28": "9/9 cells pass, worst cell 86.7% at (0.20, -0.09) (gate >= 80% per cell)",
+    "floor_violations": 0,
+    "floor_penetrations": 0,
+    "guard_interventions": 0,
+    "objects_knocked_over": 0,
+    "min_clearance_mm": 3.99,
+    "mean_per_episode_min_clearance_mm": 18.16,
+    "gripper_center_height_cm": {
+      "at_grasp_home": "13.3-14.6, mean 14.0",
+      "at_lock": "3.9-8.7, mean 5.3"
+    },
+    "parity_vs_training": "test_deploy_parity.py 77/77 on the training side, mean joint-target error 0.0277 rad (< one 0.08 rad step). Not portable -- it needs iGibson -- so it is not in this package."
+  },
+  "laptop_verification": {
+    "date": "2026-07-30 (re-run after the Rosmaster_Lib transport port)",
+    "environment": "Windows 11, Python 3.12.10, numpy 2.4.6, stable-baselines3 2.9.0, torch 2.6.0+cu124, pybullet",
+    "run_from": "grasp/v21/ in this repo, after urdf_path was repointed to ../x3plus/yahboomcar.urdf",
+    "test_deploy_controller": "all 38 checks passed",
+    "test_deploy_floor_guard": "all 641 checks passed, guard clamped 291x / refused 0x",
+    "dry_run": "--object-height 0.066 --obj-x 0.24 --obj-y 0.00 --obj-z 0.033 -> wrist_z_offset 0.0564 m, Stage 0->1 at xy=13.5/22mm z=17.7/18mm r=22.3/26mm, jaw close 9 steps guard=['pass'], Stage 1 ABORT (no physical object), retreat home, exit 0. Byte-identical to the package baseline and to HANDOFF.md section 5.3, before AND after the port.",
+    "model_spaces": "observation_space Box(-inf, inf, (28,), float32), action_space Box(-1.0, 1.0, (6,), float32)",
+    "windows_note": "Set PYTHONIOENCODING=utf-8 before running the two test scripts. Without it the cp950 console raises UnicodeEncodeError partway through test_deploy_controller (on a non-ASCII arrow in a heading). That is a console encoding failure, not a logic failure.",
+    "sb3_warnings": "PPO.load emits 'Could not deserialize object clip_range / lr_schedule' under SB3 2.9.0 + Python 3.12. These are pickled lambdas from the Python 3.8 training run and are unused at inference. Behaviour verified correct despite them. Jetson runs SB3 2.3.2 on Python 3.8 -- confirm PPO.load succeeds there before trusting anything.",
+    "transport_checks": "--real without the driver refuses at exit 2 before loading the model; ServoController(dry_run=False) with no driver neither raises nor degrades (send refused, read invalid, tracked pose unchanged); a stub driver confirms init/create_receive_threading/set_uart_servo_angle_array(angle_s=,run_time=)/get_uart_servo_angle/close are called correctly and that 9999 ms clamps to 2000; an out-of-range S2=200 is refused with 0 commands reaching the board."
+  },
+  "release_gate": {
+    "added": "2026-07-30 (A2 in V21_DEPLOY_REVIEW_AND_PLAN_2026-07-30.md, F2)",
+    "where": "main(), before GraspController is constructed -- so before the serial port is opened and before the model is loaded. A refusal cannot leave the arm half-moved.",
+    "order": [
+      "sha256 of model and vecnormalize against artifacts above",
+      "contract name against contract.name above",
+      "status == hardware-approved, else --unlock-candidate-real"
+    ],
+    "waivable": "The status check only. sha256 and contract are never waivable: there is no legitimate reason to drive the arm with weights that are not the ones this manifest documents, and the incremental-vs-absolute contract error is invisible to every shape check in the codebase.",
+    "exit_codes": {
+      "3": "release gate refused",
+      "2": "Rosmaster_Lib not importable"
+    },
+    "dry_run_unaffected": "No --real means no gate. Verification stays free.",
+    "doubles_as_transfer_check": "Because the sha256 stage runs first, a plain --real on the Jetson that prints [REFUSED] has already proved the scp'd weights are byte-intact. jetson_verify.sh section 6 asserts exactly this -- a truncated 20 MB transfer surfaces there rather than at the robot.",
+    "laptop_verified": "2026-07-30. Bare --real -> [REFUSED] listing all 8 gates, exit 3, model never loaded. With --unlock-candidate-real -> [UNLOCKED] then the driver-missing [FATAL], exit 2. --contract obs_28_absolute -> contract mismatch, exit 3, unlock does not waive it. --vecnorm pointed at the model .zip -> sha256 mismatch, exit 3, unlock does not waive it. 38/641/dry-run unchanged."
+  },
+  "hardware_gates": {
+    "jetson_sb3_load_ok": true,
+    "jetson_self_tests_38_641": false,
+    "jetson_dry_run_ok": false,
+    "c3_gripper_center_height_ruler_check": true,
+    "c3_real_reach_envelope": false,
+    "object_heights_measured": false,
+    "first_real_grasp_logged": true,
+    "guard_margin_8mm_validated_on_hardware": false,
+    "c3_ruler_measurement_2026_07_30": {
+      "gripper_center_above_ground_cm": {
+        "measured": 14.4,
+        "fk_predicted": 14.39,
+        "verdict": "exact -- the five-joint FK chain, the URDF_TO_TRAINING_FRAME 2 cm correction and the gripper_center TCP definition are all validated together on hardware"
+      },
+      "pad_bottom_above_ground_cm": {
+        "measured": 12.8,
+        "fk_predicted": 11.1,
+        "deviation_cm": 1.7,
+        "verdict": "inside the 1-2 cm record-and-discuss band, NOT the >2 cm stop band"
+      },
+      "analysis": "The two readings disagree about one thing only: how far the finger reaches below gripper_center. FK and deploy_contract.GRASP_PAD_OFFSET both say 3.3 cm; the ruler says 1.6 cm. Because gripper_center itself is exact, the arm pose is right and the discrepancy is confined to finger geometry below the TCP.",
+      "mesh_evidence": "rlink2.STL transformed into world coordinates at this pose spans z 11.45-16.92 cm. 93% of its vertices sit in the chunky block at 16.0-17.0 cm (14.1 mm wide); below that hangs a narrow blade roughly 6 mm wide, and its lowest 1.3 cm (11.45-12.8 cm) is a small ~6x6 mm tip. getAABB reports 11.11 rather than 11.45 because of PyBullet's ~3.4 mm collision margin, so the guard is already 3.4 mm more conservative than the true mesh.",
+      "leading_hypothesis": "The measurement found the bottom of the flat pad face and the narrow tip below it was missed -- its 1.3 cm length and ~6 mm width match the gap exactly. Pending the disambiguating reading, the alternative is that the real blade is genuinely 1.3-1.7 cm shorter than the URDF.",
+      "safety_direction": "Conservative either way. The FloorGuard's reference is min_gripper_link_z, and at this pose the pad links ARE the lowest gripper links, so if the real finger stops 1.7 cm higher than modelled the guard believes the gripper is closer to the floor than it is. It would clamp or abort early; it cannot under-estimate the risk of a floor strike.",
+      "grasping_consequence_if_real": "pads_ready compares FK's pad_after_close against object_top - STAGE1_MIN_ENGAGE_DEPTH (2 mm), all computed from the model, so the controller's behaviour does not change -- only the physical outcome does. For the 66 mm wood block the fingertips would reach ~5 mm below its top instead of the modelled 22 mm: a shallow grip that may slip. For the 13 mm bottle cap the fingers would close above the object entirely while the model believed the grasp was engaged. This is one more reason the test order runs tall to short.",
+      "RESOLVED_2026_07_31": "Measured at the closed jaw angle with pose_check.py: finger bottom 9.9 cm against an FK prediction of 8.25, a +1.65 cm offset against the +1.70 cm measured open. The offset is constant across jaw angle, so this is not an open-angle mapping error -- the URDF finger is genuinely ~16.7 mm longer than the physical one. Two things are confirmed correct by the same pair of readings: the jaw's vertical travel while closing (real 12.8->9.9 = 2.90 cm vs FK 2.85 cm, agreeing to 0.5 mm), which validates close_drop and the whole finger linkage, and the absence of any global frame or ground-reference error, since a ground offset would have shifted gripper_center too and that matched exactly.",
+      "measurement_caveat": "gripper_center's 14.4 cm reading is 2 mm from the finger's own modelled vertical midpoint (14.18 cm), so a ruler cannot distinguish the two. The gate is recorded as passed on the reading taken, but if the 14.4 was in fact the finger's midpoint rather than the midpoint of the two pad links, the TCP itself is only validated to within about 2 mm rather than exactly. Measuring the finger's TOP end would settle it and would also fully characterise the real finger for the training side.",
+      "next_measurement": "At C3 with the jaw open, (a) the lowest plastic point of the finger including any narrow tip below the flat pad face -- FK predicts 11.4-11.5 cm -- and (b) the bottom face of the chunky block at the top of the finger, FK predicts 16.0 cm. (b) is an unambiguous geometric step, unlike 'the pad's lowest point', so it discriminates: ~16.0 means the assembly is where the model says and only the blade length is in question; ~17.7 would mean the whole finger sits higher, which the exact gripper_center reading already contradicts."
+    },
+    "jetson_run_2026_07_30": "A full jetson_verify.sh run on the robot passed every section: sb3 2.3.2 PPO.load clean with Box(28,)/Box(6,), all 38 checks passed, all 641 checks passed with guard clamped 291x, dry-run wrist_z_offset 0.0564 m and 9-step jaw close, exit 0 -- byte-identical to the laptop baseline. The first three gates below are NOT flipped on that evidence because the release gate (A2) landed afterwards, so the run was against a superseded revision. They flip when the re-run on the current revision passes; the difference is expected to be nil, and confirming that costs one command.",
+    "note": "Two true as of 2026-07-30. jetson_sb3_load_ok: the first supervised --real run on the robot loaded the model and walked the arm to C3, which also means the release gate's sha256 and contract checks passed against the Jetson's own copy of the weights. c3_gripper_center_height_ruler_check: measured 14.4 cm against an FK prediction of 14.39 cm. jetson_self_tests_38_641 and jetson_dry_run_ok stay false only because the passing run predates the A2 release gate; they flip on one re-run of jetson_verify.sh against the current revision. Every gate must be true before --real is anything other than a supervised experiment with a hand on the power switch.",
+    "grasp_stall_margin_validated_on_hardware": true,
+    "first_real_grasp_2026_07_31": {
+      "command": "python3 x3plus_real_grasp.py --model models/candidate_v21_seed816_ckpt550000.zip --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl --contract obs_28_incremental --object-height 0.03 --obj-x 0.2563 --obj-y -0.0035 --obj-z 0.015 --real --unlock-candidate-real",
+      "object": "3 cm object, placed per the operator's report ~1 cm forward of the P reference point",
+      "result": "Operator-reported SUCCESS: the jaw closed on the object and the grasp held. This is the first confirmed physical grasp across the whole v21 effort (all four prior --real runs this session ended in ABORT, a guard deadlock, or a grasp that was released at timeout).",
+      "evidence_caveat": "SUPERSEDED -- full run log captured on the repeat (below). The original verbal report is confirmed by instrumented evidence, not just repetition.",
+      "open_question": "Vision detection has not yet been tested together with a grasp attempt -- this run used a manually-specified --obj-x/--obj-y/--object-height, not the detection pipeline (integration/vision_grasp_pipeline.py, which still targets grasp/x3plus_real_grasp.py, the v17 stack, not v21). Wiring detection to v21 is separate, not-yet-started work.",
+      "full_log_confirmation": {
+        "entry_gate": "Stage 0->1 at r=24.8/26mm, xy=21.3/22mm, z=12.8/18mm, pads_ready=True (pad_after_close=25.5mm < object_top=30.0mm) -- the PRIMARY training-mirrored gate, not the hover fallback.",
+        "contact_detection": "'no progress -- jaw contact at 151.0 deg, holding at 159.0 deg' -- 159-151=8, exactly jaw_hold_bias_deg. First hardware confirmation that the contact detector (commit 7617346, fixing the race that had parked run 6's hold ON the 180 stop) fires correctly and parks at contact+bias.",
+        "grasp_check": "CONFIRMED twice: pre-lift at 151.0deg (19.3% short of closed) and post-return at 153.0deg (18.0% short) -- well clear of grasp_stall_min_fraction=0.03 (3%), not a marginal pass.",
+        "lift_and_return": "All 6 scripted lift steps reached=True guard={'pass'}; return home reached=True in 5 steps. No guard clamp, no emergency raise, no deadlock anywhere in the episode.",
+        "bus": "servo reads: no failures.",
+        "what_this_does_NOT_validate": "guard_margin_8mm_validated_on_hardware stays false: the guard never intervened (every action was 'pass'), so its clamp/raise behaviour at the line is still unexercised here. grasp_stall_margin_validated_on_hardware stays false for the same reason as before: this run shows a real object stalls with a wide 18-19% margin, but the open question was never about objects -- it is whether an EMPTY jaw ever settles inside 0.03's margin from backlash, which this run does not test."
+      }
+    }
+  },
+  "isolation": {
+    "warning": "This is a SELF-CONTAINED deployment stack, not a set of weights for the existing controller. Nothing else in this repo loads it and nothing else should.",
+    "danger": "NEVER run these weights through grasp/x3plus_real_grasp.py. That script decodes the arm action as ABSOLUTE (norm -> joint limits) while these weights are INCREMENTAL. Both are 28D obs / 6D action, so the mismatch is invisible to every shape check in the codebase -- deploy_contract.py says so explicitly. The arm would be driven to the wrong place at full range with nothing raising an error.",
+    "other_differences_from_the_v17_stack": [
+      "TCP: this stack uses gripper_center; grasp/x3plus_real_grasp.py uses the arm_link5 origin, which sits 6.7-8.1 cm below it depending on pose.",
+      "FK base: this stack loads the URDF at URDF_TO_TRAINING_FRAME; grasp/x3plus_real_grasp.py loads it at [0,0,0]. Same --obj-x/--obj-y therefore means ~2 cm different relative geometry, so existing camera calibration values do NOT carry over.",
+      "grasp home: C3 here, versus (90, 32.704, 9.786, 32.704, 90, 30) on the current main-line script.",
+      "FloorGuard: preventive here (FK-sweep the whole path before sending, bisect to the largest safe fraction); the v17 stack has no equivalent."
+    ],
+    "missing_api_vs_v17_stack": "parse_deg6_csv, arm_limit_margin_violations, validate_grasp_home_reach, cfg.grasp_home_deg, cfg.grip_width_control, controller.servo.device. CLI flags --latch-obj, --width-grip, --i-confirm-external-frame, --pose-only and --grasp-home-deg do not exist. integration/vision_grasp_pipeline.py and tests/test_safety_guards.py depend on these and would break if this script ever replaced the main one."
+  },
+  "known_gaps": {
+    "object_height_not_fail_closed_under_28d": "HANDOFF.md section 5.4 states that omitting --object-height raises MissingObjectHeightError. That is only true for the 32D v20 contract. obs_28_incremental has requires_object_height=False, so omitting it silently falls back to height = 2*(obj_z - ground_z), assuming a symmetric resting object. Verified by experiment on 2026-07-30. ALWAYS pass a measured --object-height, especially for flat objects like bottle caps.",
+    "detection_height_field": "The YOLO detection path does not emit 'height'. integration/vision_grasp_bridge.py sends {x,y,z,w,class,camera_pose}; this stack's DetectionReceiver reads {x,y,z,height} and ignores 'w'. The --socket path is therefore not usable end-to-end yet -- use manual coordinates.",
+    "bottle_cap_vs_guard": "Sim min clearance 3.99 mm sits below the deployment guard's 8 mm path threshold. The lowest poses (mostly bottle caps) WILL trigger the guard on hardware: it clamps or safely gives up, opens the jaw and retreats. It will not hit the floor, but that attempt fails. Real bottle-cap success is expected to be below the simulated 100%.",
+    "overshoot_vs_margin": "Whether 8 mm absorbs real servo overshoot has never been measured. The guard=[...] lines in the first real runs are the evidence that settles it.",
+    "urdf_finger_16_7mm_too_long": {
+      "severity": "training-side defect, larger than F1 -- the policy was trained against a gripper the robot does not have",
+      "evidence": "Ruler at C3, both jaw angles, 2026-07-30/31. Finger bottom 12.8 cm open (FK 11.10) and 9.9 cm closed (FK 8.25): a constant +1.67 cm. The closing travel matches FK to 0.5 mm and gripper_center matches to 1 mm, so the arm, the frame, the linkage and close_drop are all correct and the error is isolated to the length of rlink2/llink2 below the TCP. FK and deploy_contract.GRASP_PAD_OFFSET both say the finger reaches 32.9 mm below gripper_center; the hardware says ~16.2 mm.",
+      "consequence": "The policy aims gripper_center, which is right, so its trajectory is right. But training's fingers reached 16.7 mm lower than the real ones, so every grasp engages 16.7 mm shallower than intended. Engagement depth at the close moment, model vs hardware: wood block 66 mm 21.6 -> 4.9 mm (a top-edge pinch, may slip or tip the block); paper ball 35 mm 5.4 -> -11.3 mm; bottle cap 13 mm 2.6 -> -14.1 mm. The last two close entirely above the object while pads_ready, computed from FK, reports true.",
+      "floor_safety": "Unaffected and conservative. The pad links are the FloorGuard's reference, and FK places them 16.7 mm lower than they are, so the guard holds the real fingertip 24.7 mm above the floor where it believes it is holding it at 8 mm. It cannot under-estimate a floor strike. It also means the bottle cap is unreachable on this hardware regardless of tuning: the guard stops the descent well before a 13 mm object could be straddled.",
+      "not_fixed_here_because": "The URDF is shared with training and the policy was trained against it. Correcting the finger on the deployment side alone would change pads_ready and the guard reference but NOT the policy's target, since the target is built from gripper_center, wrist_z_offset and close_drop -- none of which involve pad length. The result would be honest failure (the short objects would simply never satisfy pads_ready and would hover instead of closing on air) rather than a working grasp, and it would break the deployment-vs-training parity the whole stack is built on. The real fix is a corrected URDF and a retrained policy in v22; that is a training-side decision, not a deployment-side patch.",
+      "report_to_training": "Yes -- alongside F1 (Arm_Lib). Measure the physical finger and correct rlink2/llink2 before the v22 run. GRASP_PAD_OFFSET = 0.033 in deploy_contract.py carries the same wrong number and must move with it."
+    }
+  },
+  "how_to_run": {
+    "cwd": "grasp/v21/ (paths resolve against the script directory, so cwd is not actually load-bearing)",
+    "self_test": "PYTHONIOENCODING=utf-8 python test_deploy_controller.py && PYTHONIOENCODING=utf-8 python test_servo_read.py && PYTHONIOENCODING=utf-8 python test_deploy_floor_guard.py   (93 / 37 / 641 checks; jetson_verify.sh runs all three plus the release gate and the dry-run). Cross-subsystem seams are covered separately by x3plus/tests/test_safety_guards.py (24 tests, runnable as a plain script).",
+    "dry_run": "python x3plus_real_grasp.py --model models/candidate_v21_seed816_ckpt550000.zip --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl --contract obs_28_incremental --object-height 0.066 --obj-x 0.24 --obj-y 0.00 --obj-z 0.033",
+    "real": "same as dry_run plus --real --unlock-candidate-real. While status is 'candidate' the release gate refuses a bare --real (exit 3); the unlock flag makes it a supervised experiment, not an approved run. Stay beside the robot with a hand on the power switch. Once every hardware_gate is true, set status to 'hardware-approved' and the flag is no longer needed.",
+    "parameter_rules": {
+      "--object-height": "the object's FULL height in metres. Measure it. Never estimate.",
+      "--obj-z": "the object's geometric centre height = object-height / 2 for a symmetric resting object.",
+      "--obj-x / --obj-y": "base frame. Valid range x 0.20-0.28, y -0.09-0.08."
+    },
+    "test_order": "High to low, because lower is closer to the 8 mm guard line: wood block 0.066 -> paper ball 0.035 -> bottle cap 0.013. For each, run (0.24, 0.00) first, then the worst cell (0.20, -0.09).",
+    "sugarbox_2026_08_01": {
+      "what": "Operator's new detection target: a blue box, single-class YOLOv11 model 'sugarbox' installed at detection/models/best.pt (sha256 ca42c3f4988a57df8be61382ef5234cdb48ee88b115d9329425da0785325baff). Stated height 0.065 m.",
+      "why_it_is_the_right_first_object": "At 65 mm it sits alongside the 66 mm wood block at the top of the test_order, i.e. as far from the 8 mm floor-guard line as anything in the plan. It is the object this stack has the best chance with, not the hardest.",
+      "dry_run_geometry_2026_08_01": "--object-height 0.065 --obj-z 0.0325 at the P point (0.2563, -0.0035) gives wrist_z_offset 0.0565 m (the 66 mm block gives 0.0564), stage gate 0->1 at xy 13.0/22 z 16.1/18 r 20.7/26 with centred and pads_ready both true, pad_after_close 44.5 mm against object_top 65.0 mm, and all 19 policy steps guard='pass' with no clamp. Nothing in the geometry objects to this object.",
+      "engagement_caveat": "Modelled engagement is 65.0 - 44.5 = 20.5 mm. Subtracting the 16.7 mm URDF finger error (see known_gaps.urdf_finger_16_7mm_too_long) predicts about 3.8 mm of real engagement -- the same top-edge-pinch band the manifest already predicts for the 66 mm wood block (21.6 -> 4.9 mm), with the same warning that it may slip or tip. HOWEVER: the 2026-07-31 first grasp succeeded on a 30 mm object whose modelled engagement was 2.3 mm, which the same arithmetic says should have closed 14.4 mm ABOVE the object. It did not -- jaw contact was recorded at 151 deg, so the object was demonstrably between the pads. The engagement prediction is therefore either pessimistic or mis-modelled somewhere, and the operator additionally placed that object 1 cm forward of P. Do not treat 3.8 mm as a reason to skip the test, and do not treat it as a promise either -- this run is what settles it.",
+      "width_gate_open": "The box's width across the jaw's closing axis is NOT yet measured. integration/vision_grasp_pipeline.MAX_GRASP_WIDTH_M is 0.06 m and the pipeline aborts the whole run above it. Measure before the first vision-driven run.",
+      "invocation": "Standalone: --object-height 0.065 --obj-z 0.0325. Vision (modes A/C): --class-height sugarbox=0.065 --class-z sugarbox=0.0325. The two must agree; --class-z is the CENTROID, --class-height the full extent."
+    }
+  },
+  "rollback": {
+    "active_configuration": "SUPERSEDED 2026-08-01. This package is now the active grasp stack for the autonomous pipelines: integration/vision_grasp_pipeline.py (mode A) resolves the grasp module through _load_grasp_module() -> grasp/v21/, and integration/nav_rl_grasp_pipeline.py (mode C) obtains it via vgp._load_grasp_module(), so both inherit the repoint. Basis: this package produced the first confirmed physical grasp (see hardware_gates.first_real_grasp_2026_07_31); v17 never did on the operator's setup. grasp/x3plus_real_grasp.py + grasp/trained_6d_models_v17/ are still byte-for-byte untouched and still directly runnable, but nothing imports them any more except the legacy suite tests/test_safety_guards.py.",
+    "to_roll_back": "NO LONGER a plain directory delete. Deleting grasp/v21/ now breaks modes A and C. To roll back: revert _load_grasp_module()'s path in integration/vision_grasp_pipeline.py to ../grasp, restore cfg.grip_width_control = True in both pipelines, change controller.move_home() back to controller.servo.move_to_home() + sleep, and restore the (pos, width) obj_provider tuples -- v17 reads that second element as WIDTH, v21 reads it as HEIGHT. Only then is grasp/v21/ unreferenced.",
+    "api_delta_vs_v17": "Fields/flags that exist in v17 but NOT in v21, checked 2026-08-01: DeployConfig.grip_width_control, DeployConfig.grip_max_object_width_m, DeployConfig.grip_min_close_deg, ServoController.move_to_home(), and CLI flags --width-grip, --latch-obj, --i-confirm-external-frame, --nav-home-deg, --grasp-home-deg, --smooth-approach. DeployConfig is a plain dataclass, so assigning a removed field silently creates a dead attribute instead of raising -- that is why the migration had to be field-by-field rather than a one-line path swap."
+  },
+  "transport": {
+    "driver": "Rosmaster_Lib",
+    "ported": "2026-07-30",
+    "why": "The handoff package shipped with Arm_Lib (the DOFBOT-era driver). X3Plus drives its arm through the Rosmaster expansion board, so that import always failed on the Jetson and ServoController's 'dry_run = dry_run or (not HAS_ARM_LIB)' silently turned --real into a print-only run: a full grasp attempt that reads like success while nothing moves. Reported as F1 in V21_DEPLOY_REVIEW_AND_PLAN_2026-07-30.md; must be fixed in the v22 package at source.",
+    "scope": "Transport layer only. JointMapper, deploy_contract, FloorGuard, ObsBuilder and the GraspController state machine are untouched. The angle convention (api_deg = 90 + sim_deg, arm_hw_invert all False) was already written to the Rosmaster convention, so no math changed.",
+    "api": {
+      "init": "Rosmaster(com=cfg.serial_port) + create_receive_threading()",
+      "write": "set_uart_servo_angle_array(angle_s=[S1..S6], run_time=ms), ms clamped to 2000",
+      "read": "get_uart_servo_angle(i) for i in 1..6",
+      "close": "cancel_receive_threading() then ser.close()",
+      "verified_against": "grasp/Rosmaster_Lib_reference.py signatures, plus an injected stub driver exercising the real write/read path"
+    },
+    "half_duplex_bus_read": {
+      "symptom": "First real run, 2026-07-31: the arm walked to C3, then the first policy step aborted with 'servo read failed: S1: invalid reading -1' and the controller emergency-stopped. Correct fail-closed behaviour, wrong root cause to leave in place.",
+      "cause": "The six servos are daisy-chained on one half-duplex UART. A read issued while the write burst is still on the wire gets no answer, and Rosmaster_Lib's get_uart_servo_value returns -1 after polling for 30 ms. The run's own evidence: the startup walk to C3 reads back after a 0.35 s settle and succeeded, while a policy step reads with settle_s=0.0 and failed on S1 -- the first servo queried after the write.",
+      "why_v17_never_saw_it": "grasp/x3plus_real_grasp.py substitutes self._last_deg whenever a read fails, so an unreachable servo reads back as one tracking perfectly. The condition has presumably been there all along; this stack is simply the first to refuse to paper over it. The id-mismatch defect is in the shared Rosmaster_Lib, so every stack that reads servos through get_uart_servo_angle has it -- grasp/x3plus_real_grasp.py and the training-side deploy script included. There it does not raise an error: the -1 triggers the _last_deg substitution and the controller reads its own command back as though it were a measurement. Silent wrong data is worse than the abort this stack produced. Goes on the v22 report alongside F1 and the 16.7 mm finger.",
+      "fix": [
+        "Prefer get_uart_servo_angle_array(): one FUNC_ARM_CTRL request returning all six angles under a single 30 ms budget. The per-servo call is six round trips at up to 30 ms each -- 180 ms worst case, which does not fit in the 100 ms control period at 10 Hz, with six times the collision surface.",
+        "bus_quiet_s (20 ms): read_degrees waits out the write echo before issuing any read, using a write timestamp taken in send_degrees.",
+        "read_attempts (3) with read_retry_s (50 ms): a collision costs milliseconds instead of aborting the run.",
+        "Per-servo reads remain as a fallback -- they use a different protocol function, so a board that will not answer one may answer the other.",
+        "_read_one() now calls get_uart_servo_value directly instead of get_uart_servo_angle, and credits the reading to the servo named on the response rather than the one that was asked. A shifted pipeline then costs one extra round trip and self-corrects, instead of aborting the run. The raw-count to degree conversion is replicated verbatim from Rosmaster_Lib.__arm_convert_angle (name-mangled, hence copied) including its int(x + 0.5) rounding and its out-of-range rejection, so a reading taken this way is identical to one taken through the driver. If a board lacks get_uart_servo_value the angle wrapper is still used as a fallback."
+      ],
+      "fail_closed_preserved": "When the bus genuinely cannot be read, read_degrees still returns invalid with NaN angles. It never substitutes the last command. NaN from the driver is rejected explicitly, since 'nan < 0' is False and a bare range check would accept it.",
+      "verified": "test_servo_read.py, 37 checks with a stub driver modelling both the contention window and the driver's response/request desynchronisation: array-preferred (1 transaction, not 6), recovery from the reported failure, quiet-window-only recovery, the arm-answers-but-not-the-gripper case (2 transactions and exactly 1 per-servo re-read), abandonment of a board that never serves the array request, per-servo failure counting, recovery of a fully shifted pipeline with no failures reported, a record of what the driver's own wrapper does with that same traffic ([90.0, -1, -1, -1, -1, -1] -- five good readings discarded), the no-raw-call fallback, and the fail-closed paths. 38/641/dry-run unchanged.",
+      "second_run_2026_07_31": "The quiet window plus retries carried the run from step 1 to step 49, then it aborted on 'S6: invalid reading -1 (after 3 attempts)'. Three consecutive failures spanning ~190 ms (three 30 ms driver timeouts plus two 50 ms backoffs) is not a momentary glitch -- a collision clears on the next attempt. Either the condition persisted for ~200 ms, or S6 is systematically unreadable by whichever path was serving it.",
+      "array_fallback_defect": "The first version of this fix discarded the WHOLE array response if any one servo came back invalid, and re-read all six per-servo. FUNC_ARM_CTRL is an ARM request, so a board that answers for the five arm joints and leaves the gripper empty is a normal outcome -- and that shape made every read cost 1 array transaction plus 6 per-servo reads: 7 where the unfixed code used 6. The fix made the bus busier, which fits the symptom moving from step 1 to step 49 without going away. read_degrees now fills only the servos still missing, so that case costs 2 transactions, and retries re-read only what is still absent.",
+      "array_probe": "A board that never serves the array request used to cost a 30 ms timeout on every read attempt. The request is now abandoned after 3 consecutive useless responses (not 1 -- a single all-invalid response is indistinguishable from a collision), and immediately if the method is absent or raises.",
+      "diagnostics": "read_failure_summary() tallies failures per servo across the run and is printed both on a safety abort and at the end of a normal run. It now also reports recovered misdirected responses, which is the number that separates 'the bus is fine' from 'the bus is shifted and the read layer is absorbing it' -- only the second gets worse under load. bus_probe.py measures the same three conditions directly on hardware without writing anything: misdirected (pipeline shift, recoverable), timeout (no answer at all -- wiring, power or a dead servo, and no retiming fixes it), and out-of-range (bad frame). Until now all three presented identically as -1.",
+      "third_run_2026_07_31": "The decisive one. With the quiet window, retries and fill-only-missing all in place, the run failed on the FIRST read at startup -- 'Cannot read servos at startup (unreadable: S3, S4 (after 3 attempts))', before a single command had been sent. No write had happened, so there was no echo to collide with, which rules out contention with our own traffic entirely. Across three runs the failures were S1 (step 1), S6 (step 49) and S3+S4 (startup): no cable, no position and no cumulative-degradation story fits that spread.",
+      "root_cause_2026_07_31": "A defect in Rosmaster_Lib, visible in its source. get_uart_servo_value polls `while timeout > 0: if self.__read_id > 0: return self.__read_id, self.__read_val` -- it returns the first response to land, with NO comparison against the servo_id that was requested. get_uart_servo_angle then checks the ids itself, finds a mismatch, falls through to its else branch and returns -1. A good reading is discarded and a servo that answered correctly is reported as unreadable. One late response shifts the entire pipeline by one: S2's answer is collected by S3's request, so S3 reports -1 while its own answer is collected by S4, and so on down the chain. The signature is a run of ADJACENT servos unreadable at once -- exactly S3+S4 -- and it explains why retrying never cleared it, since each retry re-requests and keeps the pipeline shifted.",
+      "resolved_2026_07_31": "The earlier open question -- whether S6 was systematically or intermittently unreadable -- was the wrong question. S6 was never the variable; the shifted pipeline was, and it lands on whichever servo follows a late response. The [Bus] tally still discriminates the remaining case: genuine timeouts with zero misdirects would mean a real wiring or power fault, which retiming cannot fix.",
+      "hardware_probe_2026_07_31": "bus_probe.py on the Jetson, 2x 50 rounds (0 ms and 20 ms gaps), arm idle: 600/600 per-servo reads answered by the servo that was asked, zero timeouts, zero out-of-range, and get_uart_servo_angle_array complete 100/100 -- the first hardware confirmation that this board serves the array request at all. An idle bus this clean rules out wiring and power, and confines the failures to periods with write traffic, which is exactly what the read layer absorbs. The id shift itself has not yet been observed directly on hardware (an idle probe cannot provoke it); the [Bus] misdirect count on the next real run is that evidence."
+    },
+    "serial_port": "/dev/myserial (stable udev symlink to the ch341 board); override with --port",
+    "fail_closed": [
+      "main() refuses --real up front when Rosmaster_Lib is not importable (exit 2), before loading the model.",
+      "A missing driver no longer flips dry_run to True. dry_run stays False, _has_servo stays False, and every write is refused with the arm's tracked pose left unchanged.",
+      "read_degrees returns invalid (NaN) without hardware instead of handing back _last_deg as if it were a measurement.",
+      "send_degrees refuses any command outside the board's accepted ranges (S1-S4 0-180, S5 0-270, S6 0-180). set_uart_servo_angle_array validates internally and returns SILENTLY on a bad argument, so without this check a dropped command would look delivered. JointMapper already clamps to these ranges, so this is a backstop that should never fire."
+    ],
+    "jetson_note": "grasp/v21/ appends its parent (grasp/) to sys.path, so the driver localized at grasp/Rosmaster_Lib per CLAUDE.md is importable from this subdirectory. No second copy inside grasp/v21/ is needed.",
+    "jaw_contact_handling": {
+      "symptom": "Fourth real run, 2026-07-31: the bus fix held (zero read failures, full run), and when the operator placed a ~2 cm object between the fingers the jaw gripped it -- then kept driving toward the 180-deg closed stop, gears audibly grinding, until the operator removed the object to protect the hardware. The jaw then reached the stop and the run correctly ABORTed.",
+      "cause": "send_degrees' rate limiter walks the command from the LAST COMMAND, not the encoder, so a jaw blocked at ~135 deg still had its command walked all the way to 180: the servo held up to ~45 deg of position error, i.e. near-stall torque, for as long as the object stayed in. The stall detector only fired after the command finished its walk, and even then the command stayed at 180 for the rest of the run. The opposite failure was latent in stage 2: lift and return-home re-targeted the jaw at the encoder READBACK -- the contact angle itself -- which would have walked the command back down and zeroed the grip force, dropping the object mid-lift. Grip force on this servo IS the commanded position error; both extremes of that error were wrong and neither was managed.",
+      "fix": [
+        "Contact detection inside the close: the command advancing while the encoder does not (progress < jaw_contact_min_progress_deg 2.0 while the command leads by > jaw_contact_lag_deg 5.0, for jaw_contact_streak 2 consecutive iterations) declares contact.",
+        "_park_jaw_hold then commands the jaw to contact + jaw_hold_bias_deg (8.0) -- a firm grip at a small, bounded position error instead of a near-stall one. By detection time the walking command is already past that point, so parking always moves the command back toward open, within the range the guard approved on the way down.",
+        "The hold is recorded (sim rad) and stage 2's lift and return-home target it verbatim, judging arrival on the arm joints alone (grip_is_hold) -- the jaw target is a deliberate squeeze the encoder can never satisfy.",
+        "attempt_close's legacy no-progress stall path also parks the hold late, covering an object soft enough to creep through the progress threshold.",
+        "Every abort path clears the hold and reopens the jaw as before."
+      ],
+      "grip_force_note": "jaw_hold_bias_deg is the grip-force knob: ~0.4 mm of jaw travel per degree near closure, 8 deg of commanded error ~= 3 mm of virtual squeeze. Raise it if objects slip during the lift; it grinds again long before 45.",
+      "verified": "test_deploy_controller.py 38 -> 50 checks: contact parks the command within bias of a 135-deg block (not 180), the hold is recorded, every stage-2 jaw command equals the hold from close to home with the object still squeezing at arrival, empty-jaw close still walks to the stop and ABORTs, and the every-motion-is-guarded static check now pins _park_jaw_hold to exactly one documented send. 37/641/dry-run unchanged.",
+      "not_yet_confirmed_on_hardware": "The bias that holds without slipping has not been measured on the real gripper; 8 deg is a first estimate. The next gripped run tells."
+    },
+    "stage0_hover_fallback_and_timeout_rescue": {
+      "symptom": "Fifth real run, 2026-07-31: comms clean end to end, and the POLICY grasped the object on its own during stage 0 (S6 at 138 deg, object held) -- then hovered at target_dist 27 mm, one millimetre outside the 26 mm entry radius, for ~270 steps. At max-steps the end-of-run path re-targeted home with the jaw open and released the object it was holding.",
+      "fix": [
+        "Hover fallback: xy, z and pads_ready all genuinely inside their gates, only the radius out by <= stage0_hover_extra_m (5 mm), for stage0_hover_steps (30) consecutive steps -> enter stage 1. The primary training-mirrored gate is untouched; an approach in progress crosses the band in a step or two and never accumulates the streak.",
+        "Timeout rescue: at max-steps with the jaw more than timeout_close_min_grip_frac (0.5) closed, run the scripted close before opening -- an empty jaw walks to the stop and aborts exactly as before, a held object becomes a grasp.",
+        "Telemetry: a [Gate] line every 25 stage-0 steps (all four gate terms with their thresholds) and a [Guard] action tally on every exit path -- run 5's log carried only target_dist, so which term was short and whether the floor guard was the limiter was unrecoverable.",
+        "Stage 2 no longer falls into the shared end-of-run block, which re-targets home with the jaw OPEN: after a confirmed grasp the jaw now keeps its hold at home (servos hold position while powered; operator takes the object), and an aborted lift's emergency freeze is no longer overridden by an automatic drive home."
+      ],
+      "open_question": "WHY the policy plateaued at 27 mm is not yet established -- candidates are the early jaw closure dropping the modelled gripper_center (close_drop) with the 16.7 mm finger error putting the floor guard in the way of the last millimetre, or a policy equilibrium. The new [Gate]/[Guard] telemetry on the next run answers it.",
+      "verified": "test_deploy_controller.py 50 -> 58: the fallback fires on the 30th consecutive near-miss step and not the 29th, resets on any step outside the band, and never fires when xy, z or pads_ready are the failing terms or the radius exceeds the slack. 37/641/dry-run unchanged (dry-run transitions through the primary gate at r=22.3 mm and never touches the fallback)."
+    },
+    "guard_deadlock_and_finger_error": {
+      "symptom": "Runs 6 and 7, 2026-07-31, IDENTICAL command lines, completely different outcomes. Run 6 reached stage 1 at step 26, the close stalled at 175 deg and the grasp check correctly rejected it (3.3% short of closed, below the 6% threshold). Run 7 closed the jaw early during stage 0 (S6 148 by step 60), then the floor guard fired emergency_raise 42 times over 150+ steps with z_now bit-identical (0.007413693381111391) every single time, until the operator interrupted at step 213.",
+      "cause_deadlock": "The early jaw closure dropped the modelled pads via close_drop to 7.4 mm, and the 8 mm guard line fell BETWEEN the clearances at two adjacent encoder counts on S2. The policy commanded down (S2 21), the guard raised one count (S2 22), the policy commanded down again -- a stable limit cycle at the 1-degree encoder quantum. emergency_raise_max_iters (12) cannot catch it: a policy step calls move_guarded_and_verified with max_iters=1, so that counter resets every step. There was no episode-level bound at all, so the run would have burned all 300 steps looking busy.",
+      "cause_early_stop": "Operator measured about 15 mm of real clearance while the guard reported 7.4 mm. That is the +16.7 mm URDF finger error seen from the other side: the guard believes the pads are 16.7 mm lower than they are, so it stops that much early. Conservative, therefore safe -- but it is what put the arm in the deadlock, and it is the first hardware evidence for the guard_margin_8mm_validated_on_hardware gate.",
+      "cause_nondeterminism": "Two identical commands diverging is not a defect. The encoders quantise to 1 degree, and the incremental contract integrates every step, so a 1-2 degree difference in the starting readback amplifies into a completely different trajectory. Single runs are not evidence; repeat before concluding.",
+      "cause_contact_race": "Run 6 reported 'holding at 180.0 deg' -- parked ON the closed stop, the exact state the contact handling exists to avoid. The contact detector needs 2 consecutive blocked iterations, but the legacy no-progress check needs only 2 equal residuals, so it returned one iteration sooner and took the late stall path, where park bias (175 + 8) clipped straight back to the 180 stop.",
+      "fix": [
+        "Episode-level guard deadlock detector: guard_deadlock_steps (25) consecutive interventions without gaining guard_deadlock_progress_m (1 mm) of clearance ends the run with a diagnosis, the lowest link, and the finger-error-corrected clearance estimate. Any passing step resets it.",
+        "Floor guard info now carries low_link / low_is_pad. Which link is lowest decides whether the 16.7 mm finger correction applies to a clearance number -- it does for the pads, not for other linkage parts.",
+        "--floor-finger-error-mm raises ONLY the two pads in the guard's geometry, range-checked to [0, 30] mm, default 0.0 = unchanged conservative behaviour. min_gripper_link_z keeps its training-identical default and the policy's own floor_clearance observation is untouched.",
+        "A stalled close under stop_on_jaw_contact is now treated as jaw contact, so the park happens at the contact angle with its bias instead of clipping to the stop."
+      ],
+      "verified": "test_deploy_controller.py 58 -> 67: the deadlock detector tolerates 24 interventions and trips at 25, never trips on a guard gaining 2 mm per step, and resets on one clean step; the finger correction never lowers clearance, never exceeds the finger error, and defaults to 0.0. 37/641/dry-run unchanged.",
+      "not_yet_confirmed_on_hardware": "Whether --floor-finger-error-mm 16.7 is the right value. The operator's ruler said ~15 mm against a modelled 7.4 mm, a ~7.6 mm gap rather than 16.7 -- consistent with a NON-pad link being lowest at that pose, which the new low_is_pad field now reports. Confirm before opting in."
+    },
+    "grasp_stall_margin_tuning": {
+      "symptom": "Run 6, 2026-07-31: a genuine jaw stall at 175 deg (5 deg / 3.3% short of the 180 stop) was REJECTED by grasp_stall_min_fraction's then-default 0.06 (9 deg required). The rejection reason and the earlier 'holding at 180.0 deg' log line trace back to the same-day contact-detection race (fixed in commit 7617346): the legacy no-progress check won the race over the dedicated contact detector and parked the hold ON the closed stop instead of at the actual contact angle, so the readback undersold how short the jaw really stalled.",
+      "provenance_note": "grasp_stall_min_fraction (0.06) and the lift step's tol_deg (2.5) were found changed to 0.02 and 3.5 respectively inside commit 7617346, but that commit's own message never mentions either value -- there is no record of who set them or why. On 2026-07-31 the operator asked for a smaller, deliberate change instead: grasp_stall_min_fraction to 0.03 (halfway back toward the original, partial rather than a full retreat, since the contact-detection race that caused the false rejection is now fixed) and tol_deg confirmed at 3.5.",
+      "open_question": "Whether 0.03 (4.5 deg -- about 4-5 encoder counts at the confirmed 1-degree resolution) is a safe margin against an EMPTY jaw settling short of 180 deg from ordinary mechanical backlash, rather than genuine object contact. FakeServoPlant cannot answer this: it closes an empty jaw to an idealised, noiseless 180 deg every time, so the unit tests pass regardless of the threshold and exercise none of the real risk. tol_deg=3.5 carries a related but separate question: whether a lift step can report reached=True while the floor guard's 8mm line -- shown the same day to sit between adjacent 1-degree encoder counts on this same joint (S2) -- is still clamping it short.",
+      "validation_needed": [
+        "Empty-jaw margin: close the jaw on nothing, 5+ times, record the settled S6 angle each time. If it ever lands within grasp_stall_min_fraction's margin of 180 deg (i.e. the empty case would misfire as CONFIRMED), the value is unsafe as set.",
+        "Lift-tolerance interaction: during a real held lift, confirm no lift step reports reached=True while guard=['clamped'] or an emergency_raise/hold was needed for that step -- i.e. tol_deg=3.5 is not papering over a guard intervention as arrival."
+      ],
+      "empty_jaw_validation_2026_07_31": "Operator-reported: an empty jaw does NOT misfire as CONFIRMED under the 0.03 (4.5 deg) margin. No specific trial count or settled-angle log was provided with this report, unlike the first-grasp record which came with a full instrumented log -- if repeat numbers become available later (settled S6 angle across N empty closes), attach them here for stronger evidence. The guard-clamping side of tol_deg=3.5 (does a lift step ever report reached=True while the guard is still clamping it short) is a separate, still-open question this does not address."
+    },
+    "socket_path_hardening": {
+      "date": "2026-08-01",
+      "why": "Mode B (integration/vision_grasp_bridge.py -> --socket) was the last consumer still pinned to v17, because moving it to v21 would have been a downgrade: v21's socket path was written for a trusted local sender and was materially weaker than v17's.",
+      "gaps_found_in_v21": [
+        "No payload validation at all. DetectionReceiver._loop parsed the JSON inline with no finite check, so {\"x\": NaN} became a NaN target position. np.clip leaves NaN as NaN and every downstream bound check compares false against it, so nothing further along would have stopped it.",
+        "No staleness tracking. Once a detection landed it was served forever, so a camera process that died mid-run kept 'confirming' a position nobody was measuring any more.",
+        "No latch, and no --latch-obj flag. _get_obj_pos() called detection.get() on every policy step. The arm camera is mounted on arm_link4 and moves with the arm, so its fixed height/pitch distance model only holds at the home pose -- the target drifts under the policy mid-approach. Modes A and C were unaffected because they inject a frozen obj_provider pipeline-side; only the standalone --socket path was exposed.",
+        "No --i-confirm-external-frame. v17 refused --real --socket without it; v21 accepted silently. A camera-frame XYZ mistaken for base_link is undetectable downstream -- the arm grasps confidently in the wrong place."
+      ],
+      "changes": [
+        "DetectionReceiver._parse_payload(): ported from v17 and adapted from 'w' (width) to 'height' (full z extent). Rejects empty messages, non-dict JSON, missing x/y, non-finite positions, and non-positive or non-finite heights. An absent height stays None so the contract decides (hard error, or the documented symmetric-object estimate) rather than a number being invented here.",
+        "Staleness: detection_stale_timeout_sec (default 1.0). get()/get_height() fall back to the defaults once a detection ages out, instead of serving it as current.",
+        "snapshot() -> (pos, height, is_fresh). The latch needs to tell 'the camera said the object is here' apart from 'nobody has said anything and this is the default' -- indistinguishable from get() alone.",
+        "MAX_MESSAGE_BYTES, per-connection timeouts, a _stop event and a finally-close, so a hung or oversized sender cannot wedge the receive thread.",
+        "cfg.latch_obj / cfg.latch_wait_sec + _latch_object(), called from run() AFTER the arm confirms the home pose -- the only pose at which the camera's distance model holds. Under --real a latch timeout raises rather than gliding toward an unconfirmed default; dry-run warns and falls back so verification stays free.",
+        "--real --socket now refuses without both --latch-obj and --i-confirm-external-frame, exit 2, before the model loads and before the serial port opens.",
+        "JointMapper.norm_action_to_sim_angles() now validates the action itself. _apply_policy_action (its only caller) already did, but that made the guarantee a caller convention; under the incremental contract a NaN is ADDED to the current pose, poisoning the running joint state rather than producing one bad command."
+      ],
+      "bridge_side": "vision_grasp_bridge.py now emits a superset payload {x,y,z,w,height}: v17 reads 'w' and ignores 'height', v21 reads 'height' and ignores 'w', so one bridge serves both. Height cannot be measured from the bbox (the arm camera looks down at an angle, so bbox pixel height mixes the object's height with its depth), so it is declared per class via --class-height NAME=METRES. Omitting it sends no height and lets the grasp side apply its own estimate. A --class-z/--class-height naming a class the model does not predict now prints a WARN listing the model's actual classes -- previously the lookup just missed and the fallback was used, so the run looked normal while grasping at the wrong height.",
+      "test_delta": "test_deploy_controller.py 67 -> 93 checks: payload validation (11), staleness/snapshot (7), latch freeze + real-mode fail-closed (7), and the --real --socket gate ordering (4). tests/test_safety_guards.py was also repointed from grasp.x3plus_real_grasp to vgp._load_grasp_module(), so it now exercises the stack the pipelines actually load; it gained assertions that the removed v17 fields have not reappeared.",
+      "not_validated_on_hardware": "None of this has been run on the robot. The socket path has never carried a real grasp on v21 -- the 2026-07-31 first grasp used --obj-x/y/z, which is untouched by these changes (dry-run wrist_z_offset still 0.0564, stage sequence unchanged). Treat mode B on v21 as unproven until a supervised run says otherwise."
+    }
+  },
+  "tools": {
+    "bus_probe.py": "Read-only servo bus diagnostic; issues no writes, so the arm cannot move. Reads all six servos N times via the raw get_uart_servo_value call and classifies every response as answered-by-itself, misdirected (answered by another servo), timed out, or out of range -- the three failure modes the driver collapses into a single -1. --gap-ms spaces the reads out, so raising it until misdirects vanish measures the right --bus-quiet-ms. Run it in whatever pose the arm is already in, immediately after a failure and BEFORE power-cycling, which destroys the evidence.",
+    "pose_check.py": "C3 gripper geometry measurement. Never moves the arm -- refuses unless all five arm joints are already within 3 deg of C3, and drives only S6. Used on 2026-07-31 to measure the finger at the closed jaw angle, which is what established the 16.7 mm URDF finger error as a constant offset rather than an open-angle mapping artefact."
+  }
+}

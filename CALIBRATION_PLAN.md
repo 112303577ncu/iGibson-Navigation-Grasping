@@ -10,12 +10,19 @@
 |---|---|---|---|
 | 0 | 環境同步與基礎檢查 | 相機串流可看、夾取 dry-run 照舊能跑 | 0.5h |
 | 1 | 相機內參（fx/fy/cx/cy+畸變）×2 台 | 重投影誤差 < 0.5px | 1.5h |
-| 2 | 地面距離模型（θ、H）×2 台 | 手臂相機 ±3cm、桅相機 ±10cm | 1.5h |
-| 3 | YOLO 座標 ↔ 手臂 base 座標 | latch 輸出與實擺位置差 < 2cm | 1.5h |
+| 2 | 手臂相機 C3 外參（θ/H/cam_x/cam_y/sign_y 一起解）+ 桅相機（θ、H） | 求解器殘差 ≤1cm、保留點 ≤1cm；桅相機 ±10cm | 2h |
+| 3 | base 基準點 + 校正後驗證 | 保留點誤差 < 1cm、左右方向正確 | 1h |
 | 4 | 定點視覺夾取端到端（含 smooth-approach） | 真物體夾取 ≥3/5 成功 | 3h |
 | 5 | RL 導航單獨驗證（--nav-only） | 2m 直線到點 + 繞障不碰 + 煞停距離量測合格 | 3h |
 | 6 | 全流程整合 | 偵測→導航→夾取 ≥2/3 成功 | 2h |
 | 7 | 收尾 | PR merge、紀錄更新 | 0.5h |
+
+> **2026-08-02 重要更正**：v21 的偵測姿勢是 **C3**（`90,67.08,9.79,9.79,90,30`），不是
+> v17 的 nav home。手臂相機鎖在 `arm_link4`，θ/H/cam_x/cam_y 只在單一姿勢成立。
+> C3 的相機幾乎垂直朝下（URDF 預測 θ≈89.7°、H≈0.215m、cam_x≈0.256m），與 nav home
+> 量到的 36.4°/0.332m 完全不同，**舊值在 C3 一個都不能用**。Phase 2 已改寫成 C3 專用
+> 流程並與 Phase 3 合併求解。目前登錄在 `integration/arm_cam_geometry.py` 的 C3 外參
+> 是 **URDF 推算的預測值，不是實測**，bridge 會拒絕送出直到你量過或明示接受。
 
 > **執行順序調整（2026-07-10 決定）**：下次上機先做 **Phase 3 → Phase 5（避障測試）**，
 > 這兩個通過後才回頭做 Phase 4 → 6。兩者互相獨立（Phase 5 只用後鏡頭+LiDAR+底盤，
@@ -97,68 +104,114 @@
 
 ## Phase 2 — 地面距離模型校正（θ 俯角、H 高度）
 
-**目標**：`estimate_ground_distance(y2) = H / tan(θ + atan((y2−cy)/fy))` 的 θ、H 定案。
-fy/cy 用 Phase 1 的新值——**Phase 1 沒過關前做這步沒有意義**。
+> **2026-08-02 重寫。** v21 的偵測姿勢是 C3（`90, 67.08, 9.79, 9.79, 90, 30`），不是
+> v17 的 nav home。手臂相機鎖在 `arm_link4` 上，θ/H/cam_x/cam_y 四個外參只在**單一
+> 姿勢**成立，換姿勢就全部作廢。舊版這一節的做法在 C3 會直接失效，原因有二：
+>
+> 1. 舊解法用 `θ = atan(H/D)`。C3 的相機離垂直不到一度，畫面上 D 會跨過 0 變負，
+>    `atan(H/D)` 在 D=0 無定義、D<0 取錯分支。正確要用 `atan2(H, D)`。
+> 2. 舊版要你在 0.3–0.8 m 貼記號。C3 只看得到 base x ≈ **0.195–0.32 m**（橫向 −5.9～+10.7 cm，不對稱），那些記號
+>    全在視野外。
+>
+> 所以 C3 的 Phase 2 與 Phase 3 **合併成一次量測**，用 `solve_arm_cam_extrinsics.py`
+> 一起解 θ / cam_x / cam_y / sign_y。桅相機（rear）不受影響，仍照舊版做。
 
-**步驟**（手臂相機在 nav home；桅相機直接做）
-1. H 用尺量：鏡頭中心離地高度（手臂相機參考值：URDF 實算 ≈0.263m；量到差很多要查姿勢）。
-2. 地上貼膠帶做距離記號：手臂相機 0.3/0.4/0.5/0.6/0.8m，桅相機 1.0/1.5/2.0/2.5m
-   （從**鏡頭正下方地面點**起量）。
-3. 每個距離放物體，跑 YOLO 記 bbox 底邊 y2（可用 `debug_tools/yolo_test.py` 或
-   `calibrate_arm_camera_theta.py`，記得先把裡面 fy/cy 換成新值）。
-4. 每點解 θᵢ = atan(H/Dᵢ) − atan((y2ᵢ−cy)/fy)，取中位數為 θ；帶回去算殘差。
-5. 左右偏移驗證：物體放正前方偏左/右 10cm。`dist` 是地面前向距離，水平像素換算要先求
-   `optical_depth = dist×cos(theta) + H×sin(theta)`，再用
-   `offset = optical_depth×(cx_box−cx)/fx`，結果應 ≈ ±0.10m；不可直接以 `dist` 代替 optical depth。
+**目標**：定出 C3 姿勢下的 θ、H、cam_x、cam_y、sign_y。
+
+**先做 Phase 3 步驟 1**（建立 base-frame 地面基準點），因為底下每個位置都要用
+base 絕對座標記錄。
+
+**步驟**
+1. 手臂開到 C3：
+   ```bash
+   python3 grasp/v21/x3plus_real_grasp.py --real --unlock-candidate-real      --model models/candidate_v21_seed816_ckpt550000.zip      --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl      --contract obs_28_incremental --max-steps 0
+   ```
+   （`--max-steps 0` 會走到起始姿勢就停。）
+2. **尺量 H**：鏡頭中心到地面的垂直高度。近垂直姿勢下這是四個參數裡最好量、
+   最準的一個，務必用尺，不要用擬合。URDF 預測值 **0.2148 m**，差超過 1 cm 要先查姿勢。
+3. 擺物體，**至少 5 點（建議 8 點）**。⚠ **可用範圍很窄，而且隨物體高度縮小**——
+   採集工具一開始就會印出來（`usable_placement_window`）：
+
+   | 物體高度 | 完整入鏡的 base x | base y（x 中段）|
+   |---|---|---|
+   | **sugarbox 6.5 cm** | **0.239 – 0.292 m** | **−0.028 – +0.052 m** |
+   | 3 cm | 0.227 – 0.299 | −0.036 – +0.068 |
+   | 平面標記 | 0.218 – 0.304 | −0.042 – +0.081 |
+
+   近垂直視角下物體的**頂面投影得比底面遠**，輪廓大於落地面積，越高越早出畫面。
+   範圍外會被貼邊檢查擋掉、不會記錄。左右也不對稱（主點在 x=212 不是 320）。
+   - 前後、左右都要盡量用滿這個範圍，否則 θ 與 cam_x 分不開、`sign_y` 與 `cam_y` 解不出來。
+   - **另外留 2 點不參與擬合**，最後拿來驗證。
+4. **用採集工具，不要手抄**（手抄最容易把對的像素配到錯的座標，而且事後看不出來）：
+   ```bash
+   python3 integration/capture_arm_cam_obs.py --h <尺量的H> --solve \
+     --stream http://<JETSON_IP>:8080/stream?topic=/arm_cam/image_raw \
+     --out c3_calib.json
+   ```
+   擺好物體 → 輸入 base 絕對座標 → Enter。它取 20 幀中位數像素、每筆存檔、自動留
+   保留點、涵蓋不足會提示缺什麼。上機前可先 `--simulate` 在桌上演練一次。
+5. `--solve` 會自動解完；要手動重解時（座標一律 base 絕對值，橫向 **±3.5～4.5 cm**）：
+   ```bash
+   python3 integration/solve_arm_cam_extrinsics.py --h 0.2151 \
+     --obs 0.205,0.000,233,413 \
+     --obs 0.230,-0.040,64,306 \
+     --obs 0.255,0.000,234,200 \
+     --obs 0.280,0.040,403,95 \
+     --obs 0.300,0.000,233,11 \
+     --obs 0.240,0.035,381,264
+   ```
+
+> **演練實測**（`--simulate`，1.5 px 雜訊、8 點、6 擬合 2 保留）：擬合殘差 **0.93 mm**、
+> 保留點誤差 **0.96 mm**，只佔 22 mm 進場容差的 4%。同一次解出的 θ 差 2.26°、
+> cam_x 差 8.5 mm——**參數不準但預測很準**，正是下面那段警告的意思。
 
 **過關標準**
-- 手臂相機：全部量測點距離誤差 **< 3cm**
-- 桅相機：**< 10cm**（遠距容忍大些）
-- 偏移量誤差 < 2cm、正負號正確（右偏 = 正）
+- 求解器殘差 **≤ 10 mm**（≤ 5 mm 為佳）
+- 保留的 2 點代入後誤差 **≤ 10 mm**
+- `sign_y` 有被資料決定（沒跳「lateral 太集中」警告）
 
-**沒過**：H 重量、確認 y2 取的是「物體接地點」而非陰影；θ 殘差單邊偏 → cy 可疑，回 Phase 1。
-**產出**：θ_ARM/H_ARM、θ_REAR/H_REAR → 對照表②。
+**⚠ 不要拿解出來的 θ 去對 URDF 預測值 89.740。** 可視帶太窄，θ 與 cam_x 高度相關，
+兩者會互相補償：模擬中 1 px / 2 mm 雜訊下 θ 只能還原到約 ±5°、cam_x 約 ±2 cm，
+但保留點的預測誤差平均只有 0.9 mm。曾有一次擬合解出 θ=79.8（真值 89.3）卻仍把
+每個點放在 1.3 mm 內。**看殘差與保留點，不要看參數本身**，也絕對不要外推到量測
+帶之外。
+
+**沒過**：誤差隨距離變大 → H 量錯；整體固定偏移 → base 基準點記錯（回 Phase 3 步驟 1）。
+**產出**：θ / H / cam_x / cam_y / sign_y。兩種填法擇一：
+- 改 `integration/arm_cam_geometry.py` 的 `V21_C3_GRASP_HOME`（把兩個 `_measured`
+  旗標改成 `True`）
+- 或完全不動程式碼，跑 bridge 時帶 `--cam-theta/--cam-h/--cam-x/--cam-y/--sign-y`
 
 ---
 
-## Phase 3 — YOLO 座標 ↔ 手臂 base 座標校正
+## Phase 3 — base-frame 基準點與驗證（C3 已與 Phase 2 合併求解）
 
-**目標**：視覺輸出的 (x, y) 對齊 FK/policy 的 base 座標系（TROUBLESHOOTING #12 的方法）。
+**目標**：建立量測用的 base 座標原點，並在 Phase 2 解完後驗證整條視覺→座標鏈。
 
-**狀態（2026-07-16）：⚠️ nav-home 已完成，grasp-home 待重標。** 舊四點結果
-X=0.39cm、Y=0.33cm 只證明 **nav-home** 的遠距模型正確；它看得到約 25cm 之外的物體，
-但實測 PPO grasp-home 的可用前伸半徑只有約 15cm。手臂切到 grasp-home 後，相機高度、俯角與
-前後方向都改變，因此舊 `H/theta/CAM_TO_BASE_X/Y/SIGN_Y` 不可用於最後 latch。
+> **2026-08-02**：C3 姿勢下 cam_x/cam_y 已由 Phase 2 的 `solve_arm_cam_extrinsics.py`
+> 與 θ 一起解出，不再需要先假設 θ 正確再單獨解偏移——那個兩階段做法在近垂直
+> 姿勢下不成立（θ 與 cam_x 高度相關）。`solve_cam_to_base.py` 仍留給 nav home
+> 那類前視姿勢用。
 
-**grasp-home 重標步驟**
-1. 只把手臂移到相機標定姿態，不載入 PPO、不夾取：
+**步驟**
+1. **建地面基準點**（Phase 2 開始前就要做）：`--real` 跑到 C3 起始姿勢，從指間
+   抓取中心鉛直投影到地面貼記號，並記下 log 的 TCP base 座標 `(ref_x, ref_y)`
+   （如 `(0.167, 0.018)`）。**記號只是量尺原點，不是 `base_link` 原點。**
+2. **z_offset 順便量**（TROUBLESHOOTING #11）：同一時刻尺量抓取中心離地高 H_real，
+   `z_offset = H_real − 0.010`。
+3. 之後每個擺放位置都換成 **base-frame 絕對座標**再記錄：
+   `(actual_x, actual_y) = (ref_x + forward_from_mark, ref_y + left_from_mark)`。
+   例如 `ref=(0.167,0.018)` 時，記號正前 8 cm 是 `(0.247, 0.018)`。
+4. **驗證**（Phase 2 解完、常數填好之後）：把 Phase 2 保留不擬合的 2 點擺回去，
+   跑 bridge dry-run 讀輸出：
    ```bash
-   python3 grasp/x3plus_real_grasp.py --real --pose-only grasp-home
+   python3 integration/vision_grasp_bridge.py --dry-run --show      --cam-theta <θ> --cam-h <H> --cam-x <cam_x> --cam-y <cam_y> --sign-y <±1>      --class-height sugarbox=0.065
    ```
-   程式退出後伺服機會保持姿態；標定期間車體與手臂都不可移動。
-2. 在 grasp-home 畫面可見且物理可達的區域選至少 **6 個非共線點**（建議 9 點，覆蓋畫面
-   上下左右，且外框要能包住物體 bbox 底邊）。以抓取中心地面記號為量尺原點，換算每點的
-   `base_link` 絕對 `(X,Y)`；不要假設整個 15cm 圓都在相機 FOV。
-3. 每個實擺點各跑一次，記錄輸出的去畸變中位數 `u,v`：
-   ```bash
-   python3 integration/vision_grasp_bridge.py \
-     --stream 0 --calibration-only --calibration-samples 10 --once
-   ```
-   此模式不連 5555、不會送夾取座標。
-4. 將至少 6 組 `U,V,X,Y` 解成平面 homography：
-   ```bash
-   python3 integration/grasp_home_homography.py \
-     --point U1,V1,X1,Y1 --point U2,V2,X2,Y2 \
-     --point U3,V3,X3,Y3 --point U4,V4,X4,Y4 \
-     --point U5,V5,X5,Y5 --point U6,V6,X6,Y6 \
-     --output integration/grasp_home_homography.json --max-rmse-cm 1.0
-   ```
-5. 另用未參與求解的點驗證；X、Y 各自誤差都須 <2cm。runtime 會要求至少 6 點、
-   最大擬合誤差 <2cm，並拒絕 calibration hull 外的偵測（不允許外插）。
+   印出的 `x`/`y` 與實擺 base 座標比對。
 
-**過關標準**：grasp-home 驗證點 X/Y 誤差各 **<2cm**、完整物體底邊落在校正 hull 內，
-且輸出目標離 grasp-home TCP ≤15cm。
-**產出**：`integration/grasp_home_homography.json`；物體 Z 留到 Phase 4 依類別實抓微調。
+**過關標準**：保留點誤差 **< 1 cm**（x、y 各自）、左右方向正確（物體往左移，y 要變大）。
+**沒過**：誤差隨距離變 → H 量錯，回 Phase 2 步驟 2；整體固定偏移 → 基準點記錯，回步驟 1。
+**產出**：z_offset → 對照表③（θ/H/cam_x/cam_y/sign_y 已在 Phase 2 產出）。
 
 ---
 
@@ -178,21 +231,31 @@ X=0.39cm、Y=0.33cm 只證明 **nav-home** 的遠距模型正確；它看得到�
    超過 15cm 必須在任何 policy/glide 前被拒絕。
 2. **跨指間隙量測**（TROUBLESHOOTING #10）：S6=30° 開爪內側間隙 vs 物體寬 →
    單側裕度 ≥2cm 才安全。
-3. **固定座標真物體夾取**：物體必須在 grasp-home TCP 15cm 內；先選約 10cm 的中央點。
-   `--obj-x/--obj-y` 填 base-frame 絕對座標。瓶蓋先用 `--obj-z 0.02`，不可套用已撤銷的
-   H_real−TCP z 算法。
-4. **grasp-home 視覺 latch**（不要跑完整 pipeline；它在新 final-align 接妥前會拒絕 `--real`）：
+3. **固定座標真物體夾取**：木塊放在 Phase 3 基準記號前方 25 cm；命令列的 `--obj-x/--obj-y`
+   必須填 base-frame 絕對座標（`ref_x + 0.25`, `ref_y`），不是相對記號的 `(0.25, 0)`。
+   `--obj-z` 用 `實際離地高 − z_offset`，跑 3 次。
+4. **視覺 latch 夾取**（用 bridge 模式＝模式 B，**不要**跑完整 pipeline——那會把導航/
+   精對位混進來，這步只測「相機座標 + 夾取」）：物體隨機放手臂相機視野內（0.2–0.3m），
    ```bash
-   # 終端機 1：先啟動；手臂到 grasp-home 後會丟棄移動途中舊偵測
-   python3 grasp/x3plus_real_grasp.py --real --socket --width-grip --latch-obj \
-     --latch-wait-sec 30 --smooth-approach --i-confirm-external-frame --max-steps 180
-
-   # 終端機 2：看到 [Latch] Waiting... 後才執行，只送一次
-   python3 integration/vision_grasp_bridge.py --stream 0 \
-     --homography integration/grasp_home_homography.json \
-     --host 127.0.0.1 --port 5555 --obj-z 0.02 --once
+   # 終端機 1（夾取端，v21）
+   cd grasp/v21
+   python3 x3plus_real_grasp.py --real --socket \
+     --latch-obj --i-confirm-external-frame --unlock-candidate-real \
+     --model models/candidate_v21_seed816_ckpt550000.zip \
+     --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl \
+     --contract obs_28_incremental
+   # 終端機 2（辨識端，先 --once 核對座標再連續送）
+   #   --class-height/-z 依實測物體填；sugarbox 為 0.065 / 0.0325
+   python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show \
+     --class-height sugarbox=0.065 --class-z sugarbox=0.0325
+   python3 integration/vision_grasp_bridge.py --host 127.0.0.1 \
+     --class-height sugarbox=0.065 --class-z sugarbox=0.0325
    ```
    跑 5 次。
+   > v21 沒有 `--width-grip`（改接觸偵測）和 `--smooth-approach`。
+   > `--latch-obj` 與 `--i-confirm-external-frame` 在 `--real --socket` 下是**強制**的，
+   > 缺任一會 exit 2。`--unlock-candidate-real` 是因為 manifest status 仍為 `candidate`。
+   > 舊 v17 指令見 `integration/README.md` 模式 B 段落的備援區塊。
 
 **過關標準**：步驟 3 ≥2/3、步驟 4 **≥3/5** 夾起且 verify 通過；過程無撞地/撞物。
 **沒過**：夾空 → 座標差（回 Phase 3）；碰倒 → 看 #10 的對策順序（obj-z 對上半部→y 對位→墊高）。
@@ -316,18 +379,25 @@ X=0.39cm、Y=0.33cm 只證明 **nav-home** 的遠距模型正確；它看得到�
 
 | # | 校正值 | 量到的值 | 要更新的位置 |
 |---|--------|---------|-------------|
-| ① | 手臂相機 fx/fy/cx/cy | ✅ 919.08 / 919.41 / 212.23 / 168.42（RMS 0.495px）| **已寫入 2026-07-10**：`vision_grasp_pipeline.py` FX_ARM…、`vision_grasp_bridge.py` FX…、`arm_cam.py` FX… |
+| ① | 手臂相機 fx/fy/cx/cy | ✅ 919.08 / 919.41 / 212.23 / 168.42（RMS 0.495px）| **2026-08-02 起單一來源**：`integration/arm_cam_geometry.py`（`FX/FY/CX/CY/DIST`）。bridge / pipeline / arm_cam.py 都改成引用，不再各留一份 |
 | ① | 桅相機 fx/fy/cx/cy | ✅ 544.16 / 544.82 / 316.98 / 244.79（RMS 0.374px）| **已寫入 2026-07-10**：`vision_grasp_pipeline.py` FX_REAR… |
-| ② | θ_ARM / H_ARM | ✅ 36.40° / 0.332 m（回推誤差 ≤0.43cm）| **已寫入 2026-07-10**：三檔同步 |
+| ② | θ_ARM / H_ARM **@nav home** | ✅ 36.40° / 0.332 m（回推誤差 ≤0.43cm）| `arm_cam_geometry.V17_NAV_HOME`。**只在 nav home 有效**，v21 不用這組 |
+| ② | θ / H / cam_x / cam_y / sign_y **@C3** | ⚠ 目前是 FK 預測值 89.740° / 0.2148 m / +0.2762 / −0.0056 / +1，**未實測** | `arm_cam_geometry.V21_C3_GRASP_HOME`，量到後把兩個 `_measured` 旗標改 True；或跑 bridge 時帶 `--cam-theta/--cam-h/--cam-x/--cam-y/--sign-y` 不動程式碼 |
 | ② | θ_REAR / H_REAR | ✅ 16.35° / 0.503 m（回推誤差 ≤0.98cm，有效 0.7–1.5m）| **已寫入 2026-07-10**：`vision_grasp_pipeline.py` |
-| ③ | CAM_TO_BASE_X/Y、SIGN_Y | ✅ +0.1639 m / +0.0331 m / −1（套用後 4 點最大誤差 X 0.39cm、Y 0.33cm） | **已寫入並實機複驗 2026-07-16**：`vision_grasp_pipeline.py` 同名常數；bridge `--cam-x/--cam-y/--sign-y` 預設值 |
-| ③ | object Z | `z_offset=0.0488m` 已撤銷；瓶蓋首測 `OBJ_Z_FIXED=0.02m` | TCP 是 `arm_link5` 慣性中心而非指間中心；Phase 4 用 `--obj-z`／`--class-z` 實抓微調 |
+| ③ | CAM_TO_BASE_X/Y、SIGN_Y | C3 已併入②一起解（`solve_arm_cam_extrinsics.py`）| 不再是獨立項目。前視姿勢（nav home）仍可用 `solve_cam_to_base.py` |
+| ③ | z_offset | ＿＿ | 擺物時 `--obj-z = 實際離地高 − z_offset`；`--class-z` 各類別高度 |
 | ④ | lidar dir / yaw offset / port | ＿＿ | `nav_rl.NavRLConfig` 預設值或 CLI |
 | ④ | lidar forward offset（LiDAR 中心↔車中心，前正） | ＿＿ | `nav_rl.NavRLConfig.lidar_forward_offset_m` |
 | ④ | wz_sign | ＿＿ | CLI `--wz-sign`（定案後可改 pipeline 預設） |
 | ① | 畸變決策（忽略 / undistort） | ✅ 手臂 9px 不可忽略；後鏡頭 1.79px 忽略 | **已寫入 2026-07-10**：三檔的手臂鏈路都在距離模型前對 bbox 底邊中點做 `undistort_pixel()`（純數學版，與 cv2.undistortPoints 同法）；後鏡頭維持 raw |
 
-> θ_ARM 是以「去畸變後」像素解出的（Phase 2 流程如此），所以 runtime 一定要先
-> undistort 再進距離模型——三個檔案已內建，selftest 用 Phase 2 實測點驗證誤差 ≤0.33cm。
+> θ 是以「去畸變後」像素解出的（Phase 2 流程如此），所以 runtime 一定要先 undistort
+> 再進距離模型——`arm_cam_geometry.ground_hit_from_raw()` 已內建，pipeline selftest 用
+> Phase 2 實測點（明確綁 nav home）驗證誤差 ≤0.33cm。
+>
+> **θ 的量測慣例**：一律從 base **+X 方向**量俯角。C3 的光軸已越過垂直（URDF 報
+> 「俯角 86.7°、水平分量朝後」），以 +X 量同一條射線是 **93.34°**——直接拿 86.7 餵進
+> 距離模型會把整個工作區左右鏡射。`verify_camera_grasp_frame.py` 現在會直接印正確值
+> 並在越過垂直時警告。
 
 **改完常數一律重跑該 Phase 的驗證一次**，確認填對地方。

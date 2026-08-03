@@ -35,7 +35,18 @@ build/
 *.onnx
 *.ckpt
 
-# Exclude zip by default except trained models
+# Exclude torch weights by default except the YOLO models the project ships.
+# Each is ~5 MB, well under GitHub's limits -- no LFS needed.
+# (*.pt.bak rollback copies are not matched by *.pt, so they track as-is.)
+!detection/models/*.pt
+!yolo/**/*.pt
+
+# Exclude zip by default except trained models.
+# This rule fails SILENTLY: git status never mentions a model you forgot to
+# except, so a "committed" model pair can be missing on the next clone. After
+# adding a model, confirm the .zip really appears in `git show --stat`.
 *.zip
 !grasp/trained_6d_models_v17/*.zip
+!grasp/trained_6d_models_v18/*.zip
+!grasp/v21/models/*.zip
 !integration/nav_best_model/*.zip

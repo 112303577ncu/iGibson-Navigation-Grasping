@@ -6,34 +6,65 @@ bounding box into an object position + width in the arm/grasp coordinate
 frame, and pushes it to the grasp controller over TCP.
 
 Pipeline:
-    arm camera ──YOLO──▶ bbox ──geometry──▶ {x, y, z, w}(m) ──TCP 5555──▶
-        x3plus_real_grasp.py  (run with --real --socket [--width-grip])
+    arm camera ──YOLO──▶ bbox ──geometry──▶ {x, y, z, w, height}(m) ──TCP 5555──▶
+        x3plus_real_grasp.py  (run with --real --socket ...)
 
-The grasp side (grasp/x3plus_real_grasp.py, class DetectionReceiver) accepts
-one JSON object per TCP connection and reads until EOF, so this bridge opens a
-fresh connection for every message and closes it right after sending.
+All geometry — intrinsics, distortion, per-pose extrinsics, the ground model —
+lives in integration/arm_cam_geometry.py. This file no longer keeps its own copy
+of H/theta; that duplication is exactly why the 2026-08-01 arm-pose guard landed
+in vision_grasp_pipeline.py and not here.
 
-Navigation home uses the measured fixed-pitch ground model.  Grasp home uses
-an independently calibrated planar homography from undistorted bbox bottom
-pixels directly to base_link XY; the navigation-home extrinsics are never
-reused after the arm moves.
+Works against BOTH grasp stacks — the payload is a superset:
 
-Calibration status:
-    * All built-in H/theta/cam-offset constants are NAV-HOME ONLY.
-    * GRASP-HOME has no guessed defaults and requires --homography at runtime.
-    * Runtime rejects extrapolation: the calibration pixel/base hull must cover
-      the target bottom-center AND both bbox bottom corners (its full width).
-    * FIXED_THETA / camera intrinsics — DONE 2026-07-08 (Phase 1/2), constants
-      below; bbox bottom-center is undistorted before the ground model.
-    * --cam-x / --cam-y / --sign-y — DONE 2026-07-16 (Phase 3)
-    * --obj-z — Phase 4 per-class grasp tuning; bottle-cap starts at 0.02m
+    v21 (current, grasp/v21/x3plus_real_grasp.py)
+        python3 grasp/v21/x3plus_real_grasp.py --real --socket \
+          --latch-obj --i-confirm-external-frame --unlock-candidate-real \
+          --model models/candidate_v21_seed816_ckpt550000.zip \
+          --vecnorm models/candidate_v21_seed816_ckpt550000_vec.pkl \
+          --contract obs_28_incremental
+        reads "height" (full z extent), ignores "w".
+
+    v17 (fallback, grasp/x3plus_real_grasp.py)
+        python3 grasp/x3plus_real_grasp.py --real --socket \
+          --width-grip --latch-obj --i-confirm-external-frame
+        reads "w" (width), ignores "height".
+
+── The pose problem, and how the two processes solve it together ──────────────
+
+The arm camera is bolted to arm_link4 and moves with the arm, so this bridge's
+extrinsics are valid at exactly ONE arm pose. This process cannot read the
+servos (the grasp process owns the serial port), and the grasp process has no
+idea how the coordinates it receives were computed. Neither can catch a
+mismatch alone.
+
+So every payload carries a "cam_pose" stamp naming the arm pose its geometry
+assumes, and the grasp side compares that stamp against its own encoders at
+latch time — the one moment both facts exist in the same place. A disagreement
+aborts instead of grasping confidently in the wrong spot.
+
+Both sides also require --latch-obj under --real: latching freezes one detection
+taken at the home pose for the whole episode. Detections this bridge stops
+sending go stale on the grasp side after
+DeployConfig.detection_stale_timeout_sec and are withdrawn rather than served as
+current.
+
+The grasp side (class DetectionReceiver) accepts one JSON object per TCP
+connection and reads until EOF, so this bridge opens a fresh connection for
+every message and closes it right after sending.
+
+Calibration status: see arm_cam_geometry.POSES. The v21 C3 grasp home extrinsics
+are currently a URDF-based PREDICTION, and this bridge refuses to send until you
+either measure them (CALIBRATION_PLAN.md Phase 1/2 + 3) or say out loud that you
+accept the prediction (--i-accept-predicted-extrinsics).
 
 Examples:
-    # collect one median grasp-home calibration pixel (never opens TCP)
-    python vision_grasp_bridge.py --stream 0 --calibration-only --once --show
+    # print what the geometry would send, without sending anything (calibration)
+    python vision_grasp_bridge.py --dry-run --show --stream 0
 
-    # send one verified grasp-home detection
-    python vision_grasp_bridge.py --stream 0 --homography grasp_home.json --once
+    # continuous, arm-camera HTTP stream, measured extrinsics supplied
+    python vision_grasp_bridge.py --host 192.168.1.11 \
+        --cam-theta 89.6 --cam-h 0.2151 --cam-x 0.2570 --cam-y -0.0030 \
+        --class-height sugarbox=0.065
 """
 from __future__ import annotations
 
@@ -41,29 +72,21 @@ import argparse
 import json
 import math
 import socket
-import statistics
+import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-import cv2
-from ultralytics import YOLO
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import arm_cam_geometry as acg  # noqa: E402
+
+# cv2 and ultralytics are imported inside main(), not here, so the pure functions
+# below (geometry, payload construction, the z/height reconciliation) can be
+# imported and tested on a machine with neither installed. The same reason
+# vision_grasp_pipeline.py defers its heavy imports.
 
 # ── Default model (relative to this script: integration/ → detection/models/) ──
 DEFAULT_MODEL = str(Path(__file__).resolve().parent.parent / "detection" / "models" / "best.pt")
-
-# ── Arm-camera intrinsics / mounting (measured 2026-07-08, Phase 1/2;
-#    arm_cam_intrinsics.json RMS 0.495px; valid at nav home — the camera rides
-#    on arm_link4). Distortion is ~9px at the bbox bottom-center and THETA was
-#    solved on undistorted pixels, so (cx_box, y2) go through undistort_pixel()
-#    before the ground model. ──
-CX_CAM = 212.23  # principal point x (px)
-CY = 168.42      # principal point y (px)
-FX = 919.08      # focal length x (px)
-FY = 919.41      # focal length y (px)
-DIST = (-0.3764, -0.0748, -0.0015, 0.0035, 0.4793)  # k1 k2 p1 p2 k3
-H = 0.332        # camera height above ground (m)
-FIXED_THETA = 36.40  # camera pitch angle (deg), Phase 2 median (std 0.18)
 
 DEFAULT_STREAM = "http://127.0.0.1:8080/stream?topic=/arm_cam/image_raw"
 IMG_SIZE = 640
@@ -201,21 +224,47 @@ def apply_grasp_home_mapping(args, u: float, v: float):
         )
     return base_xy
 
+# An object wider than the jaw can open is physically ungraspable. The gripper's
+# measured pad separation is 72.3 mm fully open (S6=30 deg, URDF FK on the finger
+# pad links), so anything past 60 mm leaves no approach clearance.
+MAX_GRASP_WIDTH_M = 0.06
+
+# The region the v21 policy was actually evaluated in: x(0.20, 0.33), y(+-0.10),
+# 97/100 on a held-out seed. The arm camera at C3 sees ground from about x=0.185
+# to x=0.318, so it OVERHANGS this at both ends -- a detection can be perfectly
+# healthy and still name a spot the policy has never been measured on. Dropping
+# those here means the operator sees it while looking at the camera window,
+# rather than after the arm has driven to its home pose and refused.
+# Kept in sync with DeployConfig.trained_x_range / trained_y_range.
+TRAINED_X_RANGE = (0.20, 0.33)
+TRAINED_Y_RANGE = (-0.10, 0.10)
+
+# --class-z and --class-height describe the same object. For a symmetric object
+# resting on the floor, height = 2 * centroid_z. Declaring both with a bigger
+# disagreement than this is a contradiction the operator has to resolve, not
+# something to average over.
+Z_HEIGHT_CONSISTENCY_TOL_M = 0.005
+
 
 def parse_class_z(values: List[str], fallback_z: float) -> Dict[str, float]:
-    """Parse repeated --class-z entries like bottle-cap=0.012."""
+    """Parse repeated --class-z entries like sugarbox=0.0325.
+
+    The value is the object's CENTROID z in the grasp frame, not its height. The
+    two are only related by height = 2*z for a symmetric object resting on the
+    floor; see --class-height for stating the height directly.
+    """
     out: Dict[str, float] = {}
     for raw in values:
         if "=" not in raw:
-            raise ValueError(f"--class-z must be NAME=HEIGHT_M, got: {raw}")
+            raise ValueError(f"--class-z must be NAME=CENTROID_Z_M, got: {raw}")
         name, value = raw.split("=", 1)
         name = name.strip()
         if not name:
             raise ValueError(f"--class-z has an empty class name: {raw}")
-        height = float(value)
-        if not math.isfinite(height) or height < 0.0:
-            raise ValueError(f"--class-z height must be finite and non-negative: {raw}")
-        out[name] = height
+        z = float(value)
+        if not math.isfinite(z) or z < 0.0:
+            raise ValueError(f"--class-z value must be finite and non-negative: {raw}")
+        out[name] = z
     fallback_z = float(fallback_z)
     if not math.isfinite(fallback_z) or fallback_z < 0.0:
         raise ValueError(f"--obj-z must be finite and non-negative, got {fallback_z}")
@@ -223,7 +272,70 @@ def parse_class_z(values: List[str], fallback_z: float) -> Dict[str, float]:
     return out
 
 
-def class_name_for_box(model: YOLO, box) -> str:
+def parse_class_height(values: List[str]) -> Dict[str, float]:
+    """Parse repeated --class-height entries like sugarbox=0.065.
+
+    The value is the object's FULL Z EXTENT (top minus floor) in metres — what the
+    v21 grasp side calls ``height`` and uses to compute wrist_z_offset. It cannot be
+    derived from the bbox: the arm camera looks down at an angle, so bbox pixel
+    height mixes the object's height with its depth. Stating it per class is the
+    honest option; omitting it lets the grasp side apply its own documented
+    symmetric-object estimate instead of trusting a made-up number.
+    """
+    out: Dict[str, float] = {}
+    for raw in values:
+        if "=" not in raw:
+            raise ValueError(f"--class-height must be NAME=HEIGHT_M, got: {raw}")
+        name, value = raw.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise ValueError(f"--class-height has an empty class name: {raw}")
+        height = float(value)
+        if not math.isfinite(height) or height <= 0.0:
+            raise ValueError(f"--class-height must be finite and positive: {raw}")
+        out[name] = height
+    return out
+
+
+def reconcile_z_and_height(class_z: Dict[str, float],
+                           class_height: Dict[str, float]) -> Dict[str, float]:
+    """Make the declared centroid-z agree with the declared height.
+
+    Two failure modes this closes, both silent before:
+
+    * A class with --class-height but no --class-z used to fall back to --obj-z
+      (default 0.02). Declaring sugarbox=0.065 then shipped z=0.02 with
+      height=0.065, and the grasp side computed wrist_z_offset off a centroid
+      1.25 cm below where the declared height puts it. Here the height decides:
+      z = height/2, the same resting-symmetric-object assumption the grasp side
+      documents for the reverse direction.
+    * Declaring both, inconsistently, is a contradiction — one of the two numbers
+      is wrong and no averaging fixes that. Raise and make the operator pick.
+
+    An explicit --class-z that AGREES with the height is kept as given, so an
+    asymmetric object can still be described exactly.
+    """
+    out = dict(class_z)
+    for name, height in class_height.items():
+        implied = height / 2.0
+        if name in class_z:
+            if abs(class_z[name] - implied) > Z_HEIGHT_CONSISTENCY_TOL_M:
+                raise ValueError(
+                    f"--class-z {name}={class_z[name]} contradicts --class-height "
+                    f"{name}={height}: a symmetric object resting on the floor has "
+                    f"centroid_z = height/2 = {implied:.4f} m, which is "
+                    f"{abs(class_z[name] - implied)*100:.2f} cm away. Fix whichever "
+                    "of the two is wrong; the grasp side uses BOTH (height for "
+                    "wrist_z_offset, z as the target centroid) and cannot reconcile "
+                    "them for you.")
+        else:
+            out[name] = implied
+            print(f"[bridge] {name}: --class-height {height} m implies centroid "
+                  f"z={implied:.4f} m (symmetric, resting on the floor)")
+    return out
+
+
+def class_name_for_box(model, box) -> str:
     cls_id = int(box.cls[0].item())
     names = model.names
     if isinstance(names, dict):
@@ -233,76 +345,9 @@ def class_name_for_box(model: YOLO, box) -> str:
     return str(cls_id)
 
 
-def undistort_pixel(u: float, v: float, iters: int = 8):
-    """Undistort one arm-cam pixel (plumb-bob), same iteration as
-    cv2.undistortPoints(..., P=K). Mirror of vision_grasp_pipeline.py."""
-    k1, k2, p1, p2, k3 = DIST
-    xd = (u - CX_CAM) / FX
-    yd = (v - CY) / FY
-    x, y = xd, yd
-    for _ in range(iters):
-        r2 = x * x + y * y
-        radial = 1.0 + r2 * (k1 + r2 * (k2 + r2 * k3))
-        dx = 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x)
-        dy = p1 * (r2 + 2.0 * y * y) + 2.0 * p2 * x * y
-        x = (xd - dx) / radial
-        y = (yd - dy) / radial
-    return CX_CAM + x * FX, CY + y * FY
-
-
-def estimate_distance(y_max: float, camera_height: float = H,
-                      camera_theta_deg: float = FIXED_THETA) -> float:
-    """Ground distance from the arm camera to the object's lowest pixel (m).
-
-    Same pin-hole + fixed-pitch model as detection/arm_cam.py. y_max must be
-    an UNDISTORTED pixel row (see undistort_pixel). Returns -1.0 when the
-    geometry is degenerate (object above the horizon).
-    """
-    theta = math.radians(camera_theta_deg)
-    alpha = math.atan((y_max - CY) / FY)
-    total_angle = theta + alpha
-    if total_angle <= 0 or total_angle >= math.pi / 2:
-        return -1.0
-    return camera_height / math.tan(total_angle)
-
-
-def optical_depth_from_ground_distance(
-        dist_m: float, camera_height: float = H,
-        camera_theta_deg: float = FIXED_THETA) -> float:
-    """Return pinhole Z-depth for a ground point seen by the pitched camera.
-
-    ``dist_m`` is horizontal ground distance. Horizontal pixel spans project
-    against ``Z_cam = D*cos(theta) + H*sin(theta)``, not against D itself.
-    """
-    if dist_m <= 0.0:
-        return 0.0
-    theta = math.radians(camera_theta_deg)
-    return dist_m * math.cos(theta) + camera_height * math.sin(theta)
-
-
-def estimate_lateral_offset(cx_pixel: float, dist_m: float,
-                            camera_height: float = H,
-                            camera_theta_deg: float = FIXED_THETA) -> float:
-    """Right-positive ground-plane lateral offset in metres."""
-    depth_m = optical_depth_from_ground_distance(
-        dist_m, camera_height, camera_theta_deg
-    )
-    return depth_m * (cx_pixel - CX_CAM) / FX
-
-
-def estimate_metric_width(width_px: float, dist_m: float,
-                          camera_height: float = H,
-                          camera_theta_deg: float = FIXED_THETA) -> float:
-    """Convert an image-plane pixel width using the same optical depth."""
-    if width_px <= 0.0:
-        return 0.0
-    return width_px * optical_depth_from_ground_distance(
-        dist_m, camera_height, camera_theta_deg
-    ) / FX
-
-
-def open_capture(stream: str) -> cv2.VideoCapture:
+def open_capture(stream: str):
     """Open a cv2 capture. A bare integer string is treated as a webcam index."""
+    import cv2
     if stream.isdigit():
         return cv2.VideoCapture(int(stream))
     return cv2.VideoCapture(stream)
@@ -394,27 +439,82 @@ def pick_best_box(result):
     return boxes[best_i]
 
 
-def median_calibration_record(records: List[dict]) -> dict:
-    """Collapse one stable detection batch to median bbox ground pixels."""
-    if not records:
-        raise ValueError("calibration record batch is empty")
+def build_payload(box_xyxy: Tuple[float, float, float, float],
+                  class_name: str,
+                  pose: acg.ArmCamPose,
+                  class_z: Dict[str, float],
+                  class_height: Dict[str, float],
+                  max_width_m: float = MAX_GRASP_WIDTH_M) -> Tuple[Optional[dict], str]:
+    """Turn one bbox into a stamped detection payload.
 
-    def med(key: str) -> float:
-        return round(float(statistics.median(row[key] for row in records)), 3)
+    Returns (payload, note). payload is None when the detection is unusable, and
+    note always explains what happened — a dropped detection with no reason
+    printed is how "the bridge sees nothing" turns into a half-hour of staring at
+    a working camera.
+    """
+    x1, y1, x2, y2 = box_xyxy
+    clipped = acg.bbox_touches_border(x1, y1, x2, y2)
+    if clipped:
+        return None, clipped
+    cx_box = (x1 + x2) / 2.0
+    box_w_px = max(1.0, x2 - x1)
 
-    return {
-        "camera_pose": "grasp-home",
-        "samples": len(records),
-        "class": records[0]["class"],
-        "u": med("u"),
-        "v": med("v"),
-        "left_u": med("left_u"),
-        "left_v": med("left_v"),
-        "right_u": med("right_u"),
-        "right_v": med("right_v"),
-        "raw_u": med("raw_u"),
-        "raw_v": med("raw_v"),
+    obj_z = class_z.get(class_name, class_z["_fallback"])
+    obj_h = class_height.get(class_name)
+
+    # The declared height is not just cargo for the grasp side: it is what lets us
+    # locate the object properly. With it, the ray through the SILHOUETTE CENTRE
+    # meets the object's half-height plane at its centre (~4 mm across the C3
+    # workspace). Without it, all that is left is the bbox bottom-centre against
+    # the floor, which at this near-vertical pose is off by -11 to -45 mm because
+    # the lowest pixel is often the object's TOP face. See
+    # arm_cam_geometry.silhouette_centre_target.
+    try:
+        if obj_h is not None:
+            hit = acg.silhouette_centre_target(x1, y1, x2, y2, pose, obj_h)
+            method = "centroid"
+        else:
+            hit = acg.ground_hit_from_raw(cx_box, y2, pose)
+            method = "bottom-edge"
+    except acg.GroundGeometryError as e:
+        return None, f"unusable geometry: {e}"
+
+    if obj_h is not None:
+        width_m = acg.silhouette_width_to_object_width(box_w_px, hit, pose, obj_h)
+    else:
+        width_m = hit.metric_size(box_w_px)
+
+    values = (hit.obj_x, hit.obj_y, obj_z, width_m)
+    if not all(math.isfinite(v) for v in values) or width_m < 0.0:
+        return None, f"rejected non-finite geometry {values}"
+    if width_m > max_width_m:
+        return None, (f"object is {width_m*100:.1f} cm wide, past the "
+                      f"{max_width_m*100:.1f} cm the jaw can open — ungraspable")
+    if not TRAINED_X_RANGE[0] <= hit.obj_x <= TRAINED_X_RANGE[1]:
+        return None, (f"x={hit.obj_x:.3f} is outside the policy's evaluated range "
+                      f"{TRAINED_X_RANGE[0]}-{TRAINED_X_RANGE[1]} m — the camera can "
+                      f"see further than the arm was trained to reach; move the "
+                      f"object or the robot")
+    if not TRAINED_Y_RANGE[0] <= hit.obj_y <= TRAINED_Y_RANGE[1]:
+        return None, (f"y={hit.obj_y:+.3f} is outside the policy's evaluated range "
+                      f"{TRAINED_Y_RANGE[0]}..{TRAINED_Y_RANGE[1]} m")
+
+    # Superset payload: v17 reads "w" and ignores "height"; v21 reads "height"
+    # and ignores "w". One bridge serves both, and neither side has to guess
+    # which one is listening.
+    payload = {
+        "x": round(hit.obj_x, 4),
+        "y": round(hit.obj_y, 4),
+        "z": round(obj_z, 4),
+        "w": round(width_m, 4),
+        "class": class_name,
     }
+    if obj_h is not None:
+        payload["height"] = round(obj_h, 4)
+    acg.stamp_payload(payload, pose)
+    note = (f"[{method}] d={hit.ground_dist_m:+.4f} Z={hit.depth_m:.4f} "
+            f"total={hit.total_angle_deg:.1f}deg w={width_m*100:.1f}cm")
+    return payload, note
 
 
 def parse_args():
@@ -429,37 +529,63 @@ def parse_args():
     p.add_argument("--once", action="store_true",
                    help="send/output the first valid detection batch then exit")
     p.add_argument("--show", action="store_true", help="show annotated camera window")
-    p.add_argument("--camera-pose", choices=("grasp-home", "nav-home"),
-                   default="grasp-home",
-                   help="arm pose used for detection (default grasp-home)")
-    p.add_argument("--homography", default=None,
-                   help="verified grasp-home pixel-to-base calibration JSON")
-    p.add_argument("--calibration-only", action="store_true",
-                   help="print undistorted bbox pixels only; never connect to TCP")
-    p.add_argument("--calibration-samples", type=int, default=10,
-                   help="valid frames per median calibration output (default 10)")
-    p.add_argument("--camera-height", type=float, default=None,
-                   help="nav-home lens height above ground override (m)")
-    p.add_argument("--camera-theta", type=float, default=None,
-                   help="nav-home downward camera pitch override (deg)")
-    # ── coordinate-frame calibration ──
+    p.add_argument("--dry-run", action="store_true",
+                   help="compute and print detections without sending. Use this to "
+                        "read off numbers during Phase 3 calibration.")
+    # ── which arm pose the camera geometry belongs to ──
+    p.add_argument("--pose", default=acg.DEFAULT_POSE.name, choices=sorted(acg.POSES),
+                   help=f"arm-camera extrinsic set (default {acg.DEFAULT_POSE.name})")
+    p.add_argument("--cam-theta", type=float, default=None,
+                   help="measured optical-axis depression (deg), towards base +X. "
+                        "At the C3 pose this is near 90, NOT near 36.")
+    p.add_argument("--cam-h", type=float, default=None,
+                   help="measured camera height above the floor (m)")
     p.add_argument("--cam-x", type=float, default=None,
-                   help="forward offset added to camera distance → grasp X (m)")
+                   help="measured camera ground projection in the base frame, +X forward (m)")
     p.add_argument("--cam-y", type=float, default=None,
-                   help="lateral offset added to grasp Y (m)")
-    p.add_argument("--obj-z", type=float, default=0.02,
-                   help="object height in the grasp frame (m, default 0.02)")
-    p.add_argument("--class-z", action="append", default=[],
-                   help="YOLO class height override, NAME=HEIGHT_M. Repeatable; "
-                        "unlisted classes use --obj-z.")
-    p.add_argument("--sign-x", type=float, default=None, choices=(-1.0, 1.0),
-                   help="nav-home camera-forward to base +X sign")
+                   help="measured camera ground projection in the base frame, +Y left (m)")
     p.add_argument("--sign-y", type=float, default=None, choices=(-1.0, 1.0),
-                   help="sign mapping camera lateral offset → grasp +Y (+1 or -1)")
+                   help="sign mapping image-right → grasp +Y (+1 or -1)")
+    p.add_argument("--i-accept-predicted-extrinsics", action="store_true",
+                   help="send detections even though the selected pose's extrinsics "
+                        "are a URDF prediction rather than a hardware measurement. "
+                        "The arm will move to whatever these numbers say.")
+    # ── object description ──
+    p.add_argument("--obj-z", type=float, default=0.02,
+                   help="object CENTROID z in the grasp frame (m, default 0.02), for "
+                        "classes with neither --class-z nor --class-height.")
+    p.add_argument("--class-z", action="append", default=[],
+                   help="YOLO class centroid-z override, NAME=CENTROID_Z_M. Repeatable. "
+                        "Usually unnecessary: a class with --class-height gets "
+                        "centroid_z = height/2 automatically.")
+    p.add_argument("--class-height", action="append", default=[],
+                   help="YOLO class object HEIGHT (full z extent), NAME=HEIGHT_M. "
+                        "Repeatable. Read by the v21 grasp side to compute "
+                        "wrist_z_offset; ignored by v17. Cannot be measured from the "
+                        "bbox (the camera looks down at an angle), so state it per "
+                        "class. Unlisted classes send no height and the grasp side "
+                        "applies its own symmetric-object estimate.")
+    p.add_argument("--max-width", type=float, default=MAX_GRASP_WIDTH_M,
+                   help=f"refuse to send objects wider than this (m, default "
+                        f"{MAX_GRASP_WIDTH_M})")
     return p.parse_args()
 
 
+def resolve_pose(args) -> acg.ArmCamPose:
+    """Select the extrinsic set and apply any measured overrides."""
+    pose = acg.get_pose(args.pose)
+    pose = pose.replace(theta_deg=args.cam_theta, h_m=args.cam_h,
+                        cam_x_m=args.cam_x, cam_y_m=args.cam_y,
+                        sign_y=args.sign_y)
+    print(f"[bridge] arm-camera geometry → {pose.describe()}")
+    print(f"[bridge]   source: {pose.source}")
+    return pose
+
+
 def main():
+    import cv2
+    from ultralytics import YOLO
+
     args = parse_args()
     resolve_camera_geometry(args)
     if not 0.0 <= args.conf <= 1.0:
@@ -468,47 +594,66 @@ def main():
         raise SystemExit("--imgsz must be > 0")
     if not math.isfinite(args.rate) or args.rate < 0.0:
         raise SystemExit("--rate must be finite and >= 0")
-    if args.calibration_samples <= 0:
-        raise SystemExit("--calibration-samples must be > 0")
+    if not math.isfinite(args.max_width) or args.max_width <= 0.0:
+        raise SystemExit("--max-width must be finite and positive")
+
+    pose = resolve_pose(args)
+    # Predicted extrinsics are a fine starting point for --dry-run, but they must
+    # not reach a real arm without the operator saying so.
+    if not args.dry_run:
+        pose.require_measured(real=True,
+                              acknowledged=args.i_accept_predicted_extrinsics)
+
+    if args.once:
+        print("[bridge] NOTE: --once sends a single detection and exits. The grasp "
+              "side latches only AFTER it has driven the arm to the home pose, "
+              "which takes several seconds, and treats anything older than "
+              "detection_stale_timeout_sec as no detection at all. Use --once for "
+              "sanity checks; leave it off for a real grasp run.")
 
     print(f"[bridge] loading YOLO model: {args.model}")
     model = YOLO(args.model)
     print(f"[bridge] classes: {model.names}")
-    class_z = parse_class_z(args.class_z, args.obj_z)
+    class_height = parse_class_height(args.class_height)
+    class_z = reconcile_z_and_height(parse_class_z(args.class_z, args.obj_z),
+                                     class_height)
     if args.class_z:
-        print(f"[bridge] class z overrides: {class_z}")
+        print(f"[bridge] class centroid-z: {class_z}")
+    if class_height:
+        print(f"[bridge] class heights (for v21 wrist_z_offset): {class_height}")
+    else:
+        print("[bridge] no --class-height given: payloads omit 'height'. v17 does not "
+              "use it; v21 will fall back to its symmetric-object estimate.")
+        print("[bridge] WARN: without a declared height the object can only be located "
+              "from the bbox bottom edge against the floor. At the C3 pose that is "
+              "wrong by -11 to -45 mm, because the lowest pixel of a near-vertical "
+              "view is often the object's TOP face. Declare --class-height.")
+    known = set(model.names.values() if isinstance(model.names, dict) else model.names)
+    for flag, table in (("--class-z", class_z), ("--class-height", class_height)):
+        # A typo'd class name is silent otherwise: the lookup misses, the fallback is
+        # used, and the run looks normal while grasping at the wrong height.
+        for name in table:
+            if name != "_fallback" and name not in known:
+                print(f"[bridge] WARN: {flag} names {name!r}, which this model does not "
+                      f"predict. Known classes: {sorted(known)}")
 
     print(f"[bridge] opening camera: {args.stream}")
-    cap, pending_frame, camera_error = open_capture_checked(args.stream)
-    if cap is None:
-        raise SystemExit(
-            f"[bridge] ERROR: camera {args.stream!r} failed after "
-            f"{CAMERA_OPEN_ATTEMPTS} attempts: {camera_error}. "
-            "Check that the device exists and no other process owns it "
-            "(for USB index 0: fuser -v /dev/video0)."
-        )
-    print(f"[bridge] camera ready: {args.stream} "
-          f"frame_shape={tuple(pending_frame.shape)}")
+    cap = open_capture(args.stream)
+    if not cap.isOpened():
+        print("[bridge] ERROR: cannot open camera stream.")
+        return
 
-    if args.calibration_only:
-        print(f"[bridge] calibration-only: pose={args.camera_pose}, median of "
-              f"{args.calibration_samples} valid frames; TCP disabled")
-    elif args.camera_pose == "grasp-home":
-        fit = args.homography_document["fit"]
-        print(f"[bridge] grasp-home homography: points={fit['point_count']} "
-              f"max_error={fit['max_error_m'] * 100:.2f}cm")
+    if args.dry_run:
+        print("[bridge] DRY RUN: computing detections, sending nothing.")
     else:
-        print(f"[bridge] nav-home model: H={args.camera_height:.4f}m "
-              f"theta={args.camera_theta:.3f}deg signs="
-              f"({args.sign_x:+.0f},{args.sign_y:+.0f})")
-    if not args.calibration_only:
         print(f"[bridge] streaming detections → {args.host}:{args.port} "
               f"(rate={args.rate}s, conf={args.conf})"
               f"{' [--once]' if args.once else ''}")
 
     last_send = 0.0
-    consecutive_read_failures = 0
-    calibration_records: List[dict] = []
+    last_note = ""
+    infer_ema = None
+    checked_frame_size = False
     try:
         while True:
             if pending_frame is not None:
@@ -541,7 +686,19 @@ def main():
                 continue
             consecutive_read_failures = 0
 
+            if not checked_frame_size:
+                checked_frame_size = True
+                problem = acg.frame_size_mismatch(frame.shape[1], frame.shape[0])
+                if problem:
+                    print(f"[bridge] FATAL: {problem}")
+                    return
+                print(f"[bridge] frame {frame.shape[1]}x{frame.shape[0]} matches the "
+                      f"calibrated size")
+
+            t_infer = time.monotonic()
             result = model.predict(source=frame, conf=args.conf, imgsz=args.imgsz, verbose=False)[0]
+            dt_infer = time.monotonic() - t_infer
+            infer_ema = dt_infer if infer_ema is None else 0.9 * infer_ema + 0.1 * dt_infer
             annotated = result.plot() if args.show else None
 
             box = pick_best_box(result)
@@ -549,102 +706,41 @@ def main():
             if box is not None:
                 class_name = class_name_for_box(model, box)
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
-                cx_box = (x1 + x2) / 2.0
-                box_w_px = max(1.0, x2 - x1)
+                payload, note = build_payload((x1, y1, x2, y2), class_name, pose,
+                                              class_z, class_height, args.max_width)
+                if payload is None and note != last_note:
+                    print(f"[bridge] dropped {class_name}: {note}")
+                    last_note = note
 
-                cx_u, y2_u = undistort_pixel(cx_box, y2)
-                left_u, left_v = undistort_pixel(x1, y2)
-                right_u, right_v = undistort_pixel(x2, y2)
-
-                if args.calibration_only:
-                    if (calibration_records
-                            and calibration_records[0]["class"] != class_name):
-                        print("[bridge][calibration] class changed; resetting batch")
-                        calibration_records.clear()
-                    calibration_records.append({
-                        "class": class_name,
-                        "u": cx_u,
-                        "v": y2_u,
-                        "left_u": left_u,
-                        "left_v": left_v,
-                        "right_u": right_u,
-                        "right_v": right_v,
-                        "raw_u": cx_box,
-                        "raw_v": y2,
-                    })
-                    if len(calibration_records) >= args.calibration_samples:
-                        record = median_calibration_record(calibration_records)
-                        print("[bridge][calibration] "
-                              + json.dumps(record, sort_keys=True))
-                        calibration_records.clear()
-                        if args.once:
-                            break
-                else:
-                    try:
-                        if args.camera_pose == "grasp-home":
-                            obj_x, obj_y = apply_grasp_home_mapping(args, cx_u, y2_u)
-                            left_xy = apply_grasp_home_mapping(args, left_u, left_v)
-                            right_xy = apply_grasp_home_mapping(args, right_u, right_v)
-                            width_m = math.hypot(
-                                right_xy[0] - left_xy[0],
-                                right_xy[1] - left_xy[1],
-                            )
-                        else:
-                            arm_dist = estimate_distance(
-                                y2_u, args.camera_height, args.camera_theta
-                            )
-                            if arm_dist <= 0.0:
-                                raise ValueError("ground ray does not intersect in front of camera")
-                            offset_x = estimate_lateral_offset(
-                                cx_u, arm_dist, args.camera_height, args.camera_theta
-                            )
-                            width_m = estimate_metric_width(
-                                box_w_px, arm_dist,
-                                args.camera_height, args.camera_theta,
-                            )
-                            obj_x = args.cam_x + args.sign_x * arm_dist
-                            obj_y = args.cam_y + args.sign_y * offset_x
-                    except ValueError as exc:
-                        print(f"[bridge] WARN: rejected detection: {exc}")
-                    else:
-                        obj_z = class_z.get(class_name, class_z["_fallback"])
-                        values = (obj_x, obj_y, obj_z, width_m)
-                        if not all(math.isfinite(v) for v in values) or width_m < 0.0:
-                            print(f"[bridge] WARN: rejected invalid geometry {values}")
-                        else:
-                            payload = {
-                                "x": round(obj_x, 4),
-                                "y": round(obj_y, 4),
-                                "z": round(obj_z, 4),
-                                "w": round(width_m, 4),
-                                "class": class_name,
-                                "camera_pose": args.camera_pose,
-                            }
-
-                            if args.show and annotated is not None:
-                                cv2.circle(annotated, (int(cx_box), int(y2)),
-                                           6, (0, 0, 255), -1)
-                                cv2.putText(
-                                    annotated,
-                                    f"{class_name} x={obj_x:.2f} y={obj_y:.2f} "
-                                    f"z={obj_z:.2f} w={width_m:.3f}m",
-                                    (int(x1), max(20, int(y1) - 8)),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                                    (0, 255, 255), 2,
-                                )
+                if args.show and annotated is not None:
+                    cx_box = (x1 + x2) / 2.0
+                    cv2.circle(annotated, (int(cx_box), int(y2)), 6, (0, 0, 255), -1)
+                    label = (f"{class_name} x={payload['x']:.3f} y={payload['y']:.3f} "
+                             f"z={payload['z']:.3f} w={payload['w']*100:.1f}cm"
+                             if payload else f"{class_name} DROPPED")
+                    cv2.putText(annotated, label, (int(x1), max(20, int(y1) - 8)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                                (0, 255, 255) if payload else (0, 0, 255), 2)
 
             now = time.monotonic()
             if payload is not None and (now - last_send) >= args.rate:
-                if send_detection(args.host, args.port, payload):
+                if args.dry_run:
                     last_send = now
-                    print(f"[bridge] sent {payload}")
+                    print(f"[bridge][dry] would send {payload}   {note}")
+                    if args.once:
+                        break
+                elif send_detection(args.host, args.port, payload):
+                    last_send = now
+                    print(f"[bridge] sent {payload}   {note}")
                     if args.once:
                         break
 
             if args.show and annotated is not None:
-                center = int(CX_CAM)
+                center = int(acg.CX)
                 cv2.line(annotated, (center, 0), (center, annotated.shape[0]), (0, 255, 255), 1)
-                cv2.imshow("X3Plus vision → grasp bridge", annotated)
+                cv2.putText(annotated, f"infer {infer_ema*1000:.0f} ms", (8, 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                cv2.imshow("X3Plus vision -> grasp bridge", annotated)
                 if (cv2.waitKey(1) & 0xFF) == ord("q"):
                     break
     except KeyboardInterrupt:
@@ -654,6 +750,12 @@ def main():
             cap.release()
         if args.show:
             cv2.destroyAllWindows()
+        if infer_ema is not None:
+            print(f"[bridge] mean YOLO inference {infer_ema*1000:.0f} ms/frame. "
+                  "The grasp side discards detections older than its "
+                  "detection_stale_timeout_sec (default 1.0 s), so keep "
+                  "inference + --rate comfortably under that or raise it with "
+                  "--stale-timeout on the grasp side.")
 
 
 if __name__ == "__main__":

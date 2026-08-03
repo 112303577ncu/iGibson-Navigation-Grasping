@@ -17,7 +17,10 @@ Typical Jetson usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
+import inspect
+import json
 import math
 import os
 import platform
@@ -31,10 +34,17 @@ from typing import Iterable, List, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parent.parent
 GRASP_DIR = ROOT / "grasp"
+# The pipelines import the grasp module from grasp/v21 (see
+# vision_grasp_pipeline._load_grasp_module), so this verifier checks the v21 pair.
+# Verifying the v17 pair here while modes A and C run v21 would report a healthy
+# deployment for weights nothing loads.
+V21_DIR = GRASP_DIR / "v21"
 PIPELINE = ROOT / "integration" / "vision_grasp_pipeline.py"
 MODEL = ROOT / "detection" / "models" / "best.pt"
-PPO_MODEL = GRASP_DIR / "trained_6d_models_v17" / "ppo_6d_final_ready_for_real_robot.zip"
-VECNORM = GRASP_DIR / "trained_6d_models_v17" / "vecnormalize_6d_final.pkl"
+PPO_MODEL = V21_DIR / "models" / "candidate_v21_seed816_ckpt550000.zip"
+VECNORM = V21_DIR / "models" / "candidate_v21_seed816_ckpt550000_vec.pkl"
+GRASP_SCRIPT = V21_DIR / "x3plus_real_grasp.py"
+MANIFEST = V21_DIR / "manifest.json"
 URDF = GRASP_DIR / "x3plus" / "yahboomcar.urdf"
 
 
@@ -67,6 +77,56 @@ def _module_available(name: str, extra_path: Optional[Path] = None) -> bool:
         return importlib.util.find_spec(name) is not None
     finally:
         sys.path[:] = old_path
+
+
+def _pipeline_targets_v21() -> Check:
+    """The pipelines' grasp module must resolve to grasp/v21, not grasp/.
+
+    Both stacks expose DeployConfig/GraspController with identical shapes, so a
+    stale path does not raise anywhere — it just runs v17's absolute-action policy
+    with v21 expectations. Resolve the path the way the pipeline does and look.
+    """
+    try:
+        sys.path.insert(0, str(ROOT / "integration"))
+        import vision_grasp_pipeline as vgp  # noqa: E402
+        src = inspect.getsource(vgp._load_grasp_module)
+    except Exception as e:
+        return Check("pipeline → grasp/v21", False,
+                     f"could not inspect _load_grasp_module: {e}", fatal_for_real=True)
+    finally:
+        sys.path[:] = [p for p in sys.path if p != str(ROOT / "integration")]
+    ok = '"v21"' in src or "'v21'" in src
+    return Check(
+        "pipeline → grasp/v21", ok,
+        "modes A and C import the v21 grasp module" if ok
+        else "_load_grasp_module does NOT point at grasp/v21 — modes A/C would silently "
+             "run the v17 absolute-action policy",
+        fatal_for_real=True,
+    )
+
+
+def _manifest_matches_weights() -> Check:
+    """The .zip on disk must be the one the manifest signed.
+
+    scp truncates silently often enough that this is worth a hash, not an exists().
+    """
+    if not (MANIFEST.exists() and PPO_MODEL.exists()):
+        return Check("manifest sha256", False, "manifest or weights missing",
+                     fatal_for_real=True)
+    try:
+        man = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        expected = json.dumps(man)  # search the whole document; layout has moved before
+        actual = hashlib.sha256(PPO_MODEL.read_bytes()).hexdigest()
+    except Exception as e:
+        return Check("manifest sha256", False, f"unreadable: {e}", fatal_for_real=True)
+    ok = actual in expected
+    return Check(
+        "manifest sha256", ok,
+        f"{actual[:16]}… matches manifest" if ok
+        else f"{actual[:16]}… NOT in manifest — the weights on disk are not the ones "
+             f"that were validated; re-copy models/",
+        fatal_for_real=True,
+    )
 
 
 def _port_open(host: str, port: int, timeout: float = 0.2) -> bool:
@@ -110,17 +170,21 @@ def preflight(port: str) -> List[Check]:
     checks.extend([
         _path_exists(PIPELINE),
         _path_exists(MODEL),
+        _path_exists(GRASP_SCRIPT),
+        _path_exists(MANIFEST),
         _path_exists(PPO_MODEL),
         _path_exists(VECNORM),
         _path_exists(URDF),
     ])
+    checks.append(_pipeline_targets_v21())
+    checks.append(_manifest_matches_weights())
 
     checks.append(Check(
         "Rosmaster_Lib import",
-        _module_available("Rosmaster_Lib", GRASP_DIR),
-        "available from grasp/ or environment"
-        if _module_available("Rosmaster_Lib", GRASP_DIR)
-        else "not importable; copy Rosmaster_Lib beside grasp/x3plus_real_grasp.py on Jetson",
+        _module_available("Rosmaster_Lib", V21_DIR) or _module_available("Rosmaster_Lib", GRASP_DIR),
+        "available from grasp/v21/, grasp/ or environment"
+        if _module_available("Rosmaster_Lib", V21_DIR) or _module_available("Rosmaster_Lib", GRASP_DIR)
+        else "not importable; copy Rosmaster_Lib beside grasp/v21/x3plus_real_grasp.py on Jetson",
         fatal_for_real=True,
     ))
 

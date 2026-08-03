@@ -1,0 +1,10 @@
+{
+  "schema": "x3plus-grasp-formal-claim/v21",
+  "claimed_at": "2026-07-29T12:20:15+08:00",
+  "protocol_id": "grasp_v21_formal_90210_235",
+  "seed": 90210,
+  "selection_lock_sha256": "f1e4b79557cc525cf0211a1d15b1db50a5fae7abdffab6260a1264d7b45d172b",
+  "model_sha256": "3a7137712669725b2b97cbe68cfceb76c09a52b6f9cc1df73f682ae0277843ab",
+  "vecnormalize_sha256": "f986d8463577d20cec3c157a932665f2a1c61edd23a4d6aa23095cecb925bca0",
+  "status": "claimed_before_first_episode"
+}

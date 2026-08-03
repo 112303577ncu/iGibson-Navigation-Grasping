@@ -1,0 +1,330 @@
+{
+  "action_contract": "6D_arm_incremental_gripper_absolute",
+  "bc_epochs": 30,
+  "checkpoint_freq": 50000,
+  "completed_at_utc": "2026-07-28T21:08:11.823999+00:00",
+  "contract": "obs_28_incremental",
+  "curriculum": "acceptance_balanced",
+  "cwd": "D:\\repo\\igibson_x3_test\\training",
+  "dagger_iterations": 24,
+  "entrypoint": "D:\\repo\\igibson_x3_test\\training\\run_6d_distill.py",
+  "git_head": "5f0f9b144f41461d986cbdda89ffd23dae977412",
+  "git_status_porcelain": "M README.md\n M training/robot_grasp_env.py\n M training/run_6d_distill.py\n M training/train_distillation_dagger.py\n M training/x3plus_ground_grasp_env.py\n M training/x3plus_real_grasp.py\n?? training/GRASP_V19_GATE_REPORT.md\n?? training/GRASP_V20_STATUS_REPORT.md\n?? training/OBSTACLE_BENCHMARK.md\n?? training/SIM_TO_REAL_NAV_PIPELINE.md\n?? training/V20B_PROTOCOL.md\n?? training/V20_RUN_RECORD.md\n?? training/analyze_cap_feasibility.py\n?? training/codex_runs/\n?? training/deploy_contract.py\n?? training/diag_bc_fit.py\n?? training/diag_floor_metric.py\n?? training/eval_nav_obstacles.py\n?? training/eval_results/codex_dev_base_model_seed812_vec525_seed4343/\n?? training/eval_results/codex_diag_base_model_newvec_seed812_525/\n?? training/eval_results/codex_diag_newmodel_seed812_525_basevec/\n?? training/eval_results/codex_oracle_dev4343_corrected_floor/\n?? training/eval_results/codex_paired_base500_dev4242/\n?? training/eval_results/codex_paired_base500_vec525_dev4242/\n?? training/eval_results/codex_paired_seed811_ft550_dev4242/\n?? training/eval_results/codex_paired_seed815_ft525_dev4242/\n?? training/eval_results/codex_paired_seed815_ft550_dev4242/\n?? training/eval_results/codex_repro_a/\n?? training/eval_results/codex_repro_b/\n?? training/eval_results/codex_smoke_v20_ft500k/\n?? training/eval_results/codex_v20d_seed811_ft550k_dev4242/\n?? training/eval_results/codex_v20e_u200_dev4242/\n?? training/eval_results/codex_v20e_u25_dev4242/\n?? training/eval_results/codex_v20f_u1_dev4242/\n?? training/eval_results/codex_v21_oracle_smoke_seed99004/\n?? training/eval_results/nav_obstacle_20260711/\n?? training/eval_results/v19/\n?? training/eval_results/v19_contract_recheck/\n?? training/eval_results/v20_acceptance_ft300000/\n?? training/eval_results/v20_acceptance_ft500000/\n?? training/eval_results/v20_diag_bcfit/\n?? training/eval_results/v20_diag_ft100k_stochastic/\n?? training/eval_results/v20_screen_bc_iter24/\n?? training/eval_results/v20_screen_ft100k/\n?? training/eval_results/v20_screen_ft200000/\n?? training/eval_results/v20_screen_ft300000/\n?? training/eval_results/v20_screen_ft400000/\n?? training/eval_results/v20_screen_ft500000/\n?? training/eval_results/v20_screen_oracle/\n?? training/eval_results/v20b_dev_baseline_ft500000/\n?? training/eval_results/v20b_dev_ft550000/\n?? training/eval_results/v20b_dev_ft600000/\n?? training/eval_results/v20b_dev_ft650000/\n?? training/eval_results/v20b_dev_ft700000/\n?? training/eval_results/v20b_dev_ft750000/\n?? training/eval_results/v20b_dev_ft800000/\n?? training/eval_results/v20b_dev_ft850000/\n?? training/eval_results/v20b_dev_ft900000/\n?? training/eval_results/v20b_floor_metric/\n?? training/eval_results/v20b_oracle_check/\n?? training/eval_results/v20b_oracle_hardinv/\n?? training/eval_results/v20c_dev_ft500000/\n?? training/eval_results/v20c_dev_ft800000/\n?? training/eval_v19_grasp.py\n?? training/finetune_6d_imitation.py\n?? training/finetune_6d_v19.py\n?? training/make_v19_manifest.py\n?? training/make_v20_manifest.py\n?? training/run_nav_obstacle_benchmark.py\n?? training/sim_to_real_nav_pipeline.py\n?? training/test_deploy_controller.py\n?? training/test_deploy_floor_guard.py\n?? training/test_deploy_parity.py\n?? training/test_floor_invariant.py\n?? training/trained_6d_models_v19/\n?? training/trained_6d_models_v20/",
+  "normalization_replay_contract": "raw_obs_re_normalized_at_bc_sample_time",
+  "packages": {
+    "gymnasium": "0.29.1",
+    "igibson": null,
+    "numpy": "1.23.5",
+    "stable_baselines3": "2.2.1",
+    "torch": "2.4.1+cpu"
+  },
+  "platform": "Windows-10-10.0.26200-SP0",
+  "python": "3.8.10 (tags/v3.8.10:3d8993a, May  3 2021, 11:48:03) [MSC v.1928 64 bit (AMD64)]",
+  "requirements_file": "C:\\Users\\koala\\OneDrive\\文件\\GRASP_TRAINING_REQUIREMENTS_2026-07-27.md",
+  "requirements_sha256": "2414fed2d39381d08d5557754c3f18e67d210210b721eccc7ce7083b7377d128",
+  "rl_lr": 0.0001,
+  "rl_steps": 600000,
+  "seed": 816,
+  "source_sha256": {
+    "training\\deploy_contract.py": "3e311af159156337ccd75737c950a4e45de3f647783c7a1cc0722aaa445efd39",
+    "training\\robot_grasp_env.py": "c5661ec81657fa3620c8611aa33a5f0521e55f057172923b9373f25f60bcc2bf",
+    "training\\run_6d_distill.py": "6eac6df31f34a296a4d746a4ccc00231b61528a67a1376e1b237d2e4d6741593",
+    "training\\train_distillation_dagger.py": "e7a544183b40feff8e423339f592dfb9ba60abcd41206c9dc9ff7cdd38aceeae",
+    "training\\x3plus\\yahboomcar.urdf": "0a43968783b178d2f270572dc2e01c684722864af1bf8a0c52f05a66fe9d2be2",
+    "training\\x3plus_ground_grasp_env.py": "ac90b46423a6039a9c00968427c27f9cdc94cf4f197b58eaa2389cf483464aa4"
+  },
+  "started_at_utc": "2026-07-28T19:49:07.095198+00:00",
+  "status": "completed",
+  "steps_per_iter": 2000,
+  "task_config": {
+    "action_repeat": 2,
+    "action_smooth_penalty": 0.005,
+    "adaptive_hover_enable": true,
+    "align_hold_min_steps": 6,
+    "arm_action_incremental": true,
+    "ee_delta_scale": 0.01,
+    "enable_grasp_domain_randomization": true,
+    "final_success_bonus": 600.0,
+    "floor_clearance_z": 0.04,
+    "floor_hard_invariant": true,
+    "floor_penetration_penalty": 500.0,
+    "floor_penetration_penalty_cap": 5.0,
+    "floor_prevention": true,
+    "floor_violation_penalty": 20.0,
+    "forward_extension_speed_scale": 0.6,
+    "friction": 6.0,
+    "global_motion_scale": 0.7,
+    "grasp_close_drop": 0.0267,
+    "grasp_depth_ratio": 0.45,
+    "grasp_hold_min_steps": 8,
+    "grasp_hover_extra": 0.0,
+    "grasp_normal_force_threshold": 0.01,
+    "grasp_pad_offset": 0.033,
+    "gripper_angle_closed": 0.0,
+    "gripper_angle_open": -1.5,
+    "gripper_floor_check_band": 0.06,
+    "gripper_floor_guard": true,
+    "gripper_floor_margin": 0.005,
+    "gripper_floor_overshoot_allowance": 0.004,
+    "gripper_floor_slow_band": 0.05,
+    "gripper_floor_slow_min": 0.06,
+    "gripper_force_default": 200.0,
+    "gripper_force_open": 350.0,
+    "gripper_force_stage1": 60.0,
+    "gripper_force_stage2": 140.0,
+    "gripper_open_hold_steps_at_reset": 20,
+    "gripper_overdrive": 0.05,
+    "ground_height": 0.0,
+    "home_arm_pose": [
+      0.0,
+      -0.4,
+      -1.4,
+      -1.4,
+      0.0
+    ],
+    "home_pose_jitter_deg": 2.0,
+    "include_goal_in_obs": false,
+    "knock_height_drop_threshold": 0.015,
+    "knock_tilt_cos_threshold": 0.2,
+    "knock_xy_displacement_threshold": 0.2,
+    "magnet_activation_dist": 0.014,
+    "magnet_activation_force": 0.003,
+    "magnet_activation_hold_steps": 5,
+    "magnet_activation_xy_tol": 0.012,
+    "magnet_activation_z_tol": 0.012,
+    "max_joint_delta_per_step": 0.03,
+    "max_steps": 600,
+    "mode": "headless",
+    "no_progress_dist_delta": 0.0005,
+    "no_progress_max_steps": 35,
+    "no_progress_step_penalty": -0.15,
+    "no_progress_terminate_penalty": -25.0,
+    "object_mass": 0.05,
+    "object_pool_storage_pos": [
+      10.0,
+      10.0,
+      0.05
+    ],
+    "object_scale": 0.3,
+    "object_spawn_xy": [
+      0.25,
+      0.0
+    ],
+    "penalty_drop_object": -80.0,
+    "penalty_failed_grasp_attempt": -0.5,
+    "penalty_knock_object": -120.0,
+    "pregrasp_toward_robot_xy": 0.0,
+    "proc_object_anchor_height_jitter": 0.002,
+    "proc_object_anchor_prob": 0.45,
+    "proc_object_anchor_width_jitter": 0.003,
+    "proc_object_anchors": [
+      [
+        "cylinder",
+        0.013,
+        0.03
+      ],
+      [
+        "sphere",
+        0.035,
+        0.035
+      ],
+      [
+        "box",
+        0.066,
+        0.04
+      ]
+    ],
+    "proc_object_height_low_bias": 0.4,
+    "proc_object_height_low_range": [
+      0.01,
+      0.025
+    ],
+    "proc_object_height_range": [
+      0.01,
+      0.07
+    ],
+    "proc_object_prob": 1.0,
+    "proc_object_shape_weights": [
+      0.4,
+      0.4,
+      0.2
+    ],
+    "proc_object_shapes": [
+      "box",
+      "cylinder",
+      "sphere"
+    ],
+    "proc_object_width_range": [
+      0.022,
+      0.045
+    ],
+    "randomize_home_pose": true,
+    "randomize_object_model": true,
+    "reward_approach_dist_gain": 3.0,
+    "reward_grasp_success": 150.0,
+    "reward_lift_height_gain": 60.0,
+    "reward_return_home_gain": 40.0,
+    "reward_return_pose_gain": 30.0,
+    "reward_xy_align_gain": 2.0,
+    "reward_xy_alignment": 10.0,
+    "robot_base_position": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "robot_base_yaw_deg": 0.0,
+    "spawn_xy_noise": 0.001,
+    "stage0_allow_backoff": false,
+    "stage0_descent_xy_gate": 0.04,
+    "stage0_direct_approach_enforce": true,
+    "stage0_entry_tolerance_radius": 0.026,
+    "stage0_entry_xy_tolerance": 0.022,
+    "stage0_entry_z_tolerance": 0.018,
+    "stage0_guidance_blend": 0.9,
+    "stage0_guidance_max_xy_delta": 0.015,
+    "stage0_guidance_max_z_delta": 0.004,
+    "stage0_guidance_xy_gain": 4.0,
+    "stage0_guidance_z_gain": 2.5,
+    "stage0_ik_ref_arm_pose": [
+      0.0,
+      -1.0,
+      -1.4,
+      -1.0,
+      0.0
+    ],
+    "stage0_joint_transport_enable": true,
+    "stage0_lateral_motion_scale": 0.1,
+    "stage0_safe_z_extra": 0.045,
+    "stage0_tolerance_radius": 0.04,
+    "stage0_transport_deactivate_z": 0.01,
+    "stage0_transport_handoff_z": 0.012,
+    "stage0_transport_hover_z_offset": 0.015,
+    "stage0_transport_max_steps": 200,
+    "stage0_transport_z_activate": 0.03,
+    "stage0_vertical_descent_xy_gate": 0.022,
+    "stage1_engage_before_close": true,
+    "stage1_entry_lift": 0.002,
+    "stage1_fallback_penalty": -8.0,
+    "stage1_grip_command": 0.55,
+    "stage1_grip_ramp_steps": 20,
+    "stage1_lock_xy": true,
+    "stage1_max_down_delta_per_step": 0.0006,
+    "stage1_min_engage_depth": 0.002,
+    "stage1_no_contact_fallback_steps": 60,
+    "stage1_pad_floor_margin": 0.001,
+    "stage1_settle_steps": 20,
+    "stage1_xy_align_before_descent_tol": 0.01,
+    "stage1_xy_realign_max_delta": 0.0035,
+    "stage1_z_comp_max_total": 0.045,
+    "stage1_z_comp_per_step": 0.0005,
+    "stage2_guidance_blend": 1.0,
+    "stage2_guidance_gain": 3.0,
+    "stage2_guidance_max_delta": 0.012,
+    "stage2_joint_deadband": 0.01,
+    "stage2_joint_step_limit": 0.045,
+    "stage2_lift_arm_pose": [
+      0.0,
+      -0.2,
+      -0.9,
+      -0.8,
+      0.0
+    ],
+    "stage2_lift_height_latch": true,
+    "stage2_prehome_lift_height": 0.1,
+    "stage2_use_joint_home_control": true,
+    "step_penalty": -0.05,
+    "success_height_threshold": 0.1,
+    "success_home_distance": 0.1,
+    "success_home_pose_error": 0.12,
+    "success_use_max_lift": true,
+    "sweet_spot_offset": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tcp_left_joint": "llink_joint2",
+    "tcp_right_joint": "rlink_joint2",
+    "train_gripper_force_jitter_ratio": 0.15,
+    "train_object_friction_range": [
+      4.0,
+      8.0
+    ],
+    "train_object_mass_range": [
+      0.03,
+      0.09
+    ],
+    "train_object_model_pool": [
+      "036_wood_block",
+      "003_cracker_box"
+    ],
+    "train_object_model_scales": {
+      "003_cracker_box": 0.3,
+      "004_sugar_box": 0.35,
+      "010_potted_meat_can": 0.6,
+      "036_wood_block": 0.3
+    },
+    "train_pregrasp_offset_jitter": 0.0,
+    "train_spawn_edge_bias": 0.35,
+    "train_spawn_edge_fraction": 0.3,
+    "train_spawn_hotspot_prob": 0.45,
+    "train_spawn_hotspot_radius": 0.012,
+    "train_spawn_hotspots": [
+      [
+        0.2,
+        -0.09
+      ],
+      [
+        0.2,
+        0.0
+      ],
+      [
+        0.2,
+        0.08
+      ],
+      [
+        0.24,
+        -0.09
+      ],
+      [
+        0.24,
+        0.0
+      ],
+      [
+        0.24,
+        0.08
+      ],
+      [
+        0.28,
+        -0.09
+      ],
+      [
+        0.28,
+        0.0
+      ],
+      [
+        0.28,
+        0.08
+      ]
+    ],
+    "train_spawn_x_range": [
+      0.2,
+      0.28
+    ],
+    "train_spawn_y_range": [
+      -0.09,
+      0.08
+    ],
+    "train_wrist_z_offset_jitter": 0.0,
+    "use_magnet": true,
+    "use_procedural_objects": true,
+    "use_ycb": true,
+    "wrist_z_offset": 0.05,
+    "xy_alignment_tolerance": 0.035,
+    "ycb_model_id": "036_wood_block",
+    "z_alignment_tolerance": 0.03
+  },
+  "teacher_model": "D:\\repo\\igibson_x3_test\\training\\runs\\three_stage_20260727-040733\\ppo_three_stage_final.zip",
+  "teacher_model_sha256": "23640fc1275c47d398bc64342c551996ecd15a4fde902802b2aec752e514534a",
+  "teacher_vecnorm": "D:\\repo\\igibson_x3_test\\training\\runs\\three_stage_20260727-040733\\vecnormalize_final.pkl",
+  "teacher_vecnorm_sha256": "6260527dfc99751c9f76eb5bc9189641c6574d8795b8655830f82fa981ecaff9"
+}

@@ -1,5 +1,92 @@
 # X3Plus 專題進度記錄
 
+## 2026-08-03 — v21 Jetson 單機辨識＋夾取實機成功
+
+### 啟動姿態小幅回差恢復
+
+- 底盤移動後曾出現 C3 home 殘差 `2.1°`，原本因超過一般動作的 `2.0°` 到位門檻而在
+  開相機前安全中止；這與 S6 stall steps 無關，也不是只改 bridge 就能解決。
+- Jetson 單指令現在讓「啟動 C3 到位」與「detection cam_pose 核對」共同使用 `3.0°`
+  上限。`2.1°` 的小幅機械回差可以繼續；啟動容許值在 controller 內硬性封頂 `3.0°`，
+  即使傳入更大的 detection tolerance，也不能讓明顯偏離校正姿態的手臂通過。
+- 只有 startup 使用此恢復窗口；return home 與其他受 guard 保護的動作仍使用原本
+  `2.0°` 到位判定。讀取失敗、floor guard 異常或殘差超過 `3.0°` 仍會 fail closed。
+
+### 本次結論
+
+- 分支 `worktree-grasp-v21-candidate` 已有實機證據，可判定為
+  **hardware-executable candidate（可在操作員全程監督下執行）**。
+- 已用 `python3 jetson_one_command_grasp.py` 在 Jetson 上完成單一指令的完整流程：
+  本機相機辨識 → 傳入目標座標 → RL 對位與閉爪 → 判定接觸 → 抬升 → 回 home。
+- 本次夾取成功不代表已達 `hardware-approved`。在完成下方「合併前仍需處理」前，
+  `manifest.json` 應繼續維持 `candidate`，實跑仍需 `--unlock-candidate-real` 並手放電源。
+
+### 成功實測紀錄
+
+- 啟動前檢查通過：controller、vision bridge、PPO、VecNormalize、YOLO 權重皆存在；
+  `cv2`、`ultralytics`、`stable_baselines3`、`pybullet` 可載入；手臂相機 stable by-id
+  與 `/dev/myserial` 均存在。
+- launcher 等待機械臂確認 C3 home 後才開啟一次性 YOLO；無有效 detection 時不允許手臂
+  朝預設座標移動，辨識程序結束後會釋放 Jetson Nano 的記憶體。
+- 本次有效 detection：`x=0.2974 m`、`y=0.0033 m`、`z=0.0325 m`、
+  `height=0.065 m`、物體寬約 `0.0276 m`；YOLO 平均推論約 `1096 ms`。
+- S6 實際在約 `153°` 夾住物體；連續 2 個 policy step 不變後直接確認接觸，
+  以 `+1°` 小幅保持力固定在約 `154°`，避免先前 `+8°` 加壓造成齒輪咖咖聲。
+- Stage 2 六段抬升全部到位，成功回 home；回 home 後仍確認夾持，該次
+  `servo reads: no failures`，floor guard 統計為 `pass: 46`。
+- 若 S6 到達空夾爪閉合端 `179–180°`，現在不再等待 stall steps，會直接判定沒有物體並
+  安全回 home。
+
+### 已固定的實機參數
+
+- C3 home 經驗校正：`cam_x=0.2970`、`cam_y=0.0034`、`sign_y=-1`。
+- sugarbox 高度：`0.065 m`，傳給控制器的質心高度為 `z=0.0325 m`。
+- Stage 0 XY 閉爪門檻：`10 mm`。
+- S6 接觸判定：連續 `2` 個 step 讀值變化不超過 `0.5°`，且必須是閉爪命令、
+  已超過半閉合並明顯未到空夾爪端點。
+- 夾持保持偏壓：`+1°`。
+- 視覺 X 軸已加入實機前伸補償；Y 軸方向依「面向手臂前伸方向」定義，使用
+  `sign_y=-1`。右側位置已成功夾取；左側受相機視野限制，安全可見約到 `2.4 cm`，
+  約 `2.7 cm` 時物體會碰到影像左緣並被 bridge 拒絕。
+
+### 程式與測試狀態
+
+- 新增 `grasp/v21/jetson_one_command_grasp.py`，不再需要 Windows 與 Jetson 各開一條指令。
+- `x3plus_real_grasp.py` 新增 `--entry-xy-mm`、`--s6-stall-grasp-steps`、
+  Stage 0 接觸捷徑、`+1°` 保持力與空夾爪端點立即撤退。
+- `test_deploy_controller.py` 會在每個 case 後關閉 PyBullet client，避免 Jetson Nano
+  在完整 controller suite 中 OOM。
+- 已有測試證據：controller `119/119`、servo read `37/37`、floor guard `641/641`；
+  dry-run 的 `wrist_z_offset=0.0564 m` 與預期一致；`arm_cam_geometry.py --selftest`
+  亦為 PASS。
+
+### 合併前仍需處理
+
+1. 將本次尚未提交的 controller、測試、Jetson launcher 與本進度紀錄整理成 commit，
+   更新 PR #14，並確認遠端 CI / PR checks 全綠；本機 log、臨時校正 JSON 與 `.claude/`
+   不應混入 commit。
+2. `README.md` 目前仍寫「沒有任何實機證據」，必須改成這次的實際狀態與單指令操作方式。
+3. C3 的 `theta/H` 仍是 URDF/FK 預測值，`cam_x/cam_y` 是實機經驗補償，不是完整
+   Phase 1/2 外參量測；因此保留 predicted-extrinsics 警告與 candidate 安全閘。
+4. 成功 detection 的 `x=0.2974 m` 超過文件標示的有效範圍上限 `0.28 m`，但仍在模型
+   已評估的 `0.20–0.33 m` 內；文件與 manifest 的範圍應統一後再合併。
+5. Jetson 上 YOLO 約 `1.10 s/frame`，接近 controller 預設 `1.0 s` stale timeout；雖然本次
+   latch 成功，仍應調整單機 launcher 的 timeout 或加入對應測試，避免負載稍高時誤拒絕。
+6. 現有 `119/37/641` 都通過，但 controller suite 尚未直接覆蓋新增的 Stage 0 S6 stall
+   成功路徑、`179–180°` 立即撤退路徑，launcher 也沒有自動化 orchestration 測試；
+   合併前應補上這些回歸測試。
+7. 目前已有一次完整單指令成功，以及先前中央／右側分開流程成功；仍建議至少補做
+   中央、右側、左側安全視野內各 3 次，記錄成功率後才升級成 `hardware-approved`。
+
+### 合併判定
+
+- **是否可執行：是。** 可作為 supervised hardware candidate 使用。
+- **是否現在直接合併 main：暫不建議。** 先完成上述 1–6 的程式／文件／PR 收尾；
+  第 7 項可在 main 合併後繼續作為硬體認證工作，但在完成前不得將 package 標為
+  `hardware-approved`。
+
+---
+
 ## 現行部署基準（以 `grasp/x3plus_real_grasp.py` 為唯一來源）
 
 - S1–S5：`hw(API) = 90 + sim_deg`，`arm_hw_invert = (False, False, False, False, False)`。

@@ -138,8 +138,12 @@ class RLNavigator(vgp.Navigator):
                     tracker.update(dist_f, off)
                     last_seen = now
                 elif tracker.has_fix and tracker.dist() < 0.9:
+                    # No `dist_a > 0` filter: the arm camera's ground distance is
+                    # measured from its own ground projection and is legitimately
+                    # negative behind it, which at the C3 pose is most of the frame.
+                    # _detect_arm() already reports found=False on unusable geometry.
                     found_a, dist_a, off_a, _w, _c = self._detect_arm()
-                    if found_a and dist_a > 0:
+                    if found_a:
                         tracker.update(dist_a, off_a)
                         last_seen = now
 
@@ -278,12 +282,27 @@ def run_pipeline(args):
     policy = nr.NavPolicy(ncfg)
 
     cfg = g.DeployConfig(serial_port=args.port)
-    cfg.grip_width_control = True
+    # v21 has no manual width-based closure sizing -- its jaw closes on CONTACT
+    # (command-vs-encoder divergence during the close) and holds at contact + a
+    # bias, regardless of the object's width. See vision_grasp_pipeline.py's
+    # run_pipeline() for the fuller version of this note.
     if args.nav_home_deg is not None:
         cfg.home_deg = g.parse_deg6_csv(args.nav_home_deg)
     if args.grasp_home_deg is not None:
         cfg.grasp_home_deg = g.parse_deg6_csv(args.grasp_home_deg)
     class_z_m = vgp.parse_class_z(args.class_z, vgp.OBJ_Z_FIXED)
+    class_height_m = vgp.parse_class_height(args.class_height)
+    if class_height_m:
+        print(f"[pipeline] class heights (drive v21 wrist_z_offset): {class_height_m}")
+    else:
+        print("[pipeline] no --class-height given: the grasp side will estimate height "
+              "as 2*(centroid_z-ground_z).")
+    vgp.warn_unknown_classes(model, [("--class-z", class_z_m),
+                                     ("--class-height", class_height_m)])
+    # Detection happens at cfg.home_deg (controller.move_home() runs before the RL
+    # approach), so that is the pose H_ARM/THETA_ARM must have been measured at.
+    vgp.check_arm_cam_pose(cfg.home_deg, real=args.real,
+                           acknowledged=args.i_confirm_arm_cam_pose)
     if args.handoff_dist is not None:
         vgp.ARM_BLIND_START_DIST_M = args.handoff_dist
 
@@ -309,6 +328,7 @@ def run_pipeline(args):
             rl_only=args.nav_only,
             show=args.show, dry_run=not args.real,
             rear_url=rear_url, arm_url=arm_url, class_z_m=class_z_m,
+            class_height_m=class_height_m,
             cam_to_base_x=args.cam_x, cam_to_base_y=args.cam_y,
             sign_y=args.sign_y,
         )
@@ -325,8 +345,10 @@ def run_pipeline(args):
             print("=" * 60)
 
             print(f"[pipeline] moving arm to navigation home {list(cfg.home_deg)}")
-            controller.servo.move_to_home()
-            time.sleep(cfg.nav_home_wait_sec)
+            # move_home() is guarded (FloorGuard) and blocks until the encoders
+            # confirm arrival, unlike v17's fire-and-forget servo.move_to_home() --
+            # so no fixed-duration sleep is needed after it.
+            controller.move_home()
 
             if not nav.approach():
                 print("[pipeline] no object reachable — stopping.")
@@ -338,13 +360,18 @@ def run_pipeline(args):
                 success = True
                 break
 
-            obj_pos, width = nav.latch_arm_object()
+            obj_pos, width, height = nav.latch_arm_object()
             if width is not None and width > vgp.MAX_GRASP_WIDTH_M:
                 print(f"[pipeline] OBJECT TOO LARGE: width={width * 100:.1f}cm > "
                       f"max {vgp.MAX_GRASP_WIDTH_M * 100:.1f}cm — aborting.")
                 break
 
-            controller.obj_provider = (lambda p=obj_pos, w=width: (p, w))
+            # v21's obj_provider second element is the object's HEIGHT in metres --
+            # NOT width. It drives wrist_z_offset and the engagement-depth geometry.
+            # Comes from --class-height; None when undeclared, in which case v21
+            # applies its own symmetric-object estimate. `width` is used only as the
+            # too-wide-to-grasp gate above and must never be passed here.
+            controller.obj_provider = (lambda p=obj_pos, h=height: (p, h))
             grasp_seq_ok = controller.run(max_steps=args.max_steps)
 
             if not grasp_seq_ok:
@@ -355,7 +382,7 @@ def run_pipeline(args):
                 success = True
                 break
             print("[pipeline] FAILED grasp — retreating and retrying.")
-            controller.servo.move_to_home()
+            controller.move_home()   # guarded; ensures gripper open for retry
             time.sleep(1.0)
             nav.back_off()
 
@@ -472,7 +499,15 @@ def parse_args():
     p.add_argument("--handoff-dist", type=float, default=None)
     p.add_argument("--nav-home-deg", type=str, default=None)
     p.add_argument("--grasp-home-deg", type=str, default=None)
-    p.add_argument("--class-z", action="append", default=[])
+    p.add_argument("--class-z", action="append", default=[],
+                   help="YOLO class CENTROID-Z override, NAME=CENTROID_Z_M. Repeatable.")
+    p.add_argument("--class-height", action="append", default=[],
+                   help="YOLO class object HEIGHT (full z extent), NAME=HEIGHT_M. "
+                        "Repeatable. Drives the grasp side's wrist_z_offset.")
+    p.add_argument("--i-confirm-arm-cam-pose", action="store_true",
+                   help="Acknowledge H_ARM/THETA_ARM were re-measured at the pose "
+                        "detection runs from. --real refuses without it when that "
+                        "pose is not the one they were calibrated at.")
     p.add_argument("--cam-x", type=float, default=vgp.CAM_TO_BASE_X)
     p.add_argument("--cam-y", type=float, default=vgp.CAM_TO_BASE_Y)
     p.add_argument("--sign-y", type=float, choices=(-1.0, 1.0), default=vgp.SIGN_Y)

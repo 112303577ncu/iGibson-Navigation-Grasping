@@ -15,9 +15,8 @@ are consistent with the PPO grasp frame, which is the URDF/PyBullet base frame.
 from __future__ import annotations
 
 import argparse
-import ast
 import math
-import re
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -25,8 +24,6 @@ from typing import Dict, Iterable, List, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 URDF = ROOT / "grasp" / "x3plus" / "yahboomcar.urdf"
-BRIDGE = ROOT / "integration" / "vision_grasp_bridge.py"
-PIPELINE = ROOT / "integration" / "vision_grasp_pipeline.py"
 
 
 def parse_deg_csv(value: str) -> Tuple[float, float, float, float, float, float]:
@@ -148,20 +145,6 @@ def axis_info(tf: List[List[float]], col: int):
     return vec, yaw, elev
 
 
-def get_constant(path: Path, name: str):
-    text = path.read_text(encoding="utf-8", errors="ignore")
-    match = re.search(rf"^{name}\s*=\s*([^#\n]+)", text, flags=re.MULTILINE)
-    if not match:
-        return None
-    raw = match.group(1).strip()
-    try:
-        return ast.literal_eval(raw)
-    except Exception:
-        try:
-            return float(raw)
-        except ValueError:
-            return raw
-
 
 def print_pose(label: str, tf: List[List[float]]) -> None:
     pos = [tf[i][3] for i in range(3)]
@@ -174,36 +157,65 @@ def print_pose(label: str, tf: List[List[float]]) -> None:
             f"yaw_xy={yaw:+.1f} deg elev={elev:+.1f} deg"
         )
     z_vec, z_yaw, z_elev = axis_info(tf, 2)
+    # theta must be the depression measured TOWARDS base +X, not the bare elevation
+    # of the optical axis. Once the axis tips past vertical its horizontal component
+    # points backward and yaw flips to 180 deg; -elev then reads 86.7 for a ray that
+    # is really 93.3 deg round from +X, and feeding that into the ground model
+    # mirrors the whole workspace about the camera. atan2 gets it right either side
+    # of vertical.
+    theta_towards_x = math.degrees(math.atan2(-z_vec[2], z_vec[0]))
     print("Assuming mono_link +Z is the optical axis:")
-    print(f"  suggested cam_x={pos[0]:+.4f}, cam_y={pos[1]:+.4f}, H={pos[2]:.4f}, theta_down={-z_elev:.1f} deg")
-    print(f"  forward axis yaw should be near 0 deg for obj_x=distance+cam_x; actual {z_yaw:+.1f} deg")
+    print(f"  suggested cam_x={pos[0]:+.4f}, cam_y={pos[1]:+.4f}, H_above_base={pos[2]:.4f}, "
+          f"theta_towards_+X={theta_towards_x:.3f} deg")
+    if theta_towards_x > 90.0:
+        print(f"  NOTE: past vertical — the optical axis leans back over the robot "
+              f"(bare elevation would read {-z_elev:.1f} deg and be wrong by "
+              f"{theta_towards_x - (-z_elev):.1f} deg).")
+    print(f"  ground distance is SIGNED about the camera's own foot; a `d > 0` filter "
+          f"discards everything behind it.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify static camera-vs-grasp frame assumptions.")
     parser.add_argument("--urdf", type=Path, default=URDF)
     parser.add_argument("--nav-home-deg", type=parse_deg_csv, default=(90.0, 140.0, 0.0, 0.0, 90.0, 30.0))
-    # Default matches DeployConfig.grasp_home_deg (v17 training home under the
-    # calibrated all-False mapping); keep the two in sync.
-    parser.add_argument("--grasp-home-deg", type=parse_deg_csv, default=(90.0, 32.704, 9.786, 32.704, 90.0, 30.0))
+    # Default is v21's C3 grasp home — the pose the current stack starts from and
+    # detects at. Keep in sync with DeployConfig.home_deg.
+    parser.add_argument("--grasp-home-deg", type=parse_deg_csv, default=(90.0, 67.08, 9.79, 9.79, 90.0, 30.0))
     args = parser.parse_args()
 
     print("PPO object frame: URDF/PyBullet base_link frame used by x3plus_real_grasp.py.")
-    print("Vision mapping assumes camera optical forward projects to base +X and lateral projects to base +/-Y.")
+    print("Vision mapping: obj_x = cam_x + signed_ground_distance, "
+          "obj_y = cam_y + sign_y * lateral.")
 
     print_pose("navigation home", link_tf(args.urdf, args.nav_home_deg))
     print_pose("PPO grasp home", link_tf(args.urdf, args.grasp_home_deg))
 
-    print("\n== configured vision constants ==")
-    print(
-        "bridge:",
-        {k: get_constant(BRIDGE, k) for k in ("H", "FIXED_THETA", "FX", "FY", "CX_CAM", "CY")},
-    )
-    print(
-        "pipeline:",
-        {k: get_constant(PIPELINE, k) for k in ("H_ARM", "THETA_ARM", "FX_ARM", "FY_ARM", "CX_ARM", "CY_ARM", "CAM_TO_BASE_X", "CAM_TO_BASE_Y", "SIGN_Y")},
-    )
-    print("\nIf the suggested URDF values and configured constants differ, the camera XY is not yet proven to be in the PPO frame.")
+    print("\n== registered arm-camera extrinsics ==")
+    # Read from the single source of truth rather than scraping constants out of
+    # two source files. Scraping is how the bridge and the pipeline were able to
+    # disagree in the first place.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import arm_cam_geometry as acg
+    except ImportError as e:      # pragma: no cover - only if the file is missing
+        print(f"  cannot import arm_cam_geometry: {e}")
+        return 1
+    for pose in acg.POSES.values():
+        marker = " <- active" if pose.name == acg.DEFAULT_POSE.name else ""
+        print(f"  {pose.describe()}{marker}")
+        print(f"      {pose.source}")
+
+    print("\nCAUTION: the positions printed above are in the RAW URDF base_link frame.")
+    print("The policy's object coordinates are not — x3plus_real_grasp.FKComputer loads")
+    print("the same URDF at deploy_contract.URDF_TO_TRAINING_FRAME, shifting x by")
+    print("+19.9 mm and y by -3.4 mm. The registered cam_x/cam_y are in the POLICY")
+    print("frame and deliberately will not match the numbers above; taking cam_x from")
+    print("this tool put the grasp target 2 cm behind the object.")
+    print("\ntheta is a direction, so the shift does not touch it: the registered theta")
+    print("should equal the value above minus the -3.600 deg mounting error solved at")
+    print("the nav home. H is a physical height above the real floor, anchored on the")
+    print("nav-home ruler measurement rather than on any z printed here.")
     return 0
 
 

@@ -1,7 +1,22 @@
+"""手臂相機即時辨識檢視器（除錯用）。
+
+幾何常數一律來自 integration/arm_cam_geometry.py，這裡不再自己留一份。
+之前 bridge / pipeline / 這支各留一份 H 與 THETA，正是 2026-08-01 姿勢防護
+只補到 pipeline、沒補到 bridge 的原因。
+
+⚠ 預設用的是 **v17 nav home** 的外參（36.4°、0.332m），因為這支是拿來在 nav
+home 眼睛看辨識框用的。v21 的 C3 起始姿勢相機幾乎垂直朝下（約 89.7°、
+0.215m），在那個姿勢下這裡印出的距離沒有意義——要看 C3 請改 ARM_CAM_POSE。
+"""
 import os
+import sys
 import cv2
 import math
 from ultralytics import YOLO
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "integration"))
+import arm_cam_geometry as acg
 
 # ========= 1. 檔案與硬體參數 =========
 # best.pt 位於同層的 models/ 子資料夾（detection/models/best.pt）
@@ -12,15 +27,16 @@ CONF_THRESHOLD = 0.3
 IMG_SIZE = 640
 
 # ========= 2. 手臂相機專用物理參數 =========
-# 2026-07-08 Phase 1/2 實測（arm_cam_intrinsics.json, RMS 0.495px；nav home 姿勢有效）
-CX_CAM = 212.23
-CY = 168.42
-FX = 919.08
-FY = 919.41
-DIST = (-0.3764, -0.0748, -0.0015, 0.0035, 0.4793)  # k1 k2 p1 p2 k3
+# 全部取自 arm_cam_geometry 的姿勢登錄表，不在此複製數值。
+ARM_CAM_POSE = acg.V17_NAV_HOME   # 這支檢視器預設在 nav home 使用
+CX_CAM = acg.CX
+CY = acg.CY
+FX = acg.FX
+FY = acg.FY
+DIST = acg.DIST  # k1 k2 p1 p2 k3
 
-H = 0.332           # 相機離地高度（nav home 實測）
-FIXED_THETA = 36.40  # Phase 2 中位數俯仰角（以「去畸變後」像素解出，std 0.18°）
+H = ARM_CAM_POSE.h_m            # 相機離地高度
+FIXED_THETA = ARM_CAM_POSE.theta_deg  # 光軸俯角（朝 base +X 量）
 
 # ========= 3. 座標系轉換參數 =========
 ARM_TO_REAR_OFFSET = 0.22  # 手臂鏡頭到後置鏡頭的物理距離 (22公分)
@@ -29,31 +45,20 @@ ARM_TO_REAR_OFFSET = 0.22  # 手臂鏡頭到後置鏡頭的物理距離 (22公�
 def undistort_pixel(u, v, iters=8):
     """把單一像素座標去畸變（plumb-bob，與 cv2.undistortPoints(..., P=K) 同法）。
     手臂相機在 bbox 底邊中點的畸變位移約 9px，距離模型前必須先過這步。"""
-    k1, k2, p1, p2, k3 = DIST
-    xd = (u - CX_CAM) / FX
-    yd = (v - CY) / FY
-    x, y = xd, yd
-    for _ in range(iters):
-        r2 = x * x + y * y
-        radial = 1.0 + r2 * (k1 + r2 * (k2 + r2 * k3))
-        dx = 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x)
-        dy = p1 * (r2 + 2.0 * y * y) + 2.0 * p2 * x * y
-        x = (xd - dx) / radial
-        y = (yd - dy) / radial
-    return CX_CAM + x * FX, CY + y * FY
+    return acg.undistort_pixel(u, v, iters=iters)
 
 
 def estimate_distance(y_max):
-    """計算物體到手臂鏡頭的『真實物理距離』（y_max 需為去畸變後的像素列）"""
-    theta = math.radians(FIXED_THETA)
-    alpha = math.atan((y_max - CY) / FY)
-    total_angle = theta + alpha
+    """物體到手臂鏡頭的地面距離（y_max 需為去畸變後的像素列）。
 
-    if total_angle <= 0:
-        return -1.0
-
-    distance = H / math.tan(total_angle)
-    return distance
+    回傳值是**有號**的：相機正下方為 0，更靠近機身側為負。相機接近垂直時
+    這是正常且必要的（C3 姿勢下畫面約 64% 的列都是負值），所以呼叫端不可以
+    用 `if d > 0` 過濾。射線根本打不到地面時才回傳 None。
+    """
+    try:
+        return acg.ground_hit(CX_CAM, y_max, ARM_CAM_POSE).ground_dist_m
+    except acg.GroundGeometryError:
+        return None
 
 
 def estimate_lateral_offset(cx_pixel, ground_dist_m):
@@ -91,14 +96,19 @@ def main():
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             cx_box = int((x1 + x2) / 2)
 
-            # 1. 先去畸變，再算距離手臂相機的真實距離 (用來算左右偏差)
-            cx_u, y2_u = undistort_pixel(cx_box, y2)
-            arm_dist = estimate_distance(y2_u)
+            # 1. 一次算完：去畸變 → 地面交點（有號距離 + 光軸深度）
+            try:
+                hit = acg.ground_hit_from_raw(cx_box, y2, ARM_CAM_POSE)
+            except acg.GroundGeometryError as e:
+                hit = None
+                print(f"[WARN] 幾何無解，略過此框：{e}")
 
-            if arm_dist > 0:
-                # 2. 計算左右偏移（去畸變座標 + 傾斜相機 optical depth）
-                target_offset_x = estimate_lateral_offset(cx_u, arm_dist)
-                
+            if hit is not None:
+                arm_dist = hit.ground_dist_m
+                # 2. 左右偏移的透視基準是**光軸深度**，不是地面距離。
+                #    用地面距離會低估（nav home 低 20%），相機接近垂直時更會塌成 0。
+                target_offset_x = hit.lateral_m
+
                 # 3. 🚀 【座標統一】把距離轉換成「距離後置主相機」的數據
                 unified_dist = arm_dist + ARM_TO_REAR_OFFSET
                 

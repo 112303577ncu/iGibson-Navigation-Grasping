@@ -14,7 +14,6 @@
 | 檔案 | 說明 |
 |------|------|
 | `x3plus_real_grasp.py` | 主部署腳本（無 ROS，直接在 Jetson 執行） |
-| `x3plus_deploy_bridge.py` | 工具類，正規化 action → 伺服機角度 |
 | `trained_6d_models_v17/*.zip` | 訓練好的 PPO 模型 |
 | `trained_6d_models_v17/*.pkl` | VecNormalize 統計（觀測正規化） |
 | `x3plus/yahboomcar.urdf` | PyBullet FK 用的 URDF |
