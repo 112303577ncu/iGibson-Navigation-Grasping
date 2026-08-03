@@ -32,6 +32,24 @@ OK, WARN, BAD = "PASS", "WARN", "FAIL"
 _MARK = {OK: "[ ok ]", WARN: "[warn]", BAD: "[FAIL]"}
 
 
+def _default_route() -> Path:
+    """route.yaml lives outside this repo, so look where it plausibly is.
+
+    Working tree: the sibling Navigation handoff. Handed-off zip: the
+    route_package/ copied in beside it, so the receiver can verify without
+    hunting for the Route C package first.
+    """
+    candidates = [
+        ROOT / "route_package" / "config" / "routes" / "route.yaml",
+        ROOT.parent / "Navigation" / "02_route_c_external_map_handoff"
+        / "config" / "routes" / "route.yaml",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+
 class Report:
     def __init__(self):
         self.rows = []
@@ -255,9 +273,7 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--onboard", action="store_true")
-    ap.add_argument("--route", default=str(
-        ROOT.parent / "Navigation" / "02_route_c_external_map_handoff"
-        / "config" / "routes" / "route.yaml"))
+    ap.add_argument("--route", default=str(_default_route()))
     ap.add_argument("--resample-m", type=float, default=0.75)
     ap.add_argument("--ros-host", default="127.0.0.1")
     ap.add_argument("--ros-port", type=int, default=9090)
