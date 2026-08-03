@@ -105,6 +105,19 @@ python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 會印 `scan frame_id = ...`、`window [...] deg`、`policy forward window is covered NN%`，
 覆蓋不到就大聲警告。`mission_pipeline` 的自檢也會擋 —— **`--real` 下覆蓋率有問題會拒絕啟動**。
 
+### 順便驗：手臂會不會被自己的 LiDAR 看成障礙物
+
+`--probe` 時把手臂分別擺在 nav home 和 C3，看**正前方**的 sector 讀數：
+
+| 讀到 | 代表 |
+|---|---|
+| 前方 sector 是遠距離（>1 m，隨場地變化） | 正常，手臂不擋 |
+| 前方 sector 固定在 **5~19 cm** 且不隨場地變 | **那是手臂本身**，幾何煞停會被永久觸發、車子永遠不會前進 |
+
+URDF 的 AABB 粗估顯示三種姿態都可能有連桿穿過 19.2 cm 掃描面（C3 最嚴重，`arm_link4`
+估到 LiDAR 前方 18.9 cm，正好在 25 cm 煞停距離內）。AABB 是寬鬆上界不等於真的擋到，
+所以**以實測為準**。真的擋到就要調 nav 姿態，或把該角度區間排除。
+
 ### 實物驗證（覆蓋率過了才做）
 
 在車子**正前方**放箱子 → 中間 sector 變短。**左邊** → 高 index（接近 47）變短。

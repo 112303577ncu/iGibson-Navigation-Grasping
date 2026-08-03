@@ -84,6 +84,21 @@ except ImportError:  # package import
 POLICY_X_OF_BASE_FOOTPRINT = 0.0199   # m, policy-frame x of base_footprint
 FRONT_AXLE_FROM_FOOTPRINT = 0.08      # m, front wheel axle ahead of base_footprint
 
+# ── the two arm homes (arm_pose.md) ──
+# Driving and grasping want different arm poses, and v21 collapsed them: its
+# DeployConfig.home_deg IS the trained C3 grasp pose and grasp_home_deg defaults
+# to None. That is right for a standalone grasp run, which starts already parked
+# at the object, and wrong for a robot that patrols 58 m first -- at C3 the
+# gripper sits 11.3 cm beyond the chassis front at 11.1 cm above the floor,
+# below the 19.2 cm lidar plane, so nothing in the obstacle stack can see what
+# it is about to hit.
+#
+# v21 anticipated this: run() takes its starting pose from grasp_home_deg when
+# set, and _scripted_lift_and_return brings the arm back to home_deg afterwards,
+# so setting both makes the object travel home at the nav pose too.
+NAV_HOME_DEG = (90.0, 140.0, 0.0, 0.0, 90.0, 30.0)      # arm_pose.md travel pose
+GRASP_HOME_DEG = (90.0, 67.08, 9.79, 9.79, 90.0, 30.0)  # C3, the trained pose
+
 ODOM_RATE_HZ = 20.0           # Route A's measured /odom_setmotor rate
 DET_INTERVAL_S = 0.5          # YOLO cadence (Jetson-friendly), as in nav_rl_grasp
 LOG_PERIOD_S = 1.0
@@ -260,6 +275,9 @@ class MissionRunner:
         self._grasp_verified = False
         self._place_finished = False
         self._arm_at_home = True
+        # Unknown until the self-check parks it; assumed False so the first
+        # self-check always issues the move rather than trusting a leftover pose.
+        self._at_nav_home = False
         self._align_failed = False
         self._handoff_ready = False
         self._blacklist: list = []
@@ -348,8 +366,46 @@ class MissionRunner:
             print(f"[mission][check] AMCL ok at ({pose.x:.2f}, {pose.y:.2f}); "
                   f"patrol starts at {wp.id} ({wp.x:.2f}, {wp.y:.2f})")
 
+        # Park the arm at the travel pose before anything is allowed to drive.
+        # Without this the arm starts wherever the last run left it -- which
+        # after a completed grasp is C3, gripper outside the chassis.
+        if ok and not self._at_nav_home:
+            print("[mission][check] moving the arm to the nav travel pose "
+                  f"{list(self.controller.cfg.home_deg)}")
+            if self.move_arm_to(self.controller.cfg.home_deg, "nav-home"):
+                self._at_nav_home = True
+            else:
+                print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
+                      f"the arm did not reach the travel pose")
+                ok = ok and not self.args.real
+
         self.self_check_passed = ok
         return ok
+
+    # ── arm poses ──
+    def move_arm_to(self, api_deg, label: str, *, holding: bool = False) -> bool:
+        """Guarded, verified move to a six-value API-degree pose.
+
+        Always through move_guarded_and_verified, never send_degrees: a bare
+        send is capped at max_delta_deg (8 deg) per call, is not floor-swept per
+        iteration, and updates the controller's internal pose to a target the
+        arm may never have reached.
+        """
+        ctl = self.controller
+        try:
+            arm_rad = ctl.mapper.hw_deg_to_sim_arm(list(api_deg[:5]))
+            grip_rad = (float(ctl._current_grip_rad) if holding
+                        else ctl.mapper.hw_deg_to_sim_grip(float(api_deg[5])))
+            res = ctl.move_guarded_and_verified(
+                arm_rad, grip_rad, label=label, run_time_ms=400, settle_s=0.35,
+                grip_is_hold=holding)
+            if not res.get("reached"):
+                print(f"[mission] arm move '{label}' did not arrive: {res.get('reason')}")
+                return False
+            return True
+        except Exception as exc:
+            print(f"[mission] arm move '{label}' raised: {exc}")
+            return False
 
     # ── perception ──
     def _run_detection(self, now: float) -> None:
@@ -415,7 +471,13 @@ class MissionRunner:
             if found and dist_f > 0:
                 self.nav.tracker.update(dist_f, off)
                 return
-            if self.nav.tracker.has_fix and self.nav.tracker.dist() < 0.9:
+            # The arm camera is only usable at C3. While driving, the arm is at
+            # the nav travel pose, where the same ground model still returns a
+            # plausible distance -- silently wrong by tens of centimetres. Rear
+            # camera plus the tracker's dead reckoning covers the last stretch
+            # instead; the raise to C3 happens once, at the align handoff.
+            if (not self._at_nav_home and self.nav.tracker.has_fix
+                    and self.nav.tracker.dist() < 0.9):
                 found_a, dist_a, off_a, _w, _c = self.nav._detect_arm()
                 if found_a:
                     self.nav.tracker.update(dist_a, off_a)
@@ -559,6 +621,16 @@ class MissionRunner:
                 # reaches for the PREVIOUS object's coordinates. A stale
                 # `_align_failed` makes the next ALIGN abort instantly.
                 self.nav.stop()
+                # Back to the travel pose before driving off. After a completed
+                # grasp or release v21 already returns to cfg.home_deg (now the
+                # nav pose), but the give-up paths leave the arm at C3 with the
+                # gripper outside the chassis.
+                if not self._at_nav_home:
+                    self._at_nav_home = self.move_arm_to(
+                        self.controller.cfg.home_deg, "C3->nav-home")
+                    if not self._at_nav_home:
+                        self.fault = "arm did not return to the travel pose"
+                        return
                 if not self._grasp_verified:
                     # Gave up on this one. Remember WHERE, or the next patrol
                     # pass sees the same object, confirms it again, and the robot
@@ -605,6 +677,19 @@ class MissionRunner:
             # lands the object inside the trained envelope or gives up. Odometry
             # keeps publishing from its own thread throughout.
             self.nav.stop()
+            # This is where the arm camera starts being used, so this is where
+            # the arm has to be at C3: the extrinsics, the visible ground band
+            # and the trained envelope are all defined at that pose, and the
+            # distance model returns a plausible number at any pose, so nothing
+            # downstream would catch a mismatch. Raising here (base already
+            # stopped) also keeps the wheels-or-arm-never-both rule intact.
+            if self._at_nav_home:
+                if not self.move_arm_to(self.controller.cfg.grasp_home_deg,
+                                        "nav-home->C3"):
+                    self.fault = "arm did not reach the grasp pose for alignment"
+                    return
+                self._at_nav_home = False
+                self._arm_at_home = False
             ok = False
             try:
                 ok = self.nav._arm_align()
@@ -950,11 +1035,22 @@ def build_and_run(args) -> int:
     gcfg.bin_rim_height = args.bin_rim_height
     gcfg.release_clearance = args.release_clearance
     gcfg.release_extend_steps = args.release_extend_steps
-    if args.grasp_home_deg is not None:
-        gcfg.grasp_home_deg = g.parse_deg6_csv(args.grasp_home_deg)
+    # home_deg = where the arm rides while driving; grasp_home_deg = the trained
+    # pose run() starts the policy from. v21 leaves the second None and puts C3
+    # in the first, which parks the gripper outside the chassis for the whole
+    # patrol. Split them.
+    gcfg.home_deg = (g.parse_deg6_csv(args.nav_home_deg)
+                     if args.nav_home_deg else NAV_HOME_DEG)
+    gcfg.grasp_home_deg = (g.parse_deg6_csv(args.grasp_home_deg)
+                           if args.grasp_home_deg else GRASP_HOME_DEG)
+    print(f"[mission] arm nav home   : {list(gcfg.home_deg)}")
+    print(f"[mission] arm grasp home : {list(gcfg.grasp_home_deg)}  (C3)")
     class_z_m = vgp.parse_class_z(args.class_z, vgp.OBJ_Z_FIXED)
     class_height_m = vgp.parse_class_height(args.class_height)
-    vgp.check_arm_cam_pose(gcfg.home_deg, real=args.real,
+    # Check the pose the arm CAMERA is used at, which is now the grasp home, not
+    # the nav home. Passing home_deg here would validate the travel pose against
+    # C3's extrinsics and pass or fail for the wrong reason.
+    vgp.check_arm_cam_pose(gcfg.grasp_home_deg, real=args.real,
                            acknowledged=args.i_confirm_arm_cam_pose)
 
     lidar = nr.make_lidar(ncfg, args.lidar_backend, ros_host=args.ros_host,
@@ -1166,6 +1262,7 @@ def run_selftest() -> None:
     dr._det_streak = 0
     dr._grasp_verified = True          # delivered successfully
     dr._blacklist = []
+    dr._at_nav_home = True             # v21 already returns there after a grasp
 
     assert not dgoals.in_override
     MissionRunner._act(dr, mfsm.Transition(mfsm.State.DELIVER, mfsm.Action.DRIVE_BIN),
@@ -1197,6 +1294,7 @@ def run_selftest() -> None:
     gr.lidar = dr.lidar
     gr.args = type("A", (), {"blacklist_radius_m": 1.0, "detection_jump_m": 0.35})()
     gr._blacklist = []
+    gr._at_nav_home = True
     gr._det_streak = 3
     gr._latched = ([0.24, 0.0, 0.02], 0.023, 0.065)
     gr._grasp_finished = True
@@ -1315,6 +1413,25 @@ def run_selftest() -> None:
     assert r5._det_streak == 0
     print("  detection streak: 3 consistent hits confirm, a jump restarts, a miss resets")
 
+    # ── the two arm homes must stay distinct ──
+    # v21 ships them collapsed (home_deg IS C3, grasp_home_deg is None), which
+    # is right for a standalone grasp and wrong for a robot that patrols first.
+    # If a future config edit collapses them again the symptom is subtle -- the
+    # robot simply drives 58 m with the gripper outside its own footprint --
+    # so pin it here.
+    assert NAV_HOME_DEG != GRASP_HOME_DEG, \
+        "the travel pose and the trained grasp pose must not be the same"
+    assert len(NAV_HOME_DEG) == 6 and len(GRASP_HOME_DEG) == 6
+    assert GRASP_HOME_DEG == (90.0, 67.08, 9.79, 9.79, 90.0, 30.0), \
+        "grasp home must stay C3: the extrinsics, the visible ground band and " \
+        "the trained envelope are all defined at that pose"
+    # The nav pose has to fold the arm UP relative to C3. S2 is the shoulder and
+    # larger API degrees raise it, so this is the one ordering that matters.
+    assert NAV_HOME_DEG[1] > GRASP_HOME_DEG[1], \
+        "the travel pose must raise the shoulder above the grasp pose"
+    print(f"  arm homes distinct: nav S2={NAV_HOME_DEG[1]:.0f} deg vs "
+          f"grasp(C3) S2={GRASP_HOME_DEG[1]:.2f} deg")
+
     # ── every Action the FSM can emit must have a handler ──
     # A missing branch is silent: _act just returns, the robot does nothing, and
     # the FSM sits in that state until its timeout. Cheap to check, so check it.
@@ -1376,7 +1493,12 @@ def parse_args(argv=None):
     p.add_argument("--arm-stream", default=None)
     p.add_argument("--class-z", action="append", default=[])
     p.add_argument("--class-height", action="append", default=[])
-    p.add_argument("--grasp-home-deg", default=None)
+    p.add_argument("--nav-home-deg", default=None,
+                   help=f"arm pose while driving, six API degrees "
+                        f"(default {','.join(str(v) for v in NAV_HOME_DEG)})")
+    p.add_argument("--grasp-home-deg", default=None,
+                   help=f"trained pose the grasp policy starts from "
+                        f"(default C3 {','.join(str(v) for v in GRASP_HOME_DEG)})")
     p.add_argument("--max-steps", type=int, default=300)
     p.add_argument("--grasp-model", default=None,
                    help="override the grasp .zip (default: from grasp/v21/manifest.json)")

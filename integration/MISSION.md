@@ -28,6 +28,43 @@
 for m in map_goal_provider feedback_odom ros_io mission_fsm mission_pipeline; do python3 integration/$m.py --selftest; done
 ```
 
+## 手臂在各階段的姿態
+
+兩個 home，全程只切換一次：
+
+| 階段 | 手臂姿態 | 為什麼 |
+|---|---|---|
+| SELF_CHECK / IDLE | **nav home** `(90, 140, 0, 0, 90, 30)` | 開機時手臂可能停在上一輪的任何地方，先歸位 |
+| PATROL / INVESTIGATE / APPROACH | **nav home** | 行進姿態，夾爪收在上方 |
+| **ALIGN 進入時** | **切到 C3** `(90, 67.08, 9.79, 9.79, 90, 30)` | 手臂相機從這裡開始用，底盤此時已停 |
+| STATIONARY_GATE / LATCH / GRASP | **C3** | v21 的訓練姿態 |
+| CARRY_HOME → DELIVER | **nav home**（夾持中） | v21 的 `_scripted_lift_and_return` 自己回 `home_deg` |
+| PLACE | 從當下姿態往前伸 | `run_release_only()` 讀編碼器 |
+| 放棄目標 → RESUME | **切回 nav home** | 不然會帶著 C3 姿態繼續巡航 |
+
+為什麼不能全程用 C3：
+
+```
+底盤最前緣                      base_footprint 前方 11.95 cm
+C3 手臂最前緣                   base_footprint 前方 23.28 cm  ← 多伸出 11.3 cm
+C3 夾爪離地                     11.1 cm
+LiDAR 掃描面                    19.2 cm       ← 比夾爪高 8 cm，看不到它要撞什麼
+```
+
+v21 的 `DeployConfig.home_deg` **就是** C3、`grasp_home_deg` 預設 `None`（manifest 明講
+「there is no separate nav-home/grasp-home split」）。那對「單獨跑夾取」是對的 —— 那時車子
+已經停在物體前。對要先巡航 58 公尺的機器人是錯的。
+
+v21 其實預留了機制：`run()` 第 2586 行 `start_pose = grasp_home_deg if set else home_deg`，
+而 `_scripted_lift_and_return` 夾完會回 `home_deg`。所以只要把兩個都設好，
+**夾完之後物體會用 nav 姿態被帶去垃圾桶**，不需要額外處理。
+
+改姿態用 `--nav-home-deg` / `--grasp-home-deg`。手臂相機的外參檢查跟的是**夾取** home。
+
+⚠️ **手臂會不會擋到 LiDAR 尚未實測**。URDF 的 AABB 粗估顯示三種姿態下 `arm_link1` 都可能
+穿過 19.2 cm 掃描面（AABB 是寬鬆上界，不等於真的擋到）。上機時用 `--probe` 分別在 nav home
+和 C3 看正前方讀數就知道 —— 若讀到約 5~19 cm 的固定回波，那就是手臂本身，煞停會被永久觸發。
+
 ## 狀態機
 
 ```
