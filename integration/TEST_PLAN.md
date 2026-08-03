@@ -60,20 +60,57 @@ rosrun tf tf_echo map base_footprint        # AMCL 有接上才會有
 
 ---
 
-## T2 — LiDAR 左右方向（policy 把左當右就完了）
+## T2 — LiDAR 方向（最容易「壞掉但看起來正常」的一關）
 
-Route B 的文件說 policy 端要再補 180°，主 repo 說不用（因為 ROS `/scan` 已經是 CCW）。
-**兩邊只有一個對**，只能實物驗。
+### 矛盾在哪
+
+只在**一個事實**上：`/scan` 掛在哪個 frame，因此那 180° 補過了沒有。
+
+| 來源 | 說法 |
+|---|---|
+| Jetson `setmotor_model_only.launch:14` 的註解（Route B 從實機 grep 貼回） | **`/scan` 的 frame_id 是 `laser`** |
+| Route B `tf_confirmed.yaml` / TF log / `_yaw180.launch.partial` | `laser_link → laser` yaw = **180°**（同檔舊版是 0，`version_history` 記載改過） |
+| Route B `KNOWN_ISSUES` #3 #4 | 「LiDAR 反向 180°」「**TF 與 policy raw-scan offset 都需保留**」 |
+| Route B `doorway_ft_contract.yaml` | policy 端要 `source_angle_offset_deg: 180.0` |
+| 主 repo `NAV_RL.md` 校正清單第 1 項 | `/scan` 是 **`laser_link`**、角度 −85°~+85°、「已是 CCW/左正」→ 不補 |
+| 主 repo `nav_rl.py:110` | `lidar_yaw_offset_deg = 0.0` |
+
+兩邊量的是**不同的 launch**（Route B 用 Yahboom bringup，主 repo 用原廠 `TG.launch`），
+所以可以各自為真 —— 但只有你實際要跑的那組算數。
+
+**為什麼致命**：AMCL 走 TF 所以永遠正確；但 `nav_rl.py` 是 rosbridge 直接讀 `/scan` 原始角度、
+**完全不碰 TF**。若 `/scan` 真的在 `laser` frame，policy 以為的正前方就是車子正後方。而
+NAV_RL.md 記的窗口只有 170°（−85~+85），如果那是感測器自己的零度，那**車子正前方根本不在
+資料裡** → 48 束前方全部讀成 no-hit 4.0 m → policy 認為永遠淨空、幾何煞停永遠不觸發 →
+直直撞上去，全程沒有任何錯誤訊息。
+
+### 決定性檢查（30 秒，不用碰車）
+
+```bash
+rostopic echo -n1 /scan/header
+rostopic echo -n1 /scan/angle_min
+rostopic echo -n1 /scan/angle_max
+```
+
+- `frame_id: laser_link` 且角度涵蓋 ±90° → 預設的 offset 0 是對的
+- `frame_id: laser` → **加 `--lidar-yaw-offset-deg 180`**
+- 角度窗口不含車子正前方 → **驅動的角度上下限要改**，offset 救不了沒被取樣的方向
+
+程式現在會自己檢查這件事並印出來（`nav_rl.describe_scan`）：
 
 ```bash
 python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 ```
 
-在車子**正前方**放一個箱子 → 中間的 ray 應該變短。移到**左邊** → 高 index（接近 47）變短。
-移到**右邊** → 低 index（接近 0）變短。
+會印 `scan frame_id = ...`、`window [...] deg`、`policy forward window is covered NN%`，
+覆蓋不到就大聲警告。`mission_pipeline` 的自檢也會擋 —— **`--real` 下覆蓋率有問題會拒絕啟動**。
 
-**通過條件**：左右和 index 對得上。
-**失敗**：左右反了 → 加 `--lidar-dir -1`；整體偏轉 → `--lidar-yaw-offset-deg`。
+### 實物驗證（覆蓋率過了才做）
+
+在車子**正前方**放箱子 → 中間 sector 變短。**左邊** → 高 index（接近 47）變短。
+**右邊** → 低 index（接近 0）變短。
+
+**失敗**：左右反了 → `--lidar-dir -1`；整體偏轉 → `--lidar-yaw-offset-deg`。
 
 ---
 
@@ -190,7 +227,7 @@ python3 integration/mission_pipeline.py --real --show \
 | # | 問題 | 現況 | 怎麼確認 |
 |---|---|---|---|
 | 1 | **自動回報沒開 → odom 永遠是 0，AMCL 相信它** | 已在 self-check 補上並會拒絕啟動 | T1 |
-| 2 | **LiDAR 180° 兩份文件說法相反** | 未解，只能實物驗 | T2 |
+| 2 | **LiDAR 180°：`/scan` 在 `laser` 還是 `laser_link`**。若在 `laser` 而 offset 是 0，policy 的「前方」是車後方 → 前方全讀成淨空、煞停永不觸發 | 已加自動檢查（覆蓋率不足時 `--real` 拒絕啟動）；**正確值仍須現場確認** | T2 |
 | 3 | **序列埠被別的程序佔住** | 只能人工檢查 | T0 |
 | 4 | 轉進 INVESTIGATE 時丟掉觸發它的偵測 → 永遠走不到物體 | 已修 + 回歸測試 | T4 |
 | 5 | DELIVER 沒有把目標指向垃圾桶 → 開去巡航點 | 已修 + 回歸測試 | T6 |

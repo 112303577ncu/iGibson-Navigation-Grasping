@@ -319,6 +319,20 @@ class MissionRunner:
             ok = False
         else:
             print(f"[mission][check] /scan fresh ({len(self.lidar.get_points())} points)")
+            # The 180 deg mounting question has two conflicting records and gets
+            # it wrong silently: the policy sees a clear path and the brake never
+            # fires. Coverage is the decisive test -- a scan window that does not
+            # contain the robot's forward arc cannot be fixed by any offset.
+            info = getattr(self.lidar, "scan_info", lambda _c: None)(self.nav.ncfg)
+            if info:
+                print(f"[mission][check] scan frame={info['frame_id']!r} "
+                      f"window [{info.get('angle_min_deg', float('nan')):.0f}, "
+                      f"{info.get('angle_max_deg', float('nan')):.0f}] deg, "
+                      f"forward covered {info.get('forward_fraction', 0.0)*100:.0f}%")
+                for w in info["warnings"]:
+                    print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: {w}")
+                if info["warnings"]:
+                    ok = ok and not self.args.real
 
         pose = self.rio.latest_pose()
         good, why = self.rio.pose_quality_ok()

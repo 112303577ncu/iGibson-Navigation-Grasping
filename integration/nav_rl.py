@@ -453,6 +453,74 @@ def laser_scan_to_points(message: Mapping[str, Any]) -> List[Tuple[float, float]
     return points
 
 
+def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
+    """What frame the scan is in and whether it can see where we drive.
+
+    This exists because the 180 deg question has two conflicting records and
+    getting it wrong is silent. The TG30 on this robot is mounted flipped:
+    Route B's TF puts yaw=pi on ``laser_link -> laser`` and the Jetson's own
+    launch says "``/scan`` frame_id is ``laser``". AMCL reads ``/scan`` through
+    TF and is therefore correct either way. This module does NOT use TF -- it
+    converts the message's own angles directly -- so if the message really is
+    in ``laser``, every ray here is 180 deg out and "forward" is the robot's
+    rear. Nothing about that reads as an error: the policy simply sees a clear
+    path ahead and the geometric brake never fires.
+
+    The decisive check is not the frame name but the coverage: after applying
+    ``lidar_yaw_offset_deg``, does the scan actually contain the robot's
+    forward +-90 deg? A driver publishing a 170 deg window around a flipped
+    zero covers the REAR, and no offset can recover a front that was never
+    sampled.
+    """
+    header = message.get("header") if isinstance(message, Mapping) else None
+    frame = ""
+    if isinstance(header, Mapping):
+        frame = str(header.get("frame_id") or "")
+
+    info = {"frame_id": frame, "warnings": []}
+    try:
+        angle_min = math.degrees(float(message["angle_min"]))
+        angle_inc = math.degrees(float(message["angle_increment"]))
+        n = len(message["ranges"])
+    except (KeyError, TypeError, ValueError):
+        info["warnings"].append("scan metadata unreadable; cannot check coverage")
+        return info
+
+    angle_max = angle_min + angle_inc * max(n - 1, 0)
+    lo, hi = min(angle_min, angle_max), max(angle_min, angle_max)
+    info.update(angle_min_deg=lo, angle_max_deg=hi, span_deg=hi - lo, count=n)
+
+    # Where the policy's rays are asked for, in the message's own angle frame.
+    off = cfg.lidar_yaw_offset_deg
+    half = cfg.lidar_fov_deg / 2.0
+    want_lo, want_hi = -half + off, half + off
+    covered = max(0.0, min(hi, want_hi) - max(lo, want_lo))
+    info["forward_coverage_deg"] = covered
+    info["forward_fraction"] = covered / max(cfg.lidar_fov_deg, 1e-9)
+
+    if covered <= 0.0:
+        info["warnings"].append(
+            f"the scan window [{lo:.0f}, {hi:.0f}] deg does NOT overlap the "
+            f"policy's forward window [{want_lo:.0f}, {want_hi:.0f}] deg. Every "
+            f"forward ray will read as no-hit (clear) and the geometric brake "
+            f"will never fire. This is what a 180 deg mounting error looks like."
+        )
+    elif info["forward_fraction"] < 0.9:
+        info["warnings"].append(
+            f"only {info['forward_fraction']*100:.0f}% of the policy's forward "
+            f"{cfg.lidar_fov_deg:.0f} deg is actually sampled; the rest defaults "
+            f"to no-hit"
+        )
+    if frame == "laser" and abs(off) < 1e-6:
+        info["warnings"].append(
+            "scan frame_id is 'laser', which on this robot is rotated 180 deg "
+            "from laser_link (see Route B tf_confirmed.yaml), but "
+            "lidar_yaw_offset_deg is 0. Either pass --lidar-yaw-offset-deg 180 "
+            "or confirm with --probe that front really is front."
+        )
+    return info
+
+
 def _laser_scan_stamp_seconds(message: Mapping[str, Any]) -> Optional[float]:
     """Return the ROS1 header timestamp when present, without using it as age."""
     header = message.get("header")
@@ -562,6 +630,7 @@ class RosLaserScanSource:
         self._ros_stamp: Optional[float] = None
         self._lock = threading.Lock()
         self._last_error = ""
+        self._raw_sample: Optional[Mapping[str, Any]] = None
         self._client = roslibpy.Ros(host=host, port=int(port))
         self._topic = None
         try:
@@ -592,6 +661,17 @@ class RosLaserScanSource:
             self._ts = time.monotonic()
             self._ros_stamp = _laser_scan_stamp_seconds(message)
             self._last_error = ""
+            if self._raw_sample is None:
+                # Keep one message so the frame/coverage check can run without
+                # a second subscription. Ranges are dropped -- only the header
+                # and the angle metadata matter, and holding 1000+ floats per
+                # source for the life of the run is pointless.
+                self._raw_sample = {
+                    "header": dict(message.get("header") or {}),
+                    "angle_min": message.get("angle_min"),
+                    "angle_increment": message.get("angle_increment"),
+                    "ranges": [0.0] * len(message.get("ranges") or []),
+                }
 
     def get_points(self) -> List[Tuple[float, float]]:
         with self._lock:
@@ -605,6 +685,12 @@ class RosLaserScanSource:
     def ros_stamp(self) -> Optional[float]:
         with self._lock:
             return self._ros_stamp
+
+    def scan_info(self, cfg: NavRLConfig) -> Optional[dict]:
+        """Frame and forward-coverage report for the first scan seen."""
+        with self._lock:
+            sample = self._raw_sample
+        return None if sample is None else describe_scan(sample, cfg)
 
     def close(self) -> None:
         topic, self._topic = self._topic, None
@@ -747,7 +833,54 @@ def run_selftest():
     t3 = GoalTracker(); t3.update(1.0, 0.3)     # offset 0.3 RIGHT
     assert t3.bearing() < 0                 # right => negative bearing
 
+    _selftest_describe_scan()
+
     print("\n[selftest] OK")
+
+
+def _selftest_describe_scan():
+    """The 180 deg mounting check: coverage, not frame names."""
+    cfg = NavRLConfig()
+
+    def msg(frame, lo_deg, hi_deg, n=340):
+        inc = math.radians(hi_deg - lo_deg) / max(n - 1, 1)
+        return {"header": {"frame_id": frame},
+                "angle_min": math.radians(lo_deg),
+                "angle_increment": inc,
+                "ranges": [1.0] * n}
+
+    # A correctly-oriented forward window: no complaints.
+    info = describe_scan(msg("laser_link", -85.0, 85.0), cfg)
+    assert info["frame_id"] == "laser_link"
+    assert info["forward_fraction"] > 0.9, info
+    assert not info["warnings"], info["warnings"]
+
+    # The same 170 deg window on a sensor mounted backwards. The robot's front
+    # is simply not in the data, so every forward ray reads clear and the brake
+    # never fires -- the failure this whole check exists for.
+    info = describe_scan(msg("laser", 95.0, 265.0), cfg)
+    assert info["forward_coverage_deg"] == 0.0, info
+    assert any("does NOT overlap" in w for w in info["warnings"]), info["warnings"]
+
+    # frame 'laser' with no offset is suspicious even when coverage looks fine,
+    # because on this robot that frame is the flipped one.
+    info = describe_scan(msg("laser", -85.0, 85.0), cfg)
+    assert any("rotated 180" in w for w in info["warnings"]), info["warnings"]
+    # ...and declaring the offset clears that specific complaint
+    shifted = dataclasses.replace(cfg, lidar_yaw_offset_deg=180.0)
+    info = describe_scan(msg("laser", 95.0, 265.0), shifted)
+    assert info["forward_fraction"] > 0.9, info
+    assert not info["warnings"], info["warnings"]
+
+    # A narrow window is reported as partial rather than silently padded.
+    info = describe_scan(msg("laser_link", -40.0, 40.0), cfg)
+    assert 0.4 < info["forward_fraction"] < 0.5, info
+    assert any("only" in w for w in info["warnings"]), info["warnings"]
+
+    # Unreadable metadata must not raise in the middle of a scan callback.
+    info = describe_scan({"header": {"frame_id": "x"}}, cfg)
+    assert info["warnings"] and "unreadable" in info["warnings"][0]
+    print("== describe_scan: 180deg mounting / forward-coverage check ==")
 
 
 def run_probe(cfg: NavRLConfig, *, backend: str = "ros",
@@ -763,6 +896,7 @@ def run_probe(cfg: NavRLConfig, *, backend: str = "ros",
         cfg, backend, ros_host=ros_host, ros_port=ros_port,
         scan_topic=scan_topic
     )
+    reported = False
     try:
         while True:
             pts = lidar.get_points()
@@ -771,6 +905,18 @@ def run_probe(cfg: NavRLConfig, *, backend: str = "ros",
                 print("[probe] waiting for scan...")
                 time.sleep(0.5)
                 continue
+            if not reported:
+                info = getattr(lidar, "scan_info", lambda _c: None)(cfg)
+                if info:
+                    reported = True
+                    print(f"[probe] scan frame_id = {info['frame_id']!r}, "
+                          f"window [{info.get('angle_min_deg', float('nan')):.1f}, "
+                          f"{info.get('angle_max_deg', float('nan')):.1f}] deg, "
+                          f"{info.get('count', 0)} samples")
+                    print(f"[probe] policy forward window is covered "
+                          f"{info.get('forward_fraction', 0.0)*100:.0f}%")
+                    for w in info["warnings"]:
+                        print(f"[probe] WARNING: {w}")
             rays = scan_to_rays(pts, cfg)
             sect = [f"{np.min(rays[i:i + 8]):.2f}" for i in range(0, 48, 8)]
             print(f"[probe] backend={backend} age={age:.2f}s pts={len(pts):4d} "

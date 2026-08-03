@@ -208,6 +208,7 @@ class SafetyGuardTests(unittest.TestCase):
         source._ros_stamp = None
         source._lock = threading.Lock()
         source._last_error = ""
+        source._raw_sample = None
         source._on_scan({
             "header": {"stamp": {"secs": 12, "nsecs": 500000000}},
             "angle_min": -1.0,
