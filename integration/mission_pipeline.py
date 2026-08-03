@@ -267,7 +267,6 @@ class MissionRunner:
         self.fault = ""
         self._last_det = 0.0
         self._det_streak = 0
-        self._det_class: Optional[str] = None
         self._last_log = 0.0
         self._t_prev = time.time()
         self._latched: Optional[Tuple[list, Optional[float], Optional[float]]] = None
@@ -579,6 +578,11 @@ class MissionRunner:
         A = mfsm.Action
         act = tr.action
 
+        # The clear is a one-shot. Leaving it latched would make every later
+        # PAUSED clear itself on the tick it happened.
+        if self.operator_cleared and tr.state is not mfsm.State.PAUSED:
+            self.operator_cleared = False
+
         if tr.reset_nav:
             # Entering a map-goal state means the camera target no longer
             # matters; entering a camera-goal state means it is the whole point.
@@ -744,6 +748,15 @@ class MissionRunner:
                     self.controller.run(max_steps=self.args.max_steps))
             except Exception as exc:
                 self.fault = f"grasp policy raised: {exc}"
+                return
+            if self._grasp_finished:
+                # run() completing means stage 2 ran, and stage 2 ends with
+                # _scripted_lift_and_return putting the arm back at cfg.home_deg
+                # -- the nav travel pose now that the two homes are split. Without
+                # recording that, CARRY_HOME waits for an arm_at_home that never
+                # arrives and PAUSES after every successful grasp.
+                self._arm_at_home = True
+                self._at_nav_home = True
             return
 
         if act is A.VERIFY:
@@ -822,6 +835,36 @@ class MissionRunner:
         d = min(math.hypot(pose.x - bx, pose.y - by) for bx, by in self._blacklist)
         return d if d <= self.args.blacklist_radius_m else None
 
+    def _handle_pause(self, reason: str) -> None:
+        """Hold in PAUSED until a human clears it, then re-verify from scratch.
+
+        Without this the state is a dead end: the FSM has a documented recovery
+        path but ``operator_cleared`` was never set by anything, so a robot that
+        paused for a stale sensor stopped forever.
+
+        Clearing deliberately resets ``self_check_passed`` and ``started`` too.
+        Something was wrong enough to stop the robot; resuming straight into
+        PATROL on the strength of a self-check that passed before the fault is
+        exactly the wrong reading of "the operator said continue".
+        """
+        print("\n" + "=" * 60)
+        print(f"  PAUSED: {reason}")
+        print("  The base is stopped. Fix the cause (RViz pose, sensor, obstacle),")
+        print("  then press Enter to re-run the self-check. Ctrl+C to quit.")
+        print("=" * 60)
+        try:
+            input()
+        except (EOFError, OSError):
+            # No terminal: hold rather than silently resume. A headless run that
+            # paused needs a human anyway.
+            print("[mission] no terminal attached — holding in PAUSED")
+            time.sleep(5.0)
+            return
+        self.operator_cleared = True
+        self.self_check_passed = False
+        self.started = not self.args.wait_start
+        self._at_nav_home = False        # re-park the arm during the new check
+
     def _reset_target_state(self) -> None:
         self._latched = None
         self._grasp_finished = self._grasp_verified = False
@@ -853,12 +896,16 @@ class MissionRunner:
             return False
 
         if outcome == "released":
-            self._arm_at_home = True
+            # v21's release ends with a guarded move to cfg.home_deg, which is
+            # the nav travel pose now that the two homes are split -- so the arm
+            # is already folded and RESUME need not move it again.
+            self._arm_at_home = self._at_nav_home = True
             print("[mission] release motion complete (the drop itself is not sensed)")
             return True
         if outcome == "rejected":
             # Nothing in the jaw. Not a fault: the object is gone, the arm is
-            # safe, and the right move is to carry on patrolling.
+            # safe, and the right move is to carry on patrolling. The arm has
+            # not moved, so leave _at_nav_home alone and let RESUME fold it.
             self._arm_at_home = True
             print("[mission] nothing in the jaw to release — resuming patrol")
             return True
@@ -893,10 +940,13 @@ class MissionRunner:
                     self.nav.stop()
                     print(f"[mission] TERMINAL {tr.state.value}: {tr.reason}")
                     return 2
-                if tr.state is mfsm.State.PAUSED and self.args.exit_on_pause:
+                if tr.state is mfsm.State.PAUSED:
                     self.nav.stop()
-                    print(f"[mission] PAUSED: {tr.reason} (--exit-on-pause)")
-                    return 3
+                    if self.args.exit_on_pause:
+                        print(f"[mission] PAUSED: {tr.reason} (--exit-on-pause)")
+                        return 3
+                    self._handle_pause(tr.reason)
+                    continue
 
                 self._act(tr, now, dt)
 
@@ -1263,6 +1313,7 @@ def run_selftest() -> None:
     dr._grasp_verified = True          # delivered successfully
     dr._blacklist = []
     dr._at_nav_home = True             # v21 already returns there after a grasp
+    dr.operator_cleared = False
 
     assert not dgoals.in_override
     MissionRunner._act(dr, mfsm.Transition(mfsm.State.DELIVER, mfsm.Action.DRIVE_BIN),
@@ -1295,6 +1346,7 @@ def run_selftest() -> None:
     gr.args = type("A", (), {"blacklist_radius_m": 1.0, "detection_jump_m": 0.35})()
     gr._blacklist = []
     gr._at_nav_home = True
+    gr.operator_cleared = False
     gr._det_streak = 3
     gr._latched = ([0.24, 0.0, 0.02], 0.023, 0.065)
     gr._grasp_finished = True
@@ -1412,6 +1464,52 @@ def run_selftest() -> None:
     MissionRunner._run_detection(r5, 300.0)
     assert r5._det_streak == 0
     print("  detection streak: 3 consistent hits confirm, a jump restarts, a miss resets")
+
+    # ── PAUSED must be recoverable, and must re-verify on the way out ──
+    # The FSM has always had the recovery edge; nothing in the pipeline set
+    # operator_cleared, so a robot that paused for a stale sensor stopped
+    # forever. And clearing must not walk straight back into PATROL on a
+    # self-check that passed before the fault.
+    pr = MissionRunner.__new__(MissionRunner)
+    pr.args = type("A", (), {"wait_start": True, "exit_on_pause": False})()
+    pr.operator_cleared = False
+    pr.self_check_passed = True
+    pr.started = True
+    pr._at_nav_home = True
+    import builtins as _b
+    import contextlib as _ctx
+    import io as _io
+
+    def _with_input(fn):
+        """Drive _handle_pause with a scripted stdin, never the ambient one."""
+        real_in, _b.input = _b.input, fn
+        real_sleep, time.sleep = time.sleep, lambda *_a: None
+        try:
+            with _ctx.redirect_stdout(_io.StringIO()):
+                MissionRunner._handle_pause(pr, "test: /scan stale")
+        finally:
+            _b.input, time.sleep = real_in, real_sleep
+
+    def _no_tty(*_a):
+        raise EOFError
+
+    _with_input(_no_tty)     # no terminal -> hold, do NOT silently resume
+    assert pr.operator_cleared is False and pr.self_check_passed is True, \
+        "with no terminal the pause must hold, not clear itself"
+
+    _with_input(lambda *_a: "")   # a terminal + Enter -> clear and demote
+    assert pr.operator_cleared is True
+    assert pr.self_check_passed is False, "clearing must force a fresh self-check"
+    assert pr.started is False, "clearing must require the start confirmation again"
+    assert pr._at_nav_home is False, "the arm must be re-parked after a pause"
+
+    # and the FSM accepts it, then the flag must not stay latched
+    pfsm = mfsm.MissionFSM(mfsm.MissionConfig())
+    pfsm.state, pfsm.entered_at = mfsm.State.PAUSED, 0.0
+    assert pfsm.step(mfsm.Sense(now=1.0)).state is mfsm.State.PAUSED
+    tr = pfsm.step(mfsm.Sense(now=2.0, operator_cleared=True))
+    assert tr.state is mfsm.State.SELF_CHECK, tr
+    print("  PAUSED is recoverable and forces a fresh self-check + start confirm")
 
     # ── the two arm homes must stay distinct ──
     # v21 ships them collapsed (home_deg IS C3, grasp_home_deg is None), which

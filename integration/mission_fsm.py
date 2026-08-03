@@ -244,7 +244,8 @@ class MissionFSM:
         self.deliver_enabled = bool(deliver_enabled)
         self.state = State.BOOT
         self.entered_at = 0.0
-        self.attempts = 0
+        self.attempts = 0      # grasp attempts started (reached LATCH)
+        self.failures = 0      # failed tries, including ones that never got there
         self.last_reason = ""
         self.pause_reason = ""
         self.history: list = []
@@ -272,7 +273,7 @@ class MissionFSM:
 
     def _abandon_target(self, reason: str, now: float) -> Transition:
         """Give up on the current object and go back to the route."""
-        self.attempts = 0
+        self.attempts = self.failures = 0
         return self._go(State.RESUME, Action.RESUME_PATROL, reason, now, reset_nav=True)
 
     # ── the machine ──
@@ -415,7 +416,7 @@ class MissionFSM:
                 return self._abandon_target("retry back-off timed out", now)
             if s.arm_at_home and s.stationary:
                 return self._go(State.APPROACH, Action.DRIVE_TARGET,
-                                f"retrying (attempt {self.attempts + 1}/"
+                                f"retrying (failure {self.failures}/"
                                 f"{cfg.max_grasp_attempts})", now, reset_nav=True)
             return self._go(State.RETRY, Action.BACK_OFF, "backing off for a retry", now)
 
@@ -450,7 +451,7 @@ class MissionFSM:
             if self._elapsed(now) > cfg.place_timeout_s:
                 return self._pause("place sequence timed out", now)
             if s.place_finished and s.arm_at_home:
-                self.attempts = 0
+                self.attempts = self.failures = 0
                 return self._go(State.RESUME, Action.RESUME_PATROL,
                                 "object placed — arm home", now, reset_nav=True)
             return self._go(State.PLACE, Action.PLACE, "placing", now)
@@ -469,9 +470,18 @@ class MissionFSM:
         return self._fault(f"unhandled state {st!r}", now)
 
     def _retry_or_give_up(self, reason: str, now: float) -> Transition:
-        if self.attempts >= self.cfg.max_grasp_attempts:
+        """Count the FAILURE, not the attempt.
+
+        Counting attempts only worked for failures that got as far as LATCH. An
+        object the visual servo can never align on -- out of the trained
+        envelope, too wide, simply not graspable -- never reaches LATCH, so the
+        counter stayed at zero and APPROACH/ALIGN/RETRY cycled forever. Every
+        path into here is a failed try, so this is where the budget belongs.
+        """
+        self.failures += 1
+        if self.failures >= self.cfg.max_grasp_attempts:
             return self._abandon_target(
-                f"{reason} — {self.attempts} attempts exhausted, blacklisting", now)
+                f"{reason} — {self.failures} attempts exhausted, blacklisting", now)
         return self._go(State.RETRY, Action.BACK_OFF, reason, now, reset_nav=True)
 
 
