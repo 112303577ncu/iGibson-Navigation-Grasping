@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 import math
 import os
 import threading
@@ -174,6 +175,31 @@ def wrap_angle(a: float) -> float:
     return (a + math.pi) % (2.0 * math.pi) - math.pi
 
 
+def _transform_scan_sample(ang_deg: float, dist: float,
+                           cfg: NavRLConfig) -> Optional[Tuple[float, float]]:
+    """Map one raw scan sample into the robot frame.
+
+    ``scan_to_rays`` and the geometric brake used to carry out this transform
+    independently.  That made a corrected yaw offset reach the policy while
+    the brake still watched the old sector.  Keep the transform in one pure
+    helper so both consumers (and their tests) use exactly the same convention.
+    """
+    try:
+        ang_deg, dist = float(ang_deg), float(dist)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(ang_deg) or not math.isfinite(dist) or dist <= 0.02:
+        return None
+    a = wrap_angle(cfg.lidar_angle_dir * math.radians(ang_deg)
+                   + math.radians(cfg.lidar_yaw_offset_deg))
+    if cfg.lidar_forward_offset_m:
+        x = dist * math.cos(a) + cfg.lidar_forward_offset_m
+        y = dist * math.sin(a)
+        dist = math.hypot(x, y)
+        a = math.atan2(y, x)
+    return a, dist
+
+
 def scan_to_rays(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> np.ndarray:
     """Convert raw lidar points to the training 48-ray observation.
 
@@ -187,21 +213,11 @@ def scan_to_rays(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> np.
     rays = np.full(n, cfg.lidar_max_dist, dtype=np.float32)
     half_fov = math.radians(cfg.lidar_fov_deg) / 2.0
     step = math.radians(cfg.lidar_fov_deg) / (n - 1)
-    off = math.radians(cfg.lidar_yaw_offset_deg)
     for ang_deg, dist in points:
-        try:
-            ang_deg, dist = float(ang_deg), float(dist)
-        except (TypeError, ValueError):
+        sample = _transform_scan_sample(ang_deg, dist, cfg)
+        if sample is None:
             continue
-        if not math.isfinite(ang_deg) or not math.isfinite(dist) or dist <= 0.02:
-            continue
-        a = wrap_angle(cfg.lidar_angle_dir * math.radians(ang_deg) + off)
-        # re-center on the robot if the lidar is mounted off-center
-        if cfg.lidar_forward_offset_m:
-            x = dist * math.cos(a) + cfg.lidar_forward_offset_m
-            y = dist * math.sin(a)
-            dist = math.hypot(x, y)
-            a = math.atan2(y, x)
+        a, dist = sample
         if abs(a) > half_fov + step / 2.0:
             continue                 # behind the 180 deg front window
         idx = int(round((a + half_fov) / step))
@@ -215,21 +231,12 @@ def scan_to_rays(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> np.
 def front_min_raw(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> float:
     """Minimum RAW distance in the front safety cone (for the geometric brake)."""
     half = math.radians(cfg.safety_brake_halfangle_deg)
-    off = math.radians(cfg.lidar_yaw_offset_deg)
     best = float("inf")
     for ang_deg, dist in points:
-        try:
-            ang_deg, dist = float(ang_deg), float(dist)
-        except (TypeError, ValueError):
+        sample = _transform_scan_sample(ang_deg, dist, cfg)
+        if sample is None:
             continue
-        if not math.isfinite(ang_deg) or not math.isfinite(dist) or dist <= 0.02:
-            continue
-        a = wrap_angle(cfg.lidar_angle_dir * math.radians(ang_deg) + off)
-        if cfg.lidar_forward_offset_m:
-            x = dist * math.cos(a) + cfg.lidar_forward_offset_m
-            y = dist * math.sin(a)
-            dist = math.hypot(x, y)
-            a = math.atan2(y, x)
+        a, dist = sample
         if abs(a) <= half and dist < best:
             best = dist
     return best
@@ -466,11 +473,11 @@ def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
     rear. Nothing about that reads as an error: the policy simply sees a clear
     path ahead and the geometric brake never fires.
 
-    The decisive check is not the frame name but the coverage: after applying
-    ``lidar_yaw_offset_deg``, does the scan actually contain the robot's
-    forward +-90 deg? A driver publishing a 170 deg window around a flipped
-    zero covers the REAR, and no offset can recover a front that was never
-    sampled.
+    The coverage check below is only a metadata check.  A full 360-degree scan
+    covers both the front and rear regardless of the offset, so coverage cannot
+    prove the physical meaning of a raw index.  That requires the Route B
+    four-direction board gate.  This function must never be treated as a
+    substitute for that evidence.
     """
     header = message.get("header") if isinstance(message, Mapping) else None
     frame = ""
@@ -490,18 +497,39 @@ def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
     lo, hi = min(angle_min, angle_max), max(angle_min, angle_max)
     info.update(angle_min_deg=lo, angle_max_deg=hi, span_deg=hi - lo, count=n)
 
-    # Where the policy's rays are asked for, in the message's own angle frame.
-    off = cfg.lidar_yaw_offset_deg
+    # Compute overlap on the circle, including scans whose transformed window
+    # crosses -180/+180.  The previous linear min/max comparison reported a
+    # false partial overlap for a valid 360-degree scan with a 180-degree offset.
     half = cfg.lidar_fov_deg / 2.0
-    want_lo, want_hi = -half + off, half + off
-    covered = max(0.0, min(hi, want_hi) - max(lo, want_lo))
+    raw_span = abs(angle_inc) * max(n - 1, 0)
+    if raw_span >= 360.0 - 1e-6:
+        covered = min(360.0, cfg.lidar_fov_deg)
+    else:
+        # a = dir*raw + offset is affine, so the image of the raw window is
+        # bounded by the images of its two endpoints.  Adding raw_span to the
+        # transformed start silently assumed dir=+1: with a mirrored lidar the
+        # transformed angles DECREASE with index, and coverage came out
+        # inverted -- a correctly aimed +-85 deg scan reported 3% (and failed
+        # --real) while the same scan pointing backwards reported 92%.
+        start = math.degrees(wrap_angle(
+            cfg.lidar_angle_dir * math.radians(angle_min)
+            + math.radians(cfg.lidar_yaw_offset_deg)))
+        delta = cfg.lidar_angle_dir * angle_inc * max(n - 1, 0)
+        start, end = (start, start + delta) if delta >= 0.0 else (start + delta, start)
+        covered = 0.0
+        for k in range(-2, 3):
+            target_lo = -half + 360.0 * k
+            target_hi = half + 360.0 * k
+            covered = max(covered,
+                          max(0.0, min(end, target_hi)
+                              - max(start, target_lo)))
     info["forward_coverage_deg"] = covered
     info["forward_fraction"] = covered / max(cfg.lidar_fov_deg, 1e-9)
 
     if covered <= 0.0:
         info["warnings"].append(
-            f"the scan window [{lo:.0f}, {hi:.0f}] deg does NOT overlap the "
-            f"policy's forward window [{want_lo:.0f}, {want_hi:.0f}] deg. Every "
+            f"the transformed scan window does NOT overlap the policy's "
+            f"forward window ±{half:.0f} deg. Every "
             f"forward ray will read as no-hit (clear) and the geometric brake "
             f"will never fire. This is what a 180 deg mounting error looks like."
         )
@@ -511,7 +539,7 @@ def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
             f"{cfg.lidar_fov_deg:.0f} deg is actually sampled; the rest defaults "
             f"to no-hit"
         )
-    if frame == "laser" and abs(off) < 1e-6:
+    if frame == "laser" and abs(cfg.lidar_yaw_offset_deg) < 1e-6:
         info["warnings"].append(
             "scan frame_id is 'laser', which on this robot is rotated 180 deg "
             "from laser_link (see Route B tf_confirmed.yaml), but "
@@ -519,6 +547,87 @@ def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
             "or confirm with --probe that front really is front."
         )
     return info
+
+
+def load_orientation_evidence(path: str) -> dict:
+    """Load the Route B orientation marker/evidence without executing it.
+
+    The handoff marker is intentionally a tiny ``key=value`` file so it can be
+    written on the Jetson without Python dependencies.  JSON evidence from the
+    four-direction diagnostic is accepted as well.  This parser only checks
+    identity and completeness; it never turns a marker into physical proof.
+    """
+    if not path:
+        raise ValueError("orientation evidence path is empty")
+    p = Path(path).expanduser()
+    if not p.is_file() or not p.stat().st_size:
+        raise ValueError(f"orientation evidence is missing or empty: {p}")
+    try:
+        raw = p.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(f"cannot read orientation evidence {p}: {exc}") from exc
+    try:
+        value = json.loads(raw)
+        if not isinstance(value, Mapping):
+            raise ValueError("JSON evidence must be an object")
+        data = dict(value)
+    except (ValueError, TypeError):
+        data = {}
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            data[key.strip()] = value.strip()
+    data["_path"] = str(p)
+    return data
+
+
+def validate_orientation_evidence(path: str, cfg: NavRLConfig,
+                                   scan_info: Optional[Mapping[str, Any]] = None
+                                   ) -> Tuple[bool, str]:
+    """Validate the evidence identity against the live scan configuration.
+
+    A valid return means only that the operator's evidence belongs to this
+    runtime configuration.  The four-direction board test remains the source
+    of the physical 0/180 decision and must be performed before creating the
+    marker.
+    """
+    try:
+        data = load_orientation_evidence(path)
+    except ValueError as exc:
+        return False, str(exc)
+    required = ("verified_at", "scan_frame", "policy_source_angle_offset_deg",
+                "evidence_log")
+    missing = [key for key in required if not str(data.get(key, "")).strip()]
+    if missing:
+        return False, "orientation evidence missing: " + ", ".join(missing)
+    status = str(data.get("result", data.get("status", ""))).strip().upper()
+    if not status:
+        return False, "orientation evidence missing result/status"
+    if status not in ("PASS", "VERIFIED", "MANUAL_PASS"):
+        return False, f"orientation evidence status is {status!r}, not PASS"
+    try:
+        evidence_offset = float(data["policy_source_angle_offset_deg"])
+    except (TypeError, ValueError):
+        return False, "orientation evidence offset is not numeric"
+    if not math.isfinite(evidence_offset):
+        return False, "orientation evidence offset is not finite"
+    # 180 and -180 are equivalent; arbitrary offsets are not accepted by the
+    # Route B contract until a new physical gate is designed.
+    if min(abs(evidence_offset), abs(abs(evidence_offset) - 180.0)) > 1e-3:
+        return False, ("orientation evidence offset must be 0 or 180 degrees, "
+                       f"got {evidence_offset}")
+    if abs(((evidence_offset - cfg.lidar_yaw_offset_deg + 180.0) % 360.0)
+           - 180.0) > 1e-3:
+        return False, ("orientation evidence offset does not match runtime "
+                       f"lidar_yaw_offset_deg={cfg.lidar_yaw_offset_deg}")
+    if scan_info:
+        live_frame = str(scan_info.get("frame_id") or "")
+        if live_frame and live_frame != str(data["scan_frame"]):
+            return False, (f"orientation evidence frame={data['scan_frame']!r} "
+                           f"but live /scan frame={live_frame!r}")
+    return True, "orientation evidence identity matches live configuration"
 
 
 def _laser_scan_stamp_seconds(message: Mapping[str, Any]) -> Optional[float]:

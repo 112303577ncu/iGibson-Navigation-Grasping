@@ -49,6 +49,18 @@ BASE_FRAME = "base_footprint"
 # usable fix -- the patrol states must stop rather than drive on it.
 DEFAULT_MAX_POS_VAR = 0.25 ** 2         # m^2
 DEFAULT_MAX_YAW_VAR = math.radians(20.0) ** 2
+DEFAULT_MAX_AMCL_AGE_S = 5.0            # local receipt age, not ROS stamp age
+
+# AMCL publishes /amcl_pose only when its filter updates, and it updates on
+# MOTION. The mission stands still for up to ~140 s per object (GRASP 120 s +
+# CARRY_HOME 20 s) and then enters DELIVER, where a stale pose is a blocking
+# fault -- so standing still would end the mission. Route B solves this with
+# amcl_nomotion_keepalive.py, but route_b_startup.sh starts that node only in
+# start_dryrun, a phase the mission does not use. Ask for the update here
+# instead, so the freshness the mission requires is the mission's own business.
+NOMOTION_SERVICE = "/request_nomotion_update"
+NOMOTION_MIN_PERIOD_S = 0.25            # same rate as the Route B keepalive
+NOMOTION_TRIGGER_AGE_S = 0.4            # under MapGoalProvider's 1.0 s window
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -180,8 +192,17 @@ class NullRosIO:
     def pose_age(self, now: Optional[float] = None) -> float:
         return float("inf")
 
-    def pose_quality_ok(self) -> Tuple[bool, str]:
+    def pose_quality_ok(self, max_age_s: Optional[float] = None) -> Tuple[bool, str]:
         return False, "dry-run: no AMCL"
+
+    def request_nomotion_update(self, **kw) -> bool:
+        return False
+
+    def refresh_pose(self, timeout_s: float = 3.0, poll_s: float = 0.05) -> bool:
+        return False
+
+    def rosapi_list(self, what: str, timeout_s: float = 3.0):
+        return None
 
     def close(self) -> None:
         pass
@@ -200,6 +221,7 @@ class RosBridgeIO:
                  max_pos_var: float = DEFAULT_MAX_POS_VAR,
                  max_yaw_var: float = DEFAULT_MAX_YAW_VAR,
                  publish_tf: bool = True,
+                 nomotion_service: str = NOMOTION_SERVICE,
                  roslibpy_module=None):
         if not host:
             raise ValueError("ROS bridge host must not be empty")
@@ -219,6 +241,10 @@ class RosBridgeIO:
         self._lock = threading.Lock()
         self._last_error = ""
         self.published = 0
+        self._nomotion = None
+        self._nomotion_ts = 0.0
+        self._nomotion_error = ""
+        self.nomotion_calls = 0
 
         roslibpy = roslibpy_module
         if roslibpy is None:
@@ -245,6 +271,10 @@ class RosBridgeIO:
                 self._client, amcl_topic,
                 "geometry_msgs/PoseWithCovarianceStamped", queue_length=1)
             self._amcl.subscribe(self._on_amcl)
+            # Constructing a Service does not require it to be advertised yet;
+            # whether AMCL actually offers it is checked by the preflight.
+            self._nomotion = roslibpy.Service(self._client, nomotion_service,
+                                              "std_srvs/Empty")
             self._roslibpy = roslibpy
         except Exception as exc:
             self.close()
@@ -292,12 +322,30 @@ class RosBridgeIO:
             return float("inf")
         return time.monotonic() - ts
 
-    def pose_quality_ok(self) -> Tuple[bool, str]:
-        """Reject a diverged particle filter before it steers the robot."""
+    def pose_quality_ok(self, max_age_s: Optional[float] = DEFAULT_MAX_AMCL_AGE_S
+                        ) -> Tuple[bool, str]:
+        """Reject stale or diverged AMCL before it steers the robot.
+
+        The ROS header timestamp cannot be used for safety ageing: the Jetson
+        and ROS master may not share a clock.  ``_recv_ts`` is updated only by
+        a real callback, never by the nomotion keepalive service.
+        """
         with self._lock:
             pose, pos_var, yaw_var = self._pose, self._pos_var, self._yaw_var
+            recv_ts = self._recv_ts
         if pose is None:
             return False, "no /amcl_pose received yet"
+        if max_age_s is not None:
+            try:
+                max_age_s = float(max_age_s)
+            except (TypeError, ValueError):
+                return False, f"invalid AMCL max age {max_age_s!r}"
+            if not math.isfinite(max_age_s) or max_age_s <= 0.0:
+                return False, f"invalid AMCL max age {max_age_s!r}"
+            age = time.monotonic() - recv_ts if recv_ts else float("inf")
+            if age > max_age_s:
+                return False, (f"AMCL pose stale ({age:.2f}s > "
+                               f"{max_age_s:.2f}s); set a fresh 2D Pose Estimate")
         if math.isnan(pos_var) or math.isnan(yaw_var):
             return False, "AMCL pose carried no covariance"
         if pos_var > self.max_pos_var:
@@ -307,6 +355,90 @@ class RosBridgeIO:
             return False, (f"AMCL yaw variance {math.degrees(math.sqrt(yaw_var)):.1f}deg "
                            f"> {math.degrees(math.sqrt(self.max_yaw_var)):.1f}deg")
         return True, ""
+
+    def request_nomotion_update(self, *, min_period_s: float = NOMOTION_MIN_PERIOD_S,
+                                trigger_age_s: float = NOMOTION_TRIGGER_AGE_S,
+                                force: bool = False) -> bool:
+        """Ask AMCL to re-run its filter so a standing robot keeps a fresh fix.
+
+        Fire-and-forget: the resulting pose arrives on /amcl_pose like any
+        other, so nothing here needs a reply. Only fires when the pose is
+        already going stale -- calling it at a flat 4 Hz the way the Route B
+        node does would keep resampling the filter against one unchanging scan
+        while the robot drives, which is how a particle set over-converges.
+
+        Returns whether a call was actually issued.
+        """
+        service = self._nomotion
+        if service is None:
+            return False
+        now = time.monotonic()
+        if not force:
+            if self.pose_age() < float(trigger_age_s):
+                return False
+            if now - self._nomotion_ts < float(min_period_s):
+                return False
+        self._nomotion_ts = now
+
+        def _failed(error):
+            error = str(error)
+            if error != self._nomotion_error:
+                print(f"[ros-io] {NOMOTION_SERVICE} failed: {error}. AMCL cannot "
+                      "refresh while the robot is stationary; the mission will "
+                      "pause when it next needs a map fix.")
+                self._nomotion_error = error
+
+        try:
+            service.call(self._roslibpy.ServiceRequest({}),
+                         callback=lambda _result: None, errback=_failed)
+        except Exception as exc:                      # transport died mid-call
+            _failed(exc)
+            return False
+        self.nomotion_calls += 1
+        return True
+
+    def refresh_pose(self, timeout_s: float = 3.0, poll_s: float = 0.05) -> bool:
+        """Force a fresh fix and wait briefly for it, for use after a long block.
+
+        The mission runs a whole grasp episode inside one tick, so nothing can
+        keep the fix alive while it does. Coming back with a minutes-old pose
+        means the next map state refuses to drive. The base is stopped at that
+        moment, so a bounded synchronous wait costs nothing and is far cheaper
+        than pausing and asking a human to re-pose in RViz.
+        """
+        if not self.request_nomotion_update(force=True):
+            return self.pose_age() <= NOMOTION_TRIGGER_AGE_S
+        deadline = time.monotonic() + max(0.0, float(timeout_s))
+        while True:
+            if self.pose_age() <= NOMOTION_TRIGGER_AGE_S:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(max(0.0, float(poll_s)))
+            self.request_nomotion_update()
+
+    def rosapi_list(self, what: str, timeout_s: float = 3.0) -> Optional[list]:
+        """Query /rosapi/nodes or /rosapi/services.
+
+        None means rosapi did not answer -- "cannot verify", which is not the
+        same as "not there" and must not be reported as one.
+        """
+        if what not in ("nodes", "services"):
+            raise ValueError(f"rosapi_list takes 'nodes' or 'services', got {what!r}")
+        client = getattr(self, "_client", None)
+        if client is None or not self.connected:
+            return None
+        try:
+            service = self._roslibpy.Service(client, f"/rosapi/{what}",
+                                             f"rosapi/{what.capitalize()}")
+            result = service.call(self._roslibpy.ServiceRequest({}),
+                                  timeout=float(timeout_s))
+        except Exception:
+            return None
+        if not isinstance(result, Mapping):
+            return None
+        names = result.get(what)
+        return [str(n) for n in names] if isinstance(names, (list, tuple)) else None
 
     # ── outbound ──
     def publish_odom_and_tf(self, state, covariance, stamp: Optional[float] = None) -> None:
@@ -330,6 +462,7 @@ class RosBridgeIO:
         self.published += 1
 
     def close(self) -> None:
+        self._nomotion = None
         for attr in ("_amcl", "_odom", "_tf"):
             topic = getattr(self, attr, None)
             setattr(self, attr, None)
@@ -393,11 +526,33 @@ class _FakeTopic:
         self.messages.append(message.data if hasattr(message, "data") else message)
 
 
+class _FakeService:
+    def __init__(self, client, name, stype):
+        self.client, self.name, self.stype = client, name, stype
+        client.services.append(self)
+
+    def call(self, request, callback=None, errback=None, timeout=None):
+        self.client.calls.append(self.name)
+        answer = self.client.answers.get(self.name, {})
+        if isinstance(answer, Exception):
+            if errback is None:
+                raise answer
+            errback(answer)
+            return None
+        if callback is not None:          # async form: fire-and-forget
+            callback(answer)
+            return None
+        return answer
+
+
 class _FakeRos:
     def __init__(self, host, port):
         self.host, self.port = host, port
         self.is_connected = False
         self.topics = []
+        self.services = []
+        self.calls = []
+        self.answers = {}
         self.terminated = False
 
     def run(self, timeout=None):
@@ -411,10 +566,14 @@ class _FakeRos:
 class _FakeRoslibpy:
     Ros = _FakeRos
     Topic = _FakeTopic
+    Service = _FakeService
 
     class Message:
         def __init__(self, data):
             self.data = data
+
+    class ServiceRequest(dict):
+        pass
 
 
 def run_selftest() -> None:
@@ -517,6 +676,55 @@ def run_selftest() -> None:
     ok, why = io.pose_quality_ok()
     assert not ok and "no covariance" in why, why
     print("[ros-io] AMCL freshness + covariance gating OK")
+
+    # ── nomotion keepalive: only fires when the fix is actually going stale ──
+    fake_ros = io._client
+    fake_ros.calls = []
+    names["/amcl_pose"].subscriber(amcl_msg(3.45, 11.98, 0.25, 0.01, 0.02))
+    assert not io.request_nomotion_update(), \
+        "a fresh pose must not trigger a filter update"
+    assert io.request_nomotion_update(force=True), "force must always call"
+    assert fake_ros.calls == [NOMOTION_SERVICE], fake_ros.calls
+
+    # a pose that has aged past the trigger fires, then rate-limits
+    with io._lock:
+        io._recv_ts = time.monotonic() - 3.0
+    io._nomotion_ts = 0.0
+    assert io.request_nomotion_update(), "a stale pose must trigger an update"
+    assert not io.request_nomotion_update(), "must be rate limited"
+    assert io.request_nomotion_update(min_period_s=0.0), "period 0 always fires"
+    assert io.nomotion_calls == 3, io.nomotion_calls    # force + stale + period 0
+
+    # a service that is not there must report once, not crash the mission loop
+    fake_ros.answers[NOMOTION_SERVICE] = RuntimeError("service /request_nomotion_update unavailable")
+    io._nomotion_ts = 0.0
+    assert io.request_nomotion_update(), "an errback failure is still a call attempt"
+    # a fix that never arrives must time out, not hang the mission forever
+    fake_ros.answers.pop(NOMOTION_SERVICE, None)
+    with io._lock:
+        io._recv_ts = time.monotonic() - 90.0
+    assert not io.refresh_pose(timeout_s=0.05, poll_s=0.01), \
+        "refresh_pose must give up rather than block forever"
+    names["/amcl_pose"].subscriber(amcl_msg(3.45, 11.98, 0.25, 0.01, 0.02))
+    assert io.refresh_pose(timeout_s=0.05), "a fresh pose means the refresh worked"
+    print("[ros-io] nomotion keepalive OK")
+
+    # ── rosapi introspection: absent is not the same as unverifiable ──
+    fake_ros.answers["/rosapi/services"] = {"services": ["/request_nomotion_update"]}
+    assert io.rosapi_list("services") == ["/request_nomotion_update"]
+    fake_ros.answers["/rosapi/nodes"] = {"nodes": ["/amcl", "/map_server"]}
+    assert io.rosapi_list("nodes") == ["/amcl", "/map_server"]
+    fake_ros.answers["/rosapi/services"] = RuntimeError("rosapi not running")
+    assert io.rosapi_list("services") is None, "unreachable rosapi means unknown"
+    fake_ros.answers["/rosapi/services"] = {"wrong_key": []}
+    assert io.rosapi_list("services") is None, "a malformed reply means unknown"
+    try:
+        io.rosapi_list("topics")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("rosapi_list should reject an unsupported query")
+    print("[ros-io] rosapi introspection OK")
 
     # ── publishing ──
     try:

@@ -26,7 +26,7 @@ Run:
     python3 integration/mission_pipeline.py --selftest        # no hw, no torch
     python3 integration/mission_pipeline.py --dry-run --route <route.yaml>
     python3 integration/mission_pipeline.py --real --route <route.yaml> \\
-        --i-confirm-serial-owner --i-confirm-lidar-orientation \\
+        --i-confirm-serial-owner --lidar-orientation-evidence <verified.json> \\
         --i-confirm-arm-cam-pose
 
 HARDWARE PREREQUISITES
@@ -282,6 +282,92 @@ class MissionRunner:
         self._handoff_ready = False
         self._blacklist: list = []
 
+    def _amcl_quality(self) -> Tuple[bool, str]:
+        """Apply the same local-age gate in self-check and every mission tick.
+
+        A few offline fakes still expose the pre-age ``pose_quality_ok()``
+        signature.  Keep those tests usable while the real RosBridgeIO always
+        receives the configured age limit.
+        """
+        max_age = getattr(self.args, "amcl_max_age", ros_io.DEFAULT_MAX_AMCL_AGE_S)
+        try:
+            return self.rio.pose_quality_ok(max_age_s=max_age)
+        except TypeError:
+            return self.rio.pose_quality_ok()
+
+    def _keep_amcl_fresh(self) -> None:
+        """Keep a map fix alive while the arm works and the base stands still.
+
+        AMCL updates on motion, so a stationary robot stops publishing. GRASP
+        alone can hold still for 120 s, and the state right after it (DELIVER)
+        treats a stale fix as a blocking fault -- so without this, the first
+        successful grasp ended the mission in PAUSED, and the operator's Enter
+        re-ran a self-check that failed on the same stale pose.
+        """
+        request = getattr(self.rio, "request_nomotion_update", None)
+        if request is None:
+            return
+        try:
+            request()
+        except Exception as exc:                  # never take the loop down
+            print(f"[mission] nomotion update failed: {exc}")
+
+    def _recover_map_fix(self, blocked_for: float = 0.0) -> bool:
+        """Re-acquire a map fix after standing still, before a map state needs it."""
+        refresh = getattr(self.rio, "refresh_pose", None)
+        if refresh is None:
+            return True
+        try:
+            ok = refresh(timeout_s=self.args.amcl_refresh_timeout)
+        except Exception as exc:
+            print(f"[mission] AMCL refresh failed: {exc}")
+            return False
+        if not ok:
+            where = (f"the arm held the loop for {blocked_for:.0f}s and "
+                     if blocked_for > 0.0 else "")
+            print(f"[mission][WARN] {where}AMCL did not refresh within "
+                  f"{self.args.amcl_refresh_timeout:.1f}s. Is "
+                  f"{ros_io.NOMOTION_SERVICE} advertised? A stationary robot "
+                  "cannot get a fresh fix without it.")
+        return ok
+
+    def _check_amcl_refresh_path(self) -> bool:
+        """Confirm something can refresh AMCL while the robot stands still.
+
+        Reports "cannot verify" and "not there" as different things: rosapi may
+        simply not be running, which is not evidence that the service is absent.
+        """
+        listing = getattr(self.rio, "rosapi_list", lambda *_a, **_k: None)
+        try:
+            services = listing("services")
+        except Exception:
+            services = None
+        if services is None:
+            print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: cannot "
+                  f"verify {ros_io.NOMOTION_SERVICE} (is rosapi running alongside "
+                  "rosbridge?). Without it a stationary robot's fix goes stale and "
+                  "the first map state after a grasp pauses.")
+            return not self.args.real
+        if ros_io.NOMOTION_SERVICE not in services:
+            print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
+                  f"{ros_io.NOMOTION_SERVICE} is not advertised — AMCL is not "
+                  "running, or is not the localiser. A grasp takes the base out "
+                  "of motion for minutes and the fix cannot recover.")
+            return not self.args.real
+        print(f"[mission][check] {ros_io.NOMOTION_SERVICE} available "
+              "(stationary fixes stay fresh)")
+        nodes = None
+        try:
+            nodes = listing("nodes")
+        except Exception:
+            pass
+        if nodes is not None and "/amcl_nomotion_keepalive" in nodes:
+            print("[mission][check] Route B keepalive node is also running "
+                  "(harmless: this process refreshes on demand)")
+        return True
+
+
+
     # ── self check ──
     def run_self_check(self) -> bool:
         ok = True
@@ -337,10 +423,9 @@ class MissionRunner:
             ok = False
         else:
             print(f"[mission][check] /scan fresh ({len(self.lidar.get_points())} points)")
-            # The 180 deg mounting question has two conflicting records and gets
-            # it wrong silently: the policy sees a clear path and the brake never
-            # fires. Coverage is the decisive test -- a scan window that does not
-            # contain the robot's forward arc cannot be fixed by any offset.
+            # Coverage is only a metadata check.  A full 360-degree scan covers
+            # both front and rear, so it cannot prove the physical meaning of a
+            # raw index.  The Route B four-direction evidence gate does that.
             info = getattr(self.lidar, "scan_info", lambda _c: None)(self.nav.ncfg)
             if info:
                 print(f"[mission][check] scan frame={info['frame_id']!r} "
@@ -351,9 +436,29 @@ class MissionRunner:
                     print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: {w}")
                 if info["warnings"]:
                     ok = ok and not self.args.real
+                if self.args.real:
+                    evidence = getattr(self.args, "lidar_orientation_evidence", "")
+                    verified, why = nr.validate_orientation_evidence(
+                        evidence, self.nav.ncfg, info)
+                    if not verified:
+                        print(f"[mission][check] FAIL: LiDAR orientation evidence: {why}")
+                        ok = False
+                    else:
+                        print(f"[mission][check] {why}")
+            elif self.args.real:
+                print("[mission][check] FAIL: no live scan metadata for orientation gate")
+                ok = False
 
+        # The mission keeps its own fix alive rather than relying on Route B's
+        # keepalive node, which route_b_startup.sh starts only in start_dryrun.
+        # That only works if AMCL actually offers the service, so confirm it
+        # here -- silently having no way to refresh is how a stationary robot
+        # ends up paused with a stale pose it cannot recover from.
+        ok = self._check_amcl_refresh_path() and ok
+
+        self._recover_map_fix(0.0)
         pose = self.rio.latest_pose()
-        good, why = self.rio.pose_quality_ok()
+        good, why = self._amcl_quality()
         if pose is None or not good:
             print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
                   f"AMCL not usable ({why}). Set a TIGHT 2D Pose Estimate in RViz.")
@@ -501,11 +606,23 @@ class MissionRunner:
 
     # ── sensing ──
     def _sense(self, now: float) -> mfsm.Sense:
+        self._keep_amcl_fresh()
         odom = self.odom_pub.state() if self.odom_pub is not None else None
         pose = self.rio.latest_pose()
-        amcl_good, _ = self.rio.pose_quality_ok()
+        amcl_good, _ = self._amcl_quality()
         if pose is not None and amcl_good:
             self.goals.set_pose(pose)
+
+        # Evaluate the goal fix before constructing Health.  MapGoalProvider
+        # has its own pose/route-age guard (normally shorter than the global
+        # AMCL window); if that guard rejects the fix, leaving amcl_ok=True
+        # would make PATROL/DELIVER stop the base but remain in the driving
+        # state.  Marking health bad lets the FSM enter PAUSED with the real
+        # reason and requires a fresh map-localized fix before resuming.
+        fix = self.goals.get(now)
+        amcl_usable = bool(pose is not None and amcl_good)
+        if self.fsm.state in mfsm.MAP_STATES and not fix.valid:
+            amcl_usable = False
 
         scan_fresh = self.lidar.age() <= self.nav.ncfg.lidar_stale_timeout_s
         health = mfsm.Health(
@@ -513,11 +630,10 @@ class MissionRunner:
             odom_valid=bool(odom.valid) if odom is not None else (not self.args.real),
             odom_fresh=bool(odom.fresh) if odom is not None else (not self.args.real),
             scan_fresh=scan_fresh,
-            amcl_ok=bool(pose is not None and amcl_good),
+            amcl_ok=amcl_usable,
             estop=False,
             fault=self.fault,
         )
-        fix = self.goals.get(now)
         return mfsm.Sense(
             now=now,
             health=health,
@@ -1010,6 +1126,13 @@ class MissionRunner:
                     return 0
 
                 spent = time.time() - now
+                if spent > self.goals.pose_max_age_s:
+                    # This tick blocked -- a grasp episode, a release, a
+                    # move_home. Nothing could keep the fix alive meanwhile, so
+                    # the map states that come next would refuse to drive on it.
+                    # The base is stopped here, so recover the fix now instead
+                    # of pausing and sending a human to RViz.
+                    self._recover_map_fix(spent)
                 if cfg.control_period_s - spent > 0:
                     time.sleep(cfg.control_period_s - spent)
         except KeyboardInterrupt:
@@ -1096,14 +1219,15 @@ def build_and_run(args) -> int:
     if args.real:
         missing = [f for f, v in (
             ("--i-confirm-serial-owner", args.i_confirm_serial_owner),
-            ("--i-confirm-lidar-orientation", args.i_confirm_lidar_orientation),
+            ("--lidar-orientation-evidence", args.lidar_orientation_evidence),
             ("--i-confirm-arm-cam-pose", args.i_confirm_arm_cam_pose),
         ) if not v]
         if missing:
             raise SystemExit(
                 "[mission] --real refuses to start without: " + ", ".join(missing) +
                 "\n  serial owner:      sudo fuser -v /dev/myserial   (exactly one PID)"
-                "\n  lidar orientation: python3 integration/nav_rl.py --probe"
+                "\n  lidar orientation: run the Route B four-direction board gate and pass"
+                " --lidar-orientation-evidence <verified.json>"
                 "\n  arm cam pose:      the C3 extrinsics must be MEASURED, not predicted"
             )
 
@@ -1119,9 +1243,16 @@ def build_and_run(args) -> int:
     if args.model: ncfg.model_path = args.model
     if args.vecnorm: ncfg.vecnorm_path = args.vecnorm
     if args.lidar_dir < 0: ncfg.lidar_angle_dir = -1.0
-    if args.lidar_yaw_offset_deg: ncfg.lidar_yaw_offset_deg = args.lidar_yaw_offset_deg
+    if args.lidar_yaw_offset_deg is not None:
+        ncfg.lidar_yaw_offset_deg = args.lidar_yaw_offset_deg
+    ncfg.lidar_forward_offset_m = args.lidar_forward_offset_m
     if args.control_period: ncfg.control_period_s = args.control_period
     nr.validate_config(ncfg)
+    if args.real:
+        verified, why = nr.validate_orientation_evidence(
+            args.lidar_orientation_evidence, ncfg)
+        if not verified:
+            raise SystemExit(f"[mission] --real refuses orientation evidence: {why}")
     policy = nr.NavPolicy(ncfg)
 
     g = vgp._load_grasp_module()
@@ -1627,6 +1758,12 @@ def parse_args(argv=None):
                    help="re-space the patrol polyline at this arc length "
                         "(0 = use route.yaml as-is)")
     p.add_argument("--pose-max-age", type=float, default=mgp.DEFAULT_POSE_MAX_AGE_S)
+    p.add_argument("--amcl-max-age", type=float,
+                   default=ros_io.DEFAULT_MAX_AMCL_AGE_S,
+                   help="maximum local receipt age for AMCL health (seconds)")
+    p.add_argument("--amcl-refresh-timeout", type=float, default=3.0,
+                   help="how long to wait for a fresh fix after the arm blocks "
+                        "the loop (seconds)")
     p.add_argument("--max-laps", type=int, default=0, help="0 = patrol forever")
     p.add_argument("--no-deliver", action="store_true",
                    help="stop after a verified grasp instead of going to the bin")
@@ -1641,6 +1778,8 @@ def parse_args(argv=None):
     p.add_argument("--lidar-backend", default="ros", choices=("ros", "rplidar", "none"))
     p.add_argument("--lidar-dir", type=float, default=1.0, choices=(-1.0, 1.0))
     p.add_argument("--lidar-yaw-offset-deg", type=float, default=0.0)
+    p.add_argument("--lidar-forward-offset-m", type=float, default=0.0,
+                   help="LiDAR origin ahead(+)/behind(-) of base footprint")
     p.add_argument("--scan-topic", default="/scan")
     p.add_argument("--ros-backend", default="ros", choices=("ros", "none"))
     p.add_argument("--ros-host", default="127.0.0.1")
@@ -1701,7 +1840,10 @@ def parse_args(argv=None):
     p.add_argument("--exit-on-pause", action="store_true")
 
     p.add_argument("--i-confirm-serial-owner", action="store_true")
-    p.add_argument("--i-confirm-lidar-orientation", action="store_true")
+    p.add_argument("--lidar-orientation-evidence", default=None,
+                   help="verified Route B four-direction evidence/marker; required by --real")
+    p.add_argument("--i-confirm-lidar-orientation", action="store_true",
+                   help="deprecated compatibility flag; no longer proves orientation")
     p.add_argument("--i-confirm-arm-cam-pose", action="store_true")
 
     args = p.parse_args(argv)
@@ -1712,6 +1854,12 @@ def parse_args(argv=None):
                 "are one unit and mixing halves fails silently")
     if not math.isfinite(args.nav_stop_dist) or args.nav_stop_dist <= 0.0:
         p.error("--nav-stop-dist must be finite and > 0")
+    if not math.isfinite(args.amcl_max_age) or args.amcl_max_age <= 0.0:
+        p.error("--amcl-max-age must be finite and > 0")
+    if not math.isfinite(args.amcl_refresh_timeout) or args.amcl_refresh_timeout <= 0.0:
+        p.error("--amcl-refresh-timeout must be finite and > 0")
+    if not math.isfinite(args.lidar_forward_offset_m):
+        p.error("--lidar-forward-offset-m must be finite")
     if args.detection_streak < 1:
         p.error("--detection-streak must be >= 1")
     if args.max_laps < 0:

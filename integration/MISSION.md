@@ -109,11 +109,24 @@ roslaunch ydlidar_ros_driver TG.launch
 roslaunch <robot model>.launch                 # robot_state_publisher
 rosrun map_server map_server site_map.yaml
 roslaunch amcl.launch
-roslaunch rosbridge_server rosbridge_websocket.launch
+roslaunch rosbridge_server rosbridge_websocket.launch   # 需含 rosapi
 ```
 
 RViz 用 **2D Pose Estimate 設緊初始化**（std 0.15 m / yaw 7°）。寬初始化實測在重複走廊
 跳 1.573 m，不會收斂。
+
+> **AMCL 只在「有動」的時候更新並發佈 `/amcl_pose`。** 夾取一次會讓底盤靜止 2 分鐘以上，
+> 出來就進 DELIVER，而 DELIVER 把過期的 fix 當成阻斷性故障 —— 每夾成功一次就會停在
+> PAUSED，按 Enter 重跑 self-check 也會卡在同一個過期 pose。
+>
+> 本程序自己解決這件事：靜止時呼叫 `/request_nomotion_update`，並在手臂佔住主迴圈之後
+> 主動補一次 fix（`--amcl-refresh-timeout`，預設 3 秒）。**不需要**另外跑 Route B 的
+> `amcl_nomotion_keepalive.py`（跑了也無害，那支只在 `route_b_startup.sh dryrun` 階段啟動，
+> 本流程不走那個階段）。
+>
+> 前提是 AMCL 真的有提供這個 service。self-check 與 `preflight --onboard` 都會確認，
+> `--real` 下確認不到就拒絕啟動。查不到 rosapi 跟查得到但沒有這個 service 是兩件事，
+> 訊息會分開講。
 
 ```bash
 # 2. 確認定位真的在動
@@ -123,6 +136,8 @@ python3 integration/ros_io.py --probe --ros-host 127.0.0.1
 ```bash
 # 3. 確認 LiDAR 左右沒有反（前/左/右各放實物）
 python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
+# The probe is observational only.  Real mode additionally requires the
+# Route B four-direction evidence marker.
 ```
 
 ```bash
@@ -130,7 +145,9 @@ python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 source ~/grasp_venv/bin/activate
 python3 integration/mission_pipeline.py --real --show \
   --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 分段驗證見下方測試計畫。`--detection-streak 999` 讓它永遠不離開路線（只驗巡航）；
@@ -141,8 +158,9 @@ python3 integration/mission_pipeline.py --real --show \
 | 項目 | 為什麼 | 怎麼做 |
 |------|--------|--------|
 | 序列埠唯一擁有者 | 兩個程序開同一條 UART = 命令交錯 | `fuser -v /dev/myserial` |
-| LiDAR 左右方向 | 反了 policy 會把左當右 | `nav_rl.py --probe` |
+| LiDAR raw-index 物理方向 | AMCL/TF 正常仍不能證明 policy 前方 | Route B `LIDAR_ORIENTATION_GATE.md` 四方向測試，建立 `scan_orientation_verified` |
 | 靜止 feedback 雜訊 | stationary gate 的門檻是暫定值 | 靜止 5 秒記錄 `get_motion_data()` |
+| 靜止時 AMCL 保鮮 | AMCL 只在有動時更新，夾取會靜止 2 分鐘以上 | `rosservice list \| grep request_nomotion_update`；self-check 會擋 |
 
 ## 已知落差
 

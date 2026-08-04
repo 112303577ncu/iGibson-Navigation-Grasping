@@ -259,14 +259,36 @@ class FakeOdomPub:
 
 
 class FakeRos:
-    def __init__(self, goals):
+    def __init__(self, goals, can_refresh=True):
         self.goals = goals
+        self.can_refresh = can_refresh
+        self.nomotion_calls = 0
+        self.refreshes = 0
+        self.clock = time.time         # tests drive this to a fake now
 
     def latest_pose(self):
         return self.goals.pose or mgp.MapPose(0.0, 0.0, 0.0, 1e9)
 
     def pose_quality_ok(self):
         return True, ""
+
+    def request_nomotion_update(self, **kw):
+        self.nomotion_calls += 1
+        return self.can_refresh
+
+    def refresh_pose(self, timeout_s=3.0, poll_s=0.05):
+        self.refreshes += 1
+        if self.can_refresh:
+            # a real refresh lands as a new /amcl_pose, which restamps the fix
+            pose = self.goals.pose
+            if pose is not None:
+                self.goals.set_pose(mgp.MapPose(pose.x, pose.y, pose.yaw, self.clock()))
+        return self.can_refresh
+
+    def rosapi_list(self, what, timeout_s=3.0):
+        if what == "services":
+            return ["/request_nomotion_update"] if self.can_refresh else []
+        return ["/amcl", "/map_server"]
 
     def close(self):
         pass
@@ -288,9 +310,10 @@ class FakeArgs:
     nav_stop_dist = 0.75
     bin_rim_height = 0.0
     release_clearance = 0.03
+    amcl_refresh_timeout = 3.0
 
 
-def build_runner(*, grasp_ok=True, align_ok=True, deliver=True):
+def build_runner(*, grasp_ok=True, align_ok=True, deliver=True, can_refresh=True):
     try:
         from integration import nav_rl as nr
         ncfg = nr.NavRLConfig()
@@ -310,7 +333,8 @@ def build_runner(*, grasp_ok=True, align_ok=True, deliver=True):
     args.no_deliver = not deliver
     runner = mp.MissionRunner(
         nav=FakeNav(ncfg, align_ok=align_ok), controller=FakeController(grasp_ok=grasp_ok),
-        goals=goals, rio=FakeRos(goals), odom_pub=FakeOdomPub(), lidar=FakeLidar(),
+        goals=goals, rio=FakeRos(goals, can_refresh=can_refresh),
+        odom_pub=FakeOdomPub(), lidar=FakeLidar(),
         fsm=mfsm.MissionFSM(mfsm.MissionConfig(approach_to_align_m=args.nav_stop_dist),
                             deliver_enabled=deliver),
         args=args)
@@ -365,6 +389,58 @@ def drive(runner, max_ticks=600):
 # ════════════════════════════════════════════════════════════════════════════
 
 class MissionEndToEnd(unittest.TestCase):
+
+    def test_a_long_arm_block_recovers_the_map_fix_instead_of_pausing(self):
+        """A grasp holds the loop for minutes; DELIVER must not pause on that.
+
+        AMCL only publishes when its filter updates, and it updates on motion.
+        controller.run() blocks the mission loop for a whole episode, so nothing
+        can keep the fix alive while the arm works -- and the state right after
+        (DELIVER) treats a stale fix as blocking. Every successful grasp used to
+        end in PAUSED, and the operator's Enter re-ran a self-check that failed
+        on the same stale pose. The base is stopped there, so the fix is
+        recovered on the spot instead.
+        """
+        runner = build_runner()
+        runner.rio.clock = lambda: 200.0
+        runner.goals.pose_max_age_s = 1.0
+        runner.fsm.state = mfsm.State.DELIVER
+        runner.goals.set_pose(mgp.MapPose(5.0, 5.0, 0.0, 1.0))   # 199 s old
+
+        self.assertFalse(runner._sense(200.0).health.amcl_ok)
+        self.assertEqual(runner.fsm.step(runner._sense(200.0)).state,
+                         mfsm.State.PAUSED)
+
+        runner.fsm.state = mfsm.State.DELIVER
+        self.assertTrue(runner._recover_map_fix(140.0))
+        self.assertEqual(runner.rio.refreshes, 1)
+        self.assertTrue(runner._sense(200.0).health.amcl_ok)
+        self.assertEqual(runner.fsm.step(runner._sense(200.0)).state,
+                         mfsm.State.DELIVER)
+
+    def test_real_refuses_to_start_when_amcl_cannot_be_refreshed(self):
+        """No /request_nomotion_update means no recovery from standing still."""
+        runner = build_runner(can_refresh=False)
+        runner.args.real = True
+        with redirect_stdout(io.StringIO()) as out:
+            self.assertFalse(runner._check_amcl_refresh_path())
+        self.assertIn("not advertised", out.getvalue())
+
+        runner = build_runner()
+        with redirect_stdout(io.StringIO()) as out:
+            self.assertTrue(runner._check_amcl_refresh_path())
+        self.assertIn("/request_nomotion_update available", out.getvalue())
+
+    def test_stale_map_goal_pauses_patrol_instead_of_only_stopping(self):
+        runner = build_runner()
+        runner.fsm.state = mfsm.State.PATROL
+        runner.goals.pose_max_age_s = 0.1
+        runner.goals.set_pose(mgp.MapPose(5.0, 5.0, 0.0, 1.0))
+
+        sense = runner._sense(10.0)
+        self.assertFalse(sense.health.amcl_ok)
+        transition = runner.fsm.step(sense)
+        self.assertEqual(transition.state, mfsm.State.PAUSED)
 
     def _run(self, **kw):
         runner = build_runner(**kw)

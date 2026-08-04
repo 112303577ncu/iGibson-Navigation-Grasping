@@ -25,6 +25,8 @@ import os
 import json
 import sys
 import threading
+import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -44,9 +46,11 @@ from integration.nav_rl import (
     GoalTracker,
     NavRLConfig,
     RosLaserScanSource,
+    describe_scan,
     laser_scan_to_points,
     make_lidar,
     scan_to_rays,
+    validate_orientation_evidence,
 )
 from integration import vision_grasp_pipeline as vgp
 from integration import nav_rl_grasp_pipeline as nrgp
@@ -200,6 +204,94 @@ class SafetyGuardTests(unittest.TestCase):
         left = scan_to_rays([(85.0, 1.0)], cfg)
         self.assertLessEqual(int(np.argmin(right)), 3)
         self.assertGreaterEqual(int(np.argmin(left)), 44)
+
+    def test_scan_coverage_wraps_for_a_full_scan_and_is_not_orientation_proof(self):
+        cfg = NavRLConfig(lidar_yaw_offset_deg=180.0)
+        msg = {
+            "header": {"frame_id": "laser"},
+            "angle_min": -math.pi,
+            "angle_increment": math.pi / 360.0,
+            "ranges": [1.0] * 721,
+        }
+        info = describe_scan(msg, cfg)
+        self.assertAlmostEqual(info["forward_coverage_deg"], 180.0)
+        self.assertFalse(info["warnings"], info["warnings"])
+        self.assertIn("physical meaning", describe_scan.__doc__)
+
+    def test_scan_coverage_is_not_inverted_by_a_mirrored_lidar(self):
+        """A symmetric window is unchanged by mirroring; coverage must agree.
+
+        describe_scan walked the transformed window as ``start + raw_span``,
+        which assumes the angles increase with raw index.  With
+        ``lidar_angle_dir = -1`` (the rplidar backend sets this) they decrease,
+        so the result came out exactly inverted: a correctly aimed +-85 deg
+        scan reported 3% covered and failed the --real self-check, while the
+        same scan pointing backwards reported 92% and passed.
+        """
+        msg = {
+            "header": {"frame_id": "laser_link"},
+            "angle_min": math.radians(-85.0),
+            "angle_increment": math.radians(0.5),
+            "ranges": [1.0] * 341,
+        }
+        for direction in (1.0, -1.0):
+            aimed = NavRLConfig(lidar_yaw_offset_deg=0.0)
+            aimed.lidar_angle_dir = direction
+            info = describe_scan(msg, aimed)
+            self.assertAlmostEqual(info["forward_coverage_deg"], 170.0,
+                                   msg="dir=%s" % direction)
+            self.assertFalse(info["warnings"], info["warnings"])
+
+            flipped = NavRLConfig(lidar_yaw_offset_deg=180.0)
+            flipped.lidar_angle_dir = direction
+            info = describe_scan(msg, flipped)
+            self.assertEqual(info["forward_coverage_deg"], 0.0,
+                             "dir=%s must read as looking backwards" % direction)
+            self.assertTrue(info["warnings"])
+
+        # a driver publishing a descending sweep describes the same window
+        descending = dict(msg, angle_min=math.radians(85.0),
+                          angle_increment=math.radians(-0.5))
+        self.assertAlmostEqual(
+            describe_scan(descending, NavRLConfig())["forward_coverage_deg"], 170.0)
+
+    def test_orientation_evidence_requires_result_and_matches_live_frame_and_offset(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "verified.json"
+            path.write_text(json.dumps({
+                "result": "PASS",
+                "verified_at": "2026-08-04 12:00",
+                "scan_frame": "laser",
+                "policy_source_angle_offset_deg": 180,
+                "evidence_log": "/tmp/four_direction.log",
+            }), encoding="utf-8")
+            cfg = NavRLConfig(lidar_yaw_offset_deg=180.0)
+            info = {"frame_id": "laser"}
+            ok, why = validate_orientation_evidence(str(path), cfg, info)
+            self.assertTrue(ok, why)
+            bad, why = validate_orientation_evidence(
+                str(path), NavRLConfig(lidar_yaw_offset_deg=0.0), info)
+            self.assertFalse(bad)
+            self.assertIn("does not match", why)
+            path.write_text(path.read_text(encoding="utf-8").replace(
+                '"result": "PASS"', '"result": "MANUAL_INTERPRETATION_REQUIRED"'),
+                encoding="utf-8")
+            bad, why = validate_orientation_evidence(str(path), cfg, info)
+            self.assertFalse(bad)
+            self.assertIn("not PASS", why)
+
+    def test_amcl_covariance_ok_but_local_receipt_stale_is_rejected(self):
+        from integration import ros_io
+        from integration.map_goal_provider import MapPose
+        rio = object.__new__(ros_io.RosBridgeIO)
+        rio._lock = threading.Lock()
+        rio._pose = MapPose(1.0, 2.0, 0.0, 0.0)
+        rio._pos_var = 0.01
+        rio._yaw_var = 0.01
+        rio._recv_ts = time.monotonic() - 10.0
+        ok, why = rio.pose_quality_ok(max_age_s=1.0)
+        self.assertFalse(ok)
+        self.assertIn("stale", why)
 
     def test_ros_scan_source_updates_freshness_even_when_all_ranges_are_inf(self):
         source = object.__new__(RosLaserScanSource)
@@ -397,6 +489,7 @@ class SafetyGuardTests(unittest.TestCase):
                 lidar_backend="ros",
                 real=True,
                 nav_only=False,
+                lidar_orientation_evidence="route-b-gate.marker",
                 i_confirm_camera_frame=True,
             ))
 

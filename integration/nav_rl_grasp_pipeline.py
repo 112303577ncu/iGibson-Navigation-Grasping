@@ -269,6 +269,9 @@ def run_pipeline(args):
     if lidar_backend == "none" and args.real:
         raise SystemExit("a no-lidar backend with --real is not allowed: the policy has "
                          "no obstacle input and the safety brake is blind.")
+    if args.real and not getattr(args, "lidar_orientation_evidence", None):
+        raise SystemExit("real navigation requires --lidar-orientation-evidence from "
+                         "the Route B four-direction board gate")
     if args.real and not args.nav_only:
         raise SystemExit(
             "real integrated grasp is disabled until the final alignment/latch "
@@ -292,6 +295,7 @@ def run_pipeline(args):
     if args.lidar_port: ncfg.lidar_port = args.lidar_port
     if args.lidar_yaw_offset_deg is not None:
         ncfg.lidar_yaw_offset_deg = args.lidar_yaw_offset_deg
+    ncfg.lidar_forward_offset_m = args.lidar_forward_offset_m
     if args.lidar_dir is not None:
         ncfg.lidar_angle_dir = args.lidar_dir
     elif lidar_backend == "rplidar":
@@ -336,6 +340,19 @@ def run_pipeline(args):
         ncfg, lidar_backend, ros_host=args.ros_host, ros_port=args.ros_port,
         scan_topic=args.scan_topic
     )
+    if args.real:
+        evidence = args.lidar_orientation_evidence
+        deadline = time.time() + 5.0
+        info = None
+        while time.time() < deadline and info is None:
+            info = getattr(lidar, "scan_info", lambda _cfg: None)(ncfg)
+            if info is None:
+                time.sleep(0.1)
+        verified, why = nr.validate_orientation_evidence(evidence, ncfg, info)
+        if not verified:
+            lidar.close()
+            raise SystemExit("real navigation refuses LiDAR orientation evidence: " + why)
+        print("[pipeline] " + why)
     try:
         controller = g.GraspController(cfg, real_servo=args.real, use_socket=False)
     except Exception:
@@ -506,6 +523,9 @@ def parse_args():
                    default="ros", help="scan source (X3Plus TG30 default: ros)")
     p.add_argument("--lidar-port", type=str, default=None)
     p.add_argument("--lidar-yaw-offset-deg", type=float, default=None)
+    p.add_argument("--lidar-forward-offset-m", type=float, default=0.0)
+    p.add_argument("--lidar-orientation-evidence", default=None,
+                   help="verified Route B four-direction evidence/marker; required by --real")
     p.add_argument("--lidar-dir", type=float, default=None, choices=(-1.0, 1.0))
     p.add_argument("--ros-host", type=str,
                    default=os.getenv(

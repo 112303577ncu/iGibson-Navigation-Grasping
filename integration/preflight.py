@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -216,7 +217,7 @@ def check_onboard(args) -> int:
         import ros_io
 
         cfg = nr.NavRLConfig()
-        if args.lidar_yaw_offset_deg:
+        if args.lidar_yaw_offset_deg is not None:
             cfg.lidar_yaw_offset_deg = args.lidar_yaw_offset_deg
         lidar = nr.make_lidar(cfg, "ros", ros_host=args.ros_host,
                               ros_port=args.ros_port)
@@ -240,6 +241,14 @@ def check_onboard(args) -> int:
                   "lidar covers the policy's forward arc",
                   detail + ("\n         " + "\n         ".join(info["warnings"])
                             if info["warnings"] else ""))
+            evidence = getattr(args, "lidar_orientation_evidence", None)
+            if not evidence:
+                r.add(BAD, "LiDAR/policy physical orientation evidence",
+                      "missing --lidar-orientation-evidence; AMCL/TF cannot prove raw scan semantics")
+            else:
+                good, why = nr.validate_orientation_evidence(evidence, cfg, info)
+                r.add(OK if good else BAD,
+                      "LiDAR/policy physical orientation evidence", why)
         lidar.close()
     except Exception as exc:
         r.add(BAD, "/scan via rosbridge", f"{type(exc).__name__}: {exc}"[:200])
@@ -251,13 +260,31 @@ def check_onboard(args) -> int:
         while time.time() < deadline and rio.latest_pose() is None:
             time.sleep(0.2)
         pose = rio.latest_pose()
-        good, why = rio.pose_quality_ok()
+        good, why = rio.pose_quality_ok(
+            max_age_s=getattr(args, "amcl_max_age", ros_io.DEFAULT_MAX_AMCL_AGE_S))
         if pose is None:
             r.add(BAD, "/amcl_pose is publishing",
                   "set a TIGHT 2D Pose Estimate in RViz (std 0.15 m / 7 deg)")
         else:
             r.add(OK if good else BAD, "AMCL pose is usable",
                   f"({pose.x:.2f}, {pose.y:.2f}) " + (why or "covariance ok"))
+
+        # A grasp holds the base still for minutes, and AMCL only updates on
+        # motion. Without a way to force an update, the first map state after
+        # the grasp refuses to drive on the stale fix and the mission pauses.
+        services = rio.rosapi_list("services")
+        if services is None:
+            r.add(BAD, "AMCL can be refreshed while stationary",
+                  f"cannot verify {ros_io.NOMOTION_SERVICE}: rosapi did not "
+                  "answer. Is rosapi running alongside rosbridge?")
+        elif ros_io.NOMOTION_SERVICE not in services:
+            r.add(BAD, "AMCL can be refreshed while stationary",
+                  f"{ros_io.NOMOTION_SERVICE} is not advertised — a stationary "
+                  "robot's fix goes stale and the mission pauses after the "
+                  "first grasp")
+        else:
+            r.add(OK, "AMCL can be refreshed while stationary",
+                  f"{ros_io.NOMOTION_SERVICE} advertised")
         rio.close()
     except Exception as exc:
         r.add(BAD, "/amcl_pose via rosbridge", f"{type(exc).__name__}: {exc}"[:200])
@@ -287,7 +314,15 @@ def main() -> int:
     ap.add_argument("--ros-host", default="127.0.0.1")
     ap.add_argument("--ros-port", type=int, default=9090)
     ap.add_argument("--lidar-yaw-offset-deg", type=float, default=0.0)
+    ap.add_argument("--lidar-orientation-evidence", default=None,
+                    help="verified Route B four-direction evidence/marker")
+    ap.add_argument("--amcl-max-age", type=float,
+                    default=5.0,
+                    help="maximum local AMCL receipt age in seconds")
     args = ap.parse_args()
+
+    if not math.isfinite(args.amcl_max_age) or args.amcl_max_age <= 0.0:
+        ap.error("--amcl-max-age must be finite and > 0")
 
     if not (args.offline or args.onboard):
         args.offline = True

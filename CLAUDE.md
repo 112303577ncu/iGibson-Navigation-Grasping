@@ -32,8 +32,8 @@
 | `v21/models/candidate_v21_seed816_ckpt550000.zip` + `_vec.pkl` | ★現行 PPO 權重 + VecNormalize（**不可與 v17 混搭**，見下） |
 | `v21/deploy_contract.py` / `action_execution_v21.py` | 觀測/動作契約定義；`obs_28_incremental` |
 | `v21/manifest.json` | 權重 sha256、契約、硬體 gate、變更紀錄（單一事實來源） |
-| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` | 回歸測試，須 **93 / 37 / 641** 全過 |
-| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（93/37/641、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
+| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` | 回歸測試，須 **119 / 37 / 641** 全過 |
+| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（119/37/641、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
 | `v21/bus_probe.py` / `pose_check.py` | 唯讀診斷：半雙工伺服匯流排讀取、姿態/FK 核對 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
 | `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |

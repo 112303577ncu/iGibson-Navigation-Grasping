@@ -22,7 +22,7 @@ python3 integration/preflight.py --offline
 
 | | 進度 | 依據 |
 |---|---|---|
-| **程式整合** | **~95%** | 117 個測試 + preflight 20 項全綠；完整任務在假硬體上跑通 |
+| **程式整合** | **~95%** | 124 個測試 + preflight 20 項全綠；完整任務在假硬體上跑通 |
 | **實車驗證** | **~15%** | 只有夾取本身（v21）有實機證據；巡航、導航、交接、丟垃圾全部沒上過車 |
 
 那 15% 是這樣算的：六個上機關卡（T1–T6）裡，只有 T5 的**夾取核心**被證實過（v21 實機夾成功），其餘五關與 T5 的整合部分都是 0。
@@ -120,7 +120,9 @@ python3 integration/preflight.py --onboard --ros-host 127.0.0.1
 python3 integration/mission_pipeline.py --real --show \
   --no-deliver --detection-streak 999 --max-laps 1 \
   --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 `--real` 會在自檢通過後**等你按 Enter** 才開始巡航。

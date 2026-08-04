@@ -1,6 +1,6 @@
 # 上機測試計畫 — 巡航到丟垃圾
 
-離線能驗的都綠了（117 個測試 + preflight 20 項，跑 `integration/preflight.py --offline` 一次確認）。
+離線能驗的都綠了（124 個測試 + preflight 20 項，跑 `integration/preflight.py --offline` 一次確認）。
 這份是**只能在實車上驗**的部分，按依賴順序排。
 每一關沒過就不要往下跑：後面的失敗會被前面的問題污染，浪費的是現場時間。
 
@@ -35,7 +35,9 @@ source ~/grasp_venv/bin/activate
 python3 integration/ros_io.py --probe --ros-host 127.0.0.1     # 先確認 AMCL 有在發
 python3 integration/mission_pipeline.py --real --no-deliver --detection-streak 999 \
   --max-laps 0 --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 自檢跑完會停在等你按 Enter。**這時先不要按**，另開終端機：
@@ -94,17 +96,20 @@ rostopic echo -n1 /scan/angle_max
 ```
 
 - `frame_id: laser_link` 且角度涵蓋 ±90° → 預設的 offset 0 是對的
-- `frame_id: laser` → **加 `--lidar-yaw-offset-deg 180`**
+- `frame_id: laser` → **不能直接猜 180°**；先完成 Route B 四方向板子 gate，
+  再把 evidence 中的 offset 用 `--lidar-yaw-offset-deg` 帶入
 - 角度窗口不含車子正前方 → **驅動的角度上下限要改**，offset 救不了沒被取樣的方向
 
-程式現在會自己檢查這件事並印出來（`nav_rl.describe_scan`）：
+程式會檢查角度 metadata，但這只能證明資料有沒有覆蓋到該角度，不能證明
+raw index 的物理方向（`nav_rl.describe_scan`）：
 
 ```bash
 python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 ```
 
 會印 `scan frame_id = ...`、`window [...] deg`、`policy forward window is covered NN%`，
-覆蓋不到就大聲警告。`mission_pipeline` 的自檢也會擋 —— **`--real` 下覆蓋率有問題會拒絕啟動**。
+覆蓋不到就大聲警告。`mission_pipeline` 的 `--real` 還要求四方向 evidence
+marker 與目前 frame/offset 相符；AMCL 正常不能代替這一步。
 
 ### 順便驗：手臂會不會被自己的 LiDAR 看成障礙物
 
@@ -124,7 +129,8 @@ URDF 的 AABB 粗估顯示三種姿態都可能有連桿穿過 19.2 cm 掃描面
 在車子**正前方**放箱子 → 中間 sector 變短。**左邊** → 高 index（接近 47）變短。
 **右邊** → 低 index（接近 0）變短。
 
-**失敗**：左右反了 → `--lidar-dir -1`；整體偏轉 → `--lidar-yaw-offset-deg`。
+**失敗**：左右反了或整體偏轉時，先保留現場 evidence、停止實機，不能邊猜
+`--lidar-dir`/offset 邊開巡航；刪除 marker，修正 adapter/TF 後重跑四方向 gate。
 
 ---
 
@@ -134,7 +140,9 @@ URDF 的 AABB 粗估顯示三種姿態都可能有連桿穿過 19.2 cm 掃描面
 python3 integration/mission_pipeline.py --real --show \
   --no-deliver --detection-streak 999 --max-laps 1 \
   --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 `--detection-streak 999` = 永遠不會離開路線。這關只驗「跟著 83 個 waypoint 走完一圈」。
@@ -164,7 +172,9 @@ python3 integration/mission_pipeline.py --real --show \
 python3 integration/mission_pipeline.py --real --show \
   --no-deliver --max-laps 1 \
   --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 在巡航路線旁邊放一個 sugarbox。
@@ -218,7 +228,9 @@ python3 integration/mission_pipeline.py --real --show \
 ```bash
 python3 integration/mission_pipeline.py --real --show \
   --route <route.yaml> \
-  --i-confirm-serial-owner --i-confirm-lidar-orientation --i-confirm-arm-cam-pose
+  --i-confirm-serial-owner \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
+  --i-confirm-arm-cam-pose
 ```
 
 夾到之後會導航到 `route.yaml` 的 `trash_bin.approach`（4.35, 13.00），然後直接跑

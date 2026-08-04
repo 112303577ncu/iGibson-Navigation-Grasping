@@ -53,9 +53,11 @@ export ROS_HOSTNAME=127.0.0.1
 export ROS_MASTER_URI=http://127.0.0.1:11311
 roslaunch rosbridge_server rosbridge_websocket.launch
 
-# Jetson 終端機 3：只讀 /scan 的方向確認（不會驅動馬達）
+# Jetson 終端機 3：Route B 四方向 gate（只讀，不會驅動馬達）
 cd ~/Documents/deploy_jetson2
 source ~/grasp_venv/bin/activate
+# 先依 Navigation/03_route_b_localization_navigation_handoff/LIDAR_ORIENTATION_GATE.md
+# 完成 front/back/left/right，建立 ~/.route_b_runtime/scan_orientation_verified
 python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 
 # Jetson：模型載入 + 推論速率
@@ -72,6 +74,7 @@ python3 integration/nav_rl_grasp_pipeline.py --no-lidar
 # 正式（TG30 driver 與 rosbridge 要跑；會占用 /dev/myserial 的底盤 driver/port 7000 不可跑）
 python3 integration/nav_rl_grasp_pipeline.py --real --show \
   --lidar-backend ros --ros-host 127.0.0.1 \
+  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
   --cam-x <Phase3_X> --cam-y <Phase3_Y> --sign-y <1或-1> \
   --i-confirm-camera-frame
 ```
@@ -98,11 +101,13 @@ rospack find rosbridge_server
 
 ## ⚠️ 上機前校正清單（依序）
 
-1. **LiDAR 硬體與資料已確認（2026-07-16）**：TG30、firmware 2.1、health good、
-   `/scan` 約 10.17Hz、`laser_link`、角度 -85°～+85°、range 0.01～50m。程式預設走
-   `--lidar-backend ros`；ROS `/scan` 已是 CCW/左正，因此預設 `--lidar-dir 1`。
-2. **`--probe` 定向仍須實物確認**：前/左/右各放手測。左右反了才改 `--lidar-dir -1`；整體偏轉 →
-   `--lidar-yaw-offset-deg`；LiDAR 不在車中心 → `nav_rl.NavRLConfig.lidar_forward_offset_m`。
+1. **LiDAR 硬體與資料已確認（2026-07-16）**：TG30、firmware 2.1、health good，
+   但這些 metadata 不等於 policy 前方語意已確認。AMCL 使用 TF，policy 可能直接讀 raw
+   `/scan` index；必須先完成 Route B 的四方向板子 gate。
+2. **orientation gate 通過後才可固定參數**：證據 marker 的 frame、TF yaw、policy offset
+   必須與目前 launch/adapter 相符。左右反轉或整體偏轉時，先刪 marker、停車、修正後重測；
+   不可邊猜 `--lidar-dir`/`--lidar-yaw-offset-deg` 邊開巡航。LiDAR 不在車中心才另外設定
+   `nav_rl.NavRLConfig.lidar_forward_offset_m`。
 3. **轉向正負**：`+wz` 必須讓車**左轉**（策略慣例）。dry-run 看 log、實測反了 → `--wz-sign -1`。
 4. **控制週期**：預設 1/6s（訓練值 action_repeat 5×1/30 推算）。實車行為抖/遲鈍時微調
    `--control-period`；**不要動 plant 參數**（stall/調速/延遲是訓練動力學的一部分）。
