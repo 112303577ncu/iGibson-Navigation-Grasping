@@ -19,7 +19,7 @@
 | `map_goal_provider.py` | route.yaml 117 waypoint + AMCL pose → `(dist, bearing)`；到點/繞行/中斷續巡/禁區 | `--selftest`、`--validate` |
 | `feedback_odom.py` | `get_motion_data()` → odom pose（Route A 校正值 0.65 / 0.501） | `--selftest` |
 | `ros_io.py` | rosbridge 發 `/odom_setmotor`+TF、收 `/amcl_pose` | `--selftest`、`--probe` |
-| `mission_fsm.py` | 20 狀態任務機（純邏輯） | `--selftest`、`--diagram` |
+| `mission_fsm.py` | 21 狀態任務機（純邏輯，含 `--no-deliver` 的終止持物狀態） | `--selftest`、`--diagram` |
 | `mission_pipeline.py` | 主程序，接起全部 | `--selftest` |
 
 全部離線可測：

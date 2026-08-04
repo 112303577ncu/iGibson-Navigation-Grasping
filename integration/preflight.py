@@ -84,15 +84,24 @@ SUITES = [
     ("integration/nav_rl.py", ["--selftest"]),
     ("integration/vision_grasp_pipeline.py", ["--selftest"]),
     ("integration/nav_rl_grasp_pipeline.py", ["--selftest"]),
+    ("tests/test_grasp_home_homography.py", []),
+    ("tests/test_model_package.py", []),
     ("tests/test_safety_guards.py", []),
     ("tests/test_mission_end_to_end.py", []),
+    ("tests/test_stream_cam_capture.py", []),
+    ("tests/test_vision_grasp_bridge_pose.py", []),
     ("grasp/v21/test_deploy_controller.py", []),
     ("grasp/v21/test_deploy_floor_guard.py", []),
 ]
 
 
 def _run(script, args, timeout=300):
-    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    # Directly executing a file under tests/ makes Python put tests/ rather
+    # than the repository root first on sys.path.  Keep the same import context
+    # as unittest discovery so preflight never omits a suite for that reason.
+    inherited_path = os.environ.get("PYTHONPATH", "")
+    pythonpath = str(ROOT) + (os.pathsep + inherited_path if inherited_path else "")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONPATH=pythonpath)
     try:
         # Decode as UTF-8 explicitly: the suites print em-dashes and box
         # characters, and a cp950 console would otherwise raise mid-read and

@@ -1,6 +1,6 @@
 # 上機測試計畫 — 巡航到丟垃圾
 
-離線能驗的都綠了（12 套、約 900 個檢查，跑 `integration/preflight.py --offline` 一次確認）。
+離線能驗的都綠了（117 個測試 + preflight 20 項，跑 `integration/preflight.py --offline` 一次確認）。
 這份是**只能在實車上驗**的部分，按依賴順序排。
 每一關沒過就不要往下跑：後面的失敗會被前面的問題污染，浪費的是現場時間。
 
@@ -250,6 +250,16 @@ python3 integration/mission_pipeline.py --real --show \
 | 7b | 成功夾取後 `arm_at_home` 沒設回 → CARRY_HOME 逾時，**每次夾成功都會 PAUSED** | 已修 + e2e 測試 | T5 |
 | 7c | 對不準的物體永遠走不到 LATCH → 重試上限不會觸發，APPROACH↔ALIGN 無限循環 | 已修（改計失敗次數）+ e2e 測試 | T4 |
 | 7d | PAUSED 沒有任何地方能解除 → 死路 | 已修（按 Enter 恢復，且強制重跑自檢） | T3 |
+| 7e | `GraspController.run()` 回傳 `False` 被當成「尚未完成」→ GRASP 永久重跑 | 已修；失敗會進 VERIFY/RETRY，最多 3 次 | 離線 e2e |
+| 7f | RETRY 的 `move_home()` 沒同步 nav-home 旗標 → 下一把不會重新升到 C3 | 已修 + 回歸測試 | 離線 e2e |
+| 7g | 進 ALIGN 同一 tick 就抬臂，尚未由 odom 證明底盤停穩 | 已修；先 SETTLE，下一 tick 才允許 FINE_ALIGN | 離線 e2e |
+| 7h | FINE_ALIGN 是阻塞迴圈，繞過 FSM 逾時、健康檢查與 LiDAR 前向煞停 | 已修 + 回歸測試 | T4 再實車確認煞停 |
+| 7i | 攜物時 PAUSED 後重新自檢會張爪／清掉送桶狀態 | 已修；保留 jaw hold 與原狀態後續跑 | 離線 e2e + T6 |
+| 7j | 過寬物件把 3D policy 座標塞進 2D AMCL 黑名單 → 下次查詢解包崩潰 | 已修 + 回歸測試 | 離線 e2e |
+| 7k | `--no-deliver` 實際繼續巡航且仍抓著物體 | 已修；進 COMPLETE、停車持物後正常結束 | 離線 e2e |
+| 7l | `vision_grasp_bridge.py` CLI 半合併，參數缺失且 grasp-home 誤用 nav-home 幾何 | 已修；grasp-home 強制量測 homography | bridge 測試 + Mode B 實測 |
+| 7m | 相機例外不清 detection streak；黑名單半徑 0 仍封鎖精確座標 | 已修 + 回歸測試 | 離線 e2e |
+| 7n | 相機重連後沿用舊解析度 gate 與半套校正樣本 | 已修；重連後重新驗解析度並清 batch | bridge 測試 + Mode B 實測 |
 | 8 | `route.yaml` 最小間距 0.049 m，到點判定會一次過好幾個點 | 已修（重取樣 117→83） | T3 看 waypoint 有沒有跳號 |
 | 9 | AMCL 丟失定位沒有自動恢復 | **未解**，會進 PAUSED 等人 | T3 |
 | 10 | 地圖是 GLB 渲染，現場障礙不在圖上 | **未解**，靠 48 束 policy 避障 | T3 |
@@ -263,8 +273,8 @@ python3 integration/mission_pipeline.py --real --show \
 - **v21 是 `candidate` 不是 approved**。`manifest.json` 的 `protocol_valid: false`。
   成績是真的但沒有認證，報告/簡報要照這個講法。
 - **靜止 feedback 雜訊沒量過**，stationary gate 的門檻（0.02 m/s、0.05 rad/s）是暫定值。
-- **阻塞動作期間不檢查 `/scan` 新鮮度**。夾取時底盤是停的所以還好，但 FINE_ALIGN
-  期間底盤會動而且不看 LiDAR（沿用既有模式 A 的行為）。
+- **放下是否真的進桶沒有感測器驗證**。`released` 只表示伸出／開爪／回 home 的動作完成；
+  T6 必須目視，若要自動判斷需新增桶內相機、重量或其他存在感測器。
 
 ---
 
@@ -276,7 +286,7 @@ python3 integration/mission_pipeline.py --real --show \
 
 | | 項目 | 結果 | 數值 / 備註 |
 |---|---|---|---|
-| ☐ | `preflight.py --offline` | 16 pass / 0 fail？ | |
+| ☐ | `preflight.py --offline` | 20 pass / 0 fail？ | |
 | ☐ | `fuser -v /dev/myserial` 只有一個 PID | | |
 | ☐ | ROS 六個節點都起來 | | |
 | ☐ | RViz 緊初始化（std 0.15 m / 7°）已設 | | |

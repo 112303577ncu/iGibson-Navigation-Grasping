@@ -205,12 +205,22 @@ class RLNavigator(vgp.Navigator):
             if cfg.control_period_s - spent > 0:
                 time.sleep(cfg.control_period_s - spent)
 
-    def _arm_align(self) -> bool:
+    def _arm_align(self, *, deadline=None, safety_check=None) -> bool:
         """Visual fine align 0.7m -> handoff (port of the parent ARM_ALIGN state)."""
         last_seen = time.time()
         print("[nav-rl] -> ARM_ALIGN (visual fine approach)")
         while True:
             now = time.time()
+            if deadline is not None and time.monotonic() >= deadline:
+                self.stop()
+                print("[nav-rl] ARM_ALIGN timed out -- stopping")
+                return False
+            if safety_check is not None:
+                reason = str(safety_check() or "")
+                if reason:
+                    self.stop()
+                    print(f"[nav-rl] ARM_ALIGN safety stop: {reason}")
+                    return False
             found, dist_arm, offset, box_w, class_name = self._detect_arm()
             if found:
                 last_seen = now
@@ -228,6 +238,17 @@ class RLNavigator(vgp.Navigator):
                     print(f"[nav-rl] HANDOFF: class={class_name} dist={dist_arm:.3f} "
                           f"off={offset:+.3f} box_w={box_w}px")
                     return True
+                # Fine-align used to bypass the raw LiDAR brake because it owns
+                # this blocking loop.  Apply the same forward obstacle gate as
+                # the RL navigator before issuing any camera-driven motion.
+                vx, _vy, _vz = vgp.action_to_vxyz(action, speed)
+                if vx > 0.0:
+                    front = nr.front_min_raw(self.lidar.get_points(), self.ncfg)
+                    if front < self.ncfg.safety_brake_dist:
+                        self.stop()
+                        print(f"[nav-rl] ARM_ALIGN brake: front={front:.2f} m")
+                        time.sleep(vgp.ARM_DECISION_INTERVAL)
+                        continue
                 self._drive(action, speed)
             else:
                 self.stop()

@@ -202,16 +202,42 @@ base 絕對座標記錄。
 3. 之後每個擺放位置都換成 **base-frame 絕對座標**再記錄：
    `(actual_x, actual_y) = (ref_x + forward_from_mark, ref_y + left_from_mark)`。
    例如 `ref=(0.167,0.018)` 時，記號正前 8 cm 是 `(0.247, 0.018)`。
-4. **驗證**（Phase 2 解完、常數填好之後）：把 Phase 2 保留不擬合的 2 點擺回去，
-   跑 bridge dry-run 讀輸出：
+4. **驗證**（homography 解完之後）：把保留、不參與擬合的點擺回去，跑 bridge dry-run
+   讀輸出：
    ```bash
-   python3 integration/vision_grasp_bridge.py --dry-run --show      --cam-theta <θ> --cam-h <H> --cam-x <cam_x> --cam-y <cam_y> --sign-y <±1>      --class-height sugarbox=0.065
+   python3 integration/vision_grasp_bridge.py --dry-run --once --show \
+     --homography grasp_home_homography.json \
+     --class-height sugarbox=0.065
    ```
    印出的 `x`/`y` 與實擺 base 座標比對。
 
 **過關標準**：保留點誤差 **< 1 cm**（x、y 各自）、左右方向正確（物體往左移，y 要變大）。
 **沒過**：誤差隨距離變 → H 量錯，回 Phase 2 步驟 2；整體固定偏移 → 基準點記錯，回步驟 1。
 **產出**：z_offset → 對照表③（θ/H/cam_x/cam_y/sign_y 已在 Phase 2 產出）。
+
+### grasp-home homography（Mode B 必要 gate）
+
+`vision_grasp_bridge.py` 在 C3 不接受 nav-home 的 H/θ/offset，也不能用
+`--i-accept-predicted-extrinsics` 繞過。請在可夾工作區擺至少 **6 個不共線、覆蓋四周與中央**
+的位置；每點量 base-frame `(x,y)`，並取得穩定的 undistorted `(u,v)`：
+
+```bash
+python3 integration/vision_grasp_bridge.py --dry-run --calibration-only --once \
+  --calibration-samples 20 --show --class-height sugarbox=0.065
+```
+
+把輸出的 `u,v` 與實測 `x,y` 整理成 JSON `[{"u":...,"v":...,"x":...,"y":...}, ...]`，
+保留另外至少 2 點不要拿去擬合，再產生 runtime 檔：
+
+```bash
+python3 integration/grasp_home_homography.py \
+  --points-json grasp_home_points.json \
+  --output grasp_home_homography.json --max-rmse-cm 1
+```
+
+現有 `c3_calib_real_20260802.json` 只有 5 筆、且前兩筆是同一個 base 座標，**不能**通過
+runtime 的 6 點 gate；需要重新補量。擬合 RMSE 與保留點 x/y 誤差都須 ≤1 cm，且 runtime
+只接受 calibration convex hull 內的偵測，不做外推。
 
 ---
 

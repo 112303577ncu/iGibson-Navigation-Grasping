@@ -271,6 +271,7 @@ class MissionRunner:
         self._t_prev = time.time()
         self._latched: Optional[Tuple[list, Optional[float], Optional[float]]] = None
         self._grasp_finished = False
+        self._grasp_controller_confirmed = False
         self._grasp_verified = False
         self._place_finished = False
         self._arm_at_home = True
@@ -371,12 +372,22 @@ class MissionRunner:
         if ok and not self._at_nav_home:
             print("[mission][check] moving the arm to the nav travel pose "
                   f"{list(self.controller.cfg.home_deg)}")
-            if self.move_arm_to(self.controller.cfg.home_deg, "nav-home"):
+            holding = self._grasp_verified and not self._place_finished
+            if self.move_arm_to(self.controller.cfg.home_deg, "nav-home",
+                                holding=holding):
                 self._at_nav_home = True
             else:
                 print(f"[mission][check] {'FAIL' if self.args.real else 'warn'}: "
                       f"the arm did not reach the travel pose")
                 ok = ok and not self.args.real
+
+        # _at_nav_home is set only after a verified move (or a successful v21
+        # return-home sequence), so it is also authoritative for the FSM's
+        # arm_at_home gate.  This matters after clearing a pause in CARRY_HOME:
+        # without restoring the second flag, self-check parks the arm safely
+        # but CARRY_HOME waits forever and pauses again.
+        if ok and self._at_nav_home:
+            self._arm_at_home = True
 
         self.self_check_passed = ok
         return ok
@@ -424,6 +435,8 @@ class MissionRunner:
             found, dist_f, off = self.nav._detect_rear()
         except Exception as exc:
             print(f"[mission][det] rear detection failed: {exc}")
+            # An exception is a missed frame, not part of a consecutive streak.
+            self._det_streak = 0
             return
         if not (found and dist_f > 0):
             self._det_streak = 0
@@ -573,6 +586,20 @@ class MissionRunner:
         return (f"policy x={x:.3f} | base_footprint x={bf:.3f} | "
                 f"front-axle x={axle:.3f} | y={y:+.3f} m")
 
+    def _fine_align_blocking_reason(self) -> str:
+        """Re-check fail-safe inputs inside the blocking visual servo loop."""
+        if self.args.real and self.nav.device is None:
+            return "serial/driver lost"
+        if self.odom_pub is not None:
+            odom = self.odom_pub.state()
+            if odom is None or not odom.valid:
+                return "wheel feedback invalid"
+            if not odom.fresh:
+                return "wheel feedback stale"
+        if self.lidar.age() > self.nav.ncfg.lidar_stale_timeout_s:
+            return "/scan stale"
+        return ""
+
     # ── acting ──
     def _act(self, tr: mfsm.Transition, now: float, dt: float) -> None:
         A = mfsm.Action
@@ -687,6 +714,11 @@ class MissionRunner:
             # distance model returns a plausible number at any pose, so nothing
             # downstream would catch a mismatch. Raising here (base already
             # stopped) also keeps the wheels-or-arm-never-both rule intact.
+            remaining = max(
+                0.0,
+                self.fsm.cfg.align_timeout_s - self.fsm._elapsed(now),
+            )
+            align_deadline = time.monotonic() + remaining
             if self._at_nav_home:
                 if not self.move_arm_to(self.controller.cfg.grasp_home_deg,
                                         "nav-home->C3"):
@@ -696,7 +728,10 @@ class MissionRunner:
                 self._arm_at_home = False
             ok = False
             try:
-                ok = self.nav._arm_align()
+                ok = self.nav._arm_align(
+                    deadline=align_deadline,
+                    safety_check=self._fine_align_blocking_reason,
+                )
             except Exception as exc:
                 print(f"[mission] fine align raised: {exc}")
             self.nav.stop()
@@ -718,7 +753,6 @@ class MissionRunner:
                 print(f"[mission] object too wide: {width * 100:.1f} cm > "
                       f"{vgp.MAX_GRASP_WIDTH_M * 100:.1f} cm — abandoning")
                 self._align_failed = True
-                self._blacklist.append(tuple(round(v, 2) for v in obj_pos))
                 return
             self._handoff_ready = True
             return
@@ -744,12 +778,15 @@ class MissionRunner:
             # ruins the engagement depth.
             self.controller.obj_provider = (lambda p=obj_pos, h=height: (p, h))
             try:
-                self._grasp_finished = bool(
+                self._grasp_controller_confirmed = bool(
                     self.controller.run(max_steps=self.args.max_steps))
+                # run() returning False is a completed failed attempt, not an
+                # in-progress episode.  VERIFY owns the retry decision.
+                self._grasp_finished = True
             except Exception as exc:
                 self.fault = f"grasp policy raised: {exc}"
                 return
-            if self._grasp_finished:
+            if self._grasp_controller_confirmed:
                 # run() completing means stage 2 ran, and stage 2 ends with
                 # _scripted_lift_and_return putting the arm back at cfg.home_deg
                 # -- the nav travel pose now that the two homes are split. Without
@@ -764,7 +801,7 @@ class MissionRunner:
             obj_pos = self._latched[0] if self._latched else None
             try:
                 self._grasp_verified = bool(
-                    self._grasp_finished and obj_pos is not None
+                    self._grasp_controller_confirmed and obj_pos is not None
                     and self.nav.verify_grasp(obj_pos))
             except Exception as exc:
                 print(f"[mission] verify failed ({exc}) — treating as a failed grasp")
@@ -781,13 +818,15 @@ class MissionRunner:
                     self.fault = "arm did not reach home before the retry back-off"
                     return
                 self._arm_at_home = True
+                self._at_nav_home = True
             except Exception as exc:
                 self.fault = f"move_home failed during retry: {exc}"
                 return
             self.nav.back_off()
             self.nav.stop()
             self._latched = None
-            self._grasp_finished = self._grasp_verified = False
+            self._grasp_finished = self._grasp_controller_confirmed = False
+            self._grasp_verified = False
             self._handoff_ready = self._align_failed = False
             return
 
@@ -829,6 +868,8 @@ class MissionRunner:
 
     def _blacklisted_here(self) -> Optional[float]:
         """Distance to the nearest give-up point, if we are inside the radius."""
+        if self.args.blacklist_radius_m <= 0.0:
+            return None
         pose = self.goals.pose
         if pose is None or not self._blacklist:
             return None
@@ -863,11 +904,20 @@ class MissionRunner:
         self.operator_cleared = True
         self.self_check_passed = False
         self.started = not self.args.wait_start
-        self._at_nav_home = False        # re-park the arm during the new check
+        holding = self._grasp_verified and not self._place_finished
+        if holding:
+            # Preserve both the jaw hold and the delivery bookkeeping.  If the
+            # pose is already known-good, the self-check need not move the arm.
+            # If it is not, run_self_check moves it with grip_is_hold=True.
+            pass
+        else:
+            self._reset_target_state()
+            self._at_nav_home = False    # re-park during the new check
 
     def _reset_target_state(self) -> None:
         self._latched = None
-        self._grasp_finished = self._grasp_verified = False
+        self._grasp_finished = self._grasp_controller_confirmed = False
+        self._grasp_verified = False
         self._handoff_ready = self._align_failed = False
         self._place_finished = False
         self._det_streak = 0
@@ -940,6 +990,10 @@ class MissionRunner:
                     self.nav.stop()
                     print(f"[mission] TERMINAL {tr.state.value}: {tr.reason}")
                     return 2
+                if tr.completed:
+                    self.nav.stop()
+                    print(f"[mission] COMPLETE: {tr.reason}")
+                    return 0
                 if tr.state is mfsm.State.PAUSED:
                     self.nav.stop()
                     if self.args.exit_on_pause:
@@ -1476,6 +1530,14 @@ def run_selftest() -> None:
     pr.self_check_passed = True
     pr.started = True
     pr._at_nav_home = True
+    pr._grasp_verified = False
+    pr._place_finished = False
+    pr._latched = None
+    pr._grasp_finished = False
+    pr._grasp_controller_confirmed = False
+    pr._handoff_ready = False
+    pr._align_failed = False
+    pr._det_streak = 0
     import builtins as _b
     import contextlib as _ctx
     import io as _io

@@ -1,8 +1,13 @@
 import tempfile
+import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from integration import vision_grasp_bridge as bridge
 from integration.grasp_home_homography import make_calibration, save_calibration
@@ -29,6 +34,7 @@ class FakeCapture:
 def geometry_args(**overrides):
     values = {
         "camera_pose": "grasp-home",
+        "pose": None,
         "calibration_only": False,
         "homography": None,
         "camera_height": None,
@@ -94,6 +100,18 @@ class VisionGraspBridgePoseTests(unittest.TestCase):
         self.assertEqual(args.sign_y, -1.0)
         self.assertAlmostEqual(args.camera_height, bridge.H)
 
+    def test_camera_pose_and_explicit_pose_cannot_disagree(self):
+        args = geometry_args(camera_pose="grasp-home",
+                             pose=bridge.acg.V17_NAV_HOME.name)
+        with self.assertRaisesRegex(SystemExit, "conflicts"):
+            bridge.resolve_pose(args)
+
+    def test_calibration_rejects_a_clipped_bbox(self):
+        record, reason = bridge.calibration_record_from_bbox(
+            (0.0, 100.0, 50.0, 200.0), "sugarbox")
+        self.assertIsNone(record)
+        self.assertTrue(reason)
+
     def test_verified_homography_maps_inside_and_rejects_outside_hull(self):
         pixels = [(u, v) for v in (100.0, 300.0, 450.0)
                   for u in (100.0, 300.0, 500.0)]
@@ -125,6 +143,54 @@ class VisionGraspBridgePoseTests(unittest.TestCase):
         result = bridge.median_calibration_record(rows)
         self.assertEqual(result["u"], 102.0)
         self.assertEqual(result["samples"], 3)
+
+    def test_grasp_home_payload_uses_homography_and_keeps_v21_height(self):
+        pixels = [(u, v) for v in (100.0, 300.0, 450.0)
+                  for u in (100.0, 300.0, 500.0)]
+        bases = [(0.30 - 0.0002 * v, 0.00025 * (u - 300.0))
+                 for u, v in pixels]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "grasp_home.json"
+            save_calibration(path, make_calibration(pixels, bases))
+            args = geometry_args(homography=str(path))
+            bridge.resolve_camera_geometry(args)
+            with patch.object(bridge.acg, "undistort_pixel",
+                              side_effect=lambda u, v: (u, v)):
+                payload, note = bridge.build_homography_payload(
+                    args, (280.0, 250.0, 320.0, 300.0), "sugarbox",
+                    bridge.acg.V21_C3_GRASP_HOME,
+                    {"_fallback": 0.02, "sugarbox": 0.0325},
+                    {"sugarbox": 0.065},
+                )
+        self.assertIsNotNone(payload, note)
+        self.assertAlmostEqual(payload["x"], 0.24)
+        self.assertAlmostEqual(payload["y"], 0.0)
+        self.assertEqual(payload["height"], 0.065)
+        self.assertEqual(payload["cam_pose_name"],
+                         bridge.acg.V21_C3_GRASP_HOME.name)
+        self.assertEqual(payload["cam_pose"],
+                         list(bridge.acg.V21_C3_GRASP_HOME.arm_deg))
+
+    def test_calibration_only_leaves_every_homography_field_defined(self):
+        """--calibration-only returns before a homography exists.
+
+        The hulls used to be assigned only on the load-succeeded path, so this
+        mode left them undefined and the safety was a property of the frame
+        loop's if/elif rather than of resolve_camera_geometry. Reading one was
+        an AttributeError, not a diagnosable failure.
+        """
+        args = geometry_args(calibration_only=True)
+        bridge.resolve_camera_geometry(args)
+        for field in ("homography_matrix", "homography_document",
+                      "homography_pixel_hull", "homography_base_hull"):
+            self.assertIsNone(getattr(args, field), field)
+
+    def test_mapping_without_a_calibration_says_so(self):
+        args = geometry_args(calibration_only=True)
+        bridge.resolve_camera_geometry(args)
+        with self.assertRaises(ValueError) as ctx:
+            bridge.apply_grasp_home_mapping(args, 300.0, 260.0)
+        self.assertIn("requires a loaded homography", str(ctx.exception))
 
 
 if __name__ == "__main__":

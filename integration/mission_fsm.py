@@ -56,6 +56,7 @@ class State(str, enum.Enum):
     PLACE_ALIGN = "PLACE_ALIGN"
     PLACE = "PLACE"
     RESUME = "RESUME"
+    COMPLETE = "COMPLETE"
     PAUSED = "PAUSED"
     FAULT = "FAULT"
     ESTOP = "ESTOP"
@@ -100,6 +101,24 @@ SCAN_STATES = DRIVING_STATES
 ODOM_STATES = DRIVING_STATES | MAP_STATES | frozenset({
     State.STATIONARY_GATE, State.LATCH,
 })
+
+# Pausing while holding an object must not drop the mission back to IDLE and
+# patrol -- the jaw is still loaded. This maps the state the pause interrupted
+# to the (state, action) the mission resumes with after the self-check.
+#
+# One dict rather than a membership test in PAUSED plus a lookup in SELF_CHECK:
+# those were two lists twenty lines apart that had to agree, and the failure
+# mode of them disagreeing was a KeyError at the worst possible moment -- while
+# recovering a paused mission with an object in the gripper.
+#
+# PLACE resumes through PLACE_ALIGN so a release interrupted partway is
+# re-entered through its stationary gate instead of being blindly re-run.
+HELD_OBJECT_RESUME = {
+    State.CARRY_HOME:  (State.CARRY_HOME,  Action.STOP),
+    State.DELIVER:     (State.DELIVER,     Action.DRIVE_BIN),
+    State.PLACE_ALIGN: (State.PLACE_ALIGN, Action.SETTLE),
+    State.PLACE:       (State.PLACE_ALIGN, Action.SETTLE),
+}
 
 
 @dataclasses.dataclass
@@ -233,6 +252,10 @@ class Transition:
     def terminal(self) -> bool:
         return self.state in (State.FAULT, State.ESTOP)
 
+    @property
+    def completed(self) -> bool:
+        return self.state is State.COMPLETE
+
 
 class MissionFSM:
     """The mission controller. ``step()`` is a pure function of (state, Sense)."""
@@ -248,6 +271,9 @@ class MissionFSM:
         self.failures = 0      # failed tries, including ones that never got there
         self.last_reason = ""
         self.pause_reason = ""
+        self.paused_from: Optional[State] = None
+        # (state, action) to re-enter with, from HELD_OBJECT_RESUME.
+        self.resume_after_self_check: Optional[Tuple[State, Action]] = None
         self.history: list = []
 
     # ── helpers ──
@@ -265,6 +291,8 @@ class MissionFSM:
         return Transition(state, action, reason, reset_nav=reset_nav, changed=changed)
 
     def _pause(self, reason: str, now: float) -> Transition:
+        if self.state is not State.PAUSED:
+            self.paused_from = self.state
         self.pause_reason = reason
         return self._go(State.PAUSED, Action.STOP, reason, now, reset_nav=True)
 
@@ -308,6 +336,14 @@ class MissionFSM:
 
         if st is State.SELF_CHECK:
             if s.self_check_passed:
+                resume = self.resume_after_self_check
+                self.resume_after_self_check = None
+                if resume is not None:
+                    state, action = resume
+                    return self._go(
+                        state, action,
+                        "self-check passed -- resuming held-object mission",
+                        now, reset_nav=True)
                 return self._go(State.IDLE, Action.STOP, "self-check passed", now,
                                 reset_nav=True)
             if self._elapsed(now) > cfg.self_check_timeout_s:
@@ -352,7 +388,9 @@ class MissionFSM:
             if self._elapsed(now) > cfg.approach_timeout_s:
                 return self._abandon_target("approach timed out", now)
             if s.target_dist <= cfg.approach_to_align_m:
-                return self._go(State.ALIGN, Action.FINE_ALIGN,
+                # Stop first.  The ALIGN state confirms wheel feedback is
+                # stationary on a later tick before raising the arm to C3.
+                return self._go(State.ALIGN, Action.SETTLE,
                                 f"within {cfg.approach_to_align_m:.2f} m — fine align",
                                 now, reset_nav=True)
             return self._go(State.APPROACH, Action.DRIVE_TARGET, "approaching", now)
@@ -368,6 +406,10 @@ class MissionFSM:
                 return self._retry_or_give_up("fine align failed", now)
             if self._elapsed(now) > cfg.align_timeout_s:
                 return self._retry_or_give_up("fine align timed out", now)
+            if not s.stationary:
+                return self._go(
+                    State.ALIGN, Action.SETTLE,
+                    "waiting for the base to stop before raising the arm", now)
             if s.handoff_ready:
                 return self._go(State.STATIONARY_GATE, Action.SETTLE,
                                 "object inside the trained envelope", now)
@@ -425,8 +467,11 @@ class MissionFSM:
                 return self._pause("arm did not reach the carry pose", now)
             if s.arm_at_home:
                 if not self.deliver_enabled:
-                    return self._abandon_target(
-                        "carrying (delivery disabled) — resuming patrol", now)
+                    self.attempts = self.failures = 0
+                    return self._go(
+                        State.COMPLETE, Action.HOLD,
+                        "grasp verified — delivery disabled; holding", now,
+                        reset_nav=True)
                 return self._go(State.DELIVER, Action.DRIVE_BIN,
                                 "carrying — heading to the bin", now, reset_nav=True)
             return self._go(State.CARRY_HOME, Action.STOP, "moving to the carry pose",
@@ -460,8 +505,17 @@ class MissionFSM:
             return self._go(State.PATROL, Action.DRIVE_PATROL,
                             "resuming patrol at the next waypoint", now, reset_nav=True)
 
+        if st is State.COMPLETE:
+            return self._go(State.COMPLETE, Action.HOLD,
+                            "mission complete — holding", now)
+
         if st is State.PAUSED:
             if s.operator_cleared:
+                # A miss here means the pause happened somewhere the mission is
+                # not carrying anything, so IDLE is the right place to land.
+                self.resume_after_self_check = HELD_OBJECT_RESUME.get(
+                    self.paused_from)
+                self.paused_from = None
                 return self._go(State.SELF_CHECK, Action.RUN_SELF_CHECK,
                                 "operator cleared the pause", now, reset_nav=True)
             return self._go(State.PAUSED, Action.STOP,
@@ -524,7 +578,7 @@ def run_selftest() -> None:
     tr = fsm.step(Sense(now=t, target_visible=True, target_dist=0.6, target_fix_age=0.0))
     assert fsm.state is State.ALIGN and tr.reset_nav, tr
     t += 0.1
-    tr = fsm.step(Sense(now=t, handoff_ready=True))
+    tr = fsm.step(Sense(now=t, handoff_ready=True, stationary=True))
     assert fsm.state is State.STATIONARY_GATE, tr
     t += 0.1
     fsm.step(Sense(now=t, stationary=True))
@@ -701,13 +755,47 @@ def run_selftest() -> None:
     assert fsm.state is State.RESUME and tr.reset_nav
     print("[fsm] goal-source changes reset ActionDelay/tracker OK")
 
-    # ── deliver disabled: carry then straight back to patrol ──
+    # ── deliver disabled: stop after the verified grasp and hold ──
     fsm = MissionFSM(cfg, deliver_enabled=False)
     t = _to_patrol(fsm)
     fsm.state, fsm.entered_at = State.CARRY_HOME, t
     tr = fsm.step(Sense(now=t, arm_at_home=True))
-    assert fsm.state is State.RESUME and "delivery disabled" in tr.reason, tr
+    assert fsm.state is State.COMPLETE and tr.completed, tr
     print("[fsm] deliver_enabled=False path OK")
+
+    # ── pausing while carrying resumes the mission, not IDLE ──
+    # Every carrying state must come back to the held-object flow. Landing in
+    # IDLE would strand an object in the jaw and start a fresh patrol with it.
+    for paused_in, want_state in (
+        (State.CARRY_HOME, State.CARRY_HOME),
+        (State.DELIVER, State.DELIVER),
+        (State.PLACE_ALIGN, State.PLACE_ALIGN),
+        (State.PLACE, State.PLACE_ALIGN),      # re-enter via the stationary gate
+    ):
+        fsm = MissionFSM(cfg)
+        t = _to_patrol(fsm)
+        fsm.state, fsm.entered_at = paused_in, t
+        fsm.step(Sense(now=t, health=Health(serial_ok=False)))
+        assert fsm.state is State.PAUSED, paused_in
+        fsm.step(Sense(now=t + 1, operator_cleared=True))
+        assert fsm.state is State.SELF_CHECK, paused_in
+        tr = fsm.step(Sense(now=t + 2, self_check_passed=True))
+        assert fsm.state is want_state, (paused_in, fsm.state)
+        assert "held-object" in tr.reason, tr
+    # ...and a pause anywhere else still lands in IDLE
+    fsm = MissionFSM(cfg)
+    t = _to_patrol(fsm)
+    fsm.step(Sense(now=t, health=Health(scan_fresh=False)))
+    assert fsm.state is State.PAUSED
+    fsm.step(Sense(now=t + 1, operator_cleared=True))
+    tr = fsm.step(Sense(now=t + 2, self_check_passed=True))
+    assert fsm.state is State.IDLE, tr
+    # the resume table is the single source of truth for both sites
+    for state, (dst, action) in HELD_OBJECT_RESUME.items():
+        assert isinstance(dst, State) and isinstance(action, Action), state
+        assert dst in ARM_STATES or dst in DRIVING_STATES, (state, dst)
+    print(f"[fsm] paused-while-carrying resumes all {len(HELD_OBJECT_RESUME)} "
+          f"carrying states, others land in IDLE OK")
 
     # ── config validation ──
     for bad in (dict(detection_streak_needed=0), dict(max_grasp_attempts=0),
@@ -743,7 +831,7 @@ def print_diagram() -> None:
                      |                          fail        |  ok
                      |                     +----------------+
                      |                     v                v
-                     |                   RETRY          CARRY_HOME
+                     |                   RETRY          CARRY_HOME --no-deliver--> COMPLETE
                      |               (<=3, else give up)     v
                      |                     |             DELIVER
                      |                     v                v

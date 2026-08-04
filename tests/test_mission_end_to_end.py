@@ -21,9 +21,11 @@ from __future__ import annotations
 import io
 import math
 import sys
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -34,6 +36,7 @@ if str(_X3PLUS) not in sys.path:
 from integration import map_goal_provider as mgp
 from integration import mission_fsm as mfsm
 from integration import mission_pipeline as mp
+from integration import nav_rl_grasp_pipeline as nrgp
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -69,6 +72,7 @@ class FakeController:
         self._current_grip_rad = 0.0
         self.obj_provider = None
         self.moves = []           # labels, in order
+        self.move_details = []
         self.ran_grasp = 0
         self.ran_release = 0
         self.grasp_ok = grasp_ok
@@ -76,6 +80,7 @@ class FakeController:
 
     def move_guarded_and_verified(self, arm, grip, *, label, **kw):
         self.moves.append(label)
+        self.move_details.append((label, dict(kw)))
         return {"reached": True, "reason": "arrived", "iters": 1, "guard": ["pass"]}
 
     def move_home(self):
@@ -168,7 +173,9 @@ class FakeNav:
         self.arm_detects += 1
         return (True, self.obj_dist, 0.0, 40.0, "sugarbox")
 
-    def _arm_align(self):
+    def _arm_align(self, *, deadline=None, safety_check=None):
+        if safety_check is not None and safety_check():
+            return False
         self.obj_dist = 0.24
         self.tracker.set(0.24)
         return self.align_ok
@@ -345,7 +352,7 @@ def drive(runner, max_ticks=600):
                 laps_at_patrol += 1
                 if laps_at_patrol == 2:
                     return seen
-        if tr.terminal or tr.state is mfsm.State.PAUSED:
+        if tr.terminal or tr.completed or tr.state is mfsm.State.PAUSED:
             return seen
         runner._act(tr, t, 0.2)
         if tr.chassis_allowed and tr.state in mfsm.MAP_STATES:
@@ -431,13 +438,121 @@ class MissionEndToEnd(unittest.TestCase):
         self.assertEqual(runner.controller.ran_grasp, 0, "grasped despite bad align")
         self.assertTrue(runner._blacklist, "gave up without blacklisting the spot")
 
-    def test_no_deliver_returns_to_patrol_without_the_bin(self):
+    def test_failed_controller_result_is_a_failed_attempt_not_an_infinite_grasp(self):
+        runner, states = self._run(grasp_ok=False)
+        S = mfsm.State
+        self.assertEqual(runner.controller.ran_grasp,
+                         runner.fsm.cfg.max_grasp_attempts)
+        self.assertIn(S.RETRY, states, states)
+        self.assertIn(S.RESUME, states, states)
+        self.assertIs(states[-1], S.PATROL, states)
+        self.assertTrue(runner._blacklist)
+
+    def test_retry_records_nav_home_so_every_attempt_raises_back_to_c3(self):
+        runner, _ = self._run(grasp_ok=False)
+        self.assertEqual(runner.controller.moves.count("nav-home->C3"),
+                         runner.fsm.cfg.max_grasp_attempts,
+                         runner.controller.moves)
+
+    def test_base_must_report_stationary_before_fine_align_or_arm_raise(self):
+        fsm = mfsm.MissionFSM(mfsm.MissionConfig())
+        fsm.state = mfsm.State.APPROACH
+        fsm.entered_at = 10.0
+        tr = fsm.step(mfsm.Sense(now=10.1, target_dist=0.5,
+                                  target_fix_age=0.0, stationary=False))
+        self.assertIs(tr.state, mfsm.State.ALIGN)
+        self.assertIs(tr.action, mfsm.Action.SETTLE)
+        tr = fsm.step(mfsm.Sense(now=10.2, target_dist=0.5,
+                                  target_fix_age=0.0, stationary=False))
+        self.assertIs(tr.action, mfsm.Action.SETTLE)
+        tr = fsm.step(mfsm.Sense(now=10.3, target_dist=0.5,
+                                  target_fix_age=0.0, stationary=True))
+        self.assertIs(tr.action, mfsm.Action.FINE_ALIGN)
+
+    def test_oversized_detection_never_corrupts_the_map_blacklist(self):
+        runner = build_runner()
+        runner._at_nav_home = False
+        runner.nav.latch_arm_object = lambda: ([0.24, 0.0, 0.03], 999.0, 0.06)
+        tr = mfsm.Transition(mfsm.State.ALIGN, mfsm.Action.FINE_ALIGN)
+        with redirect_stdout(io.StringIO()):
+            runner._act(tr, 100.0, 0.2)
+        self.assertTrue(runner._align_failed)
+        self.assertEqual(runner._blacklist, [])
+        self.assertIsNone(runner._blacklisted_here())
+
+    def test_detection_exception_breaks_the_consecutive_streak(self):
+        runner = build_runner()
+        runner._det_streak = 2
+        runner._last_det = 0.0
+        runner.nav._detect_rear = mock.Mock(side_effect=RuntimeError("camera lost"))
+        with redirect_stdout(io.StringIO()):
+            runner._run_detection(100.0)
+        self.assertEqual(runner._det_streak, 0)
+
+    def test_zero_blacklist_radius_really_disables_blacklisting(self):
+        runner = build_runner()
+        runner.args.blacklist_radius_m = 0.0
+        pose = runner.goals.pose
+        runner._blacklist.append((pose.x, pose.y))
+        self.assertIsNone(runner._blacklisted_here())
+
+    def test_pause_while_carrying_preserves_object_and_resumes_delivery(self):
+        runner = build_runner()
+        runner._grasp_finished = True
+        runner._grasp_controller_confirmed = True
+        runner._grasp_verified = True
+        runner._latched = ([0.24, 0.0, 0.03], 0.03, 0.06)
+        runner._at_nav_home = True
+        runner.fsm.state = mfsm.State.DELIVER
+        runner.fsm.entered_at = 10.0
+
+        paused = runner.fsm.step(mfsm.Sense(
+            now=10.1,
+            health=mfsm.Health(amcl_ok=False),
+            grasp_verified=True,
+            arm_at_home=True,
+        ))
+        self.assertIs(paused.state, mfsm.State.PAUSED)
+        with mock.patch("builtins.input", return_value=""), redirect_stdout(io.StringIO()):
+            runner._handle_pause(paused.reason)
+
+        self.assertTrue(runner._grasp_verified)
+        self.assertIsNotNone(runner._latched)
+        self.assertTrue(runner._at_nav_home)
+
+        recheck = runner.fsm.step(mfsm.Sense(
+            now=10.2, operator_cleared=True, grasp_verified=True,
+            arm_at_home=True,
+        ))
+        self.assertIs(recheck.state, mfsm.State.SELF_CHECK)
+        resumed = runner.fsm.step(mfsm.Sense(
+            now=10.3, self_check_passed=True, grasp_verified=True,
+            arm_at_home=True,
+        ))
+        self.assertIs(resumed.state, mfsm.State.DELIVER)
+        self.assertIs(resumed.action, mfsm.Action.DRIVE_BIN)
+
+    def test_carry_pause_selfcheck_reparks_without_opening_the_jaw(self):
+        runner = build_runner()
+        runner._grasp_verified = True
+        runner._place_finished = False
+        runner._at_nav_home = False
+        runner._arm_at_home = False
+        with redirect_stdout(io.StringIO()):
+            self.assertTrue(runner.run_self_check())
+        self.assertTrue(runner._at_nav_home)
+        self.assertTrue(runner._arm_at_home)
+        label, kwargs = runner.controller.move_details[-1]
+        self.assertEqual(label, "nav-home")
+        self.assertTrue(kwargs["grip_is_hold"])
+
+    def test_no_deliver_stops_and_holds_without_the_bin(self):
         runner, states = self._run(deliver=False)
         S = mfsm.State
         self.assertIn(S.CARRY_HOME, states, states)
         self.assertNotIn(S.DELIVER, states, states)
         self.assertNotIn(S.PLACE, states, states)
-        self.assertIs(states[-1], S.PATROL, states)
+        self.assertIs(states[-1], S.COMPLETE, states)
         self.assertEqual(runner.controller.ran_release, 0)
 
     def test_state_is_clean_when_patrol_resumes(self):
@@ -450,6 +565,48 @@ class MissionEndToEnd(unittest.TestCase):
         self.assertFalse(runner._grasp_finished)
         self.assertEqual(runner._det_streak, 0)
         self.assertTrue(runner._at_nav_home, "patrol resumed with the arm at C3")
+
+
+class FineAlignSafetyRegression(unittest.TestCase):
+    class Harness:
+        def __init__(self, points):
+            self.ncfg = nrgp.nr.NavRLConfig()
+            self.lidar = type("Lidar", (), {"get_points": lambda _self: points})()
+            self.show = False
+            self.stops = 0
+            self.drives = 0
+
+        def stop(self):
+            self.stops += 1
+
+        def _detect_arm(self):
+            return True, 0.5, 0.0, 40.0, "sugarbox"
+
+        def _drive(self, action, speed):
+            self.drives += 1
+
+    def test_blocking_align_obeys_its_deadline(self):
+        h = self.Harness([(0.0, 4.0)])
+        with redirect_stdout(io.StringIO()):
+            ok = nrgp.RLNavigator._arm_align(h, deadline=time.monotonic() - 0.01)
+        self.assertFalse(ok)
+        self.assertGreaterEqual(h.stops, 1)
+
+    def test_blocking_align_obeys_live_health_and_lidar_brake(self):
+        h = self.Harness([(0.0, 0.10)])
+        checks = iter(("", "wheel feedback stale"))
+        with mock.patch.object(nrgp.vgp, "decide_arm_action_by_distance",
+                               return_value=("forward", 0.1, "move", None, 0.0)), \
+             mock.patch.object(nrgp.vgp, "action_to_vxyz", return_value=(0.1, 0.0, 0.0)), \
+             mock.patch.object(nrgp.vgp, "ARM_DECISION_INTERVAL", 0.0), \
+             redirect_stdout(io.StringIO()):
+            ok = nrgp.RLNavigator._arm_align(
+                h, deadline=time.monotonic() + 1.0,
+                safety_check=lambda: next(checks),
+            )
+        self.assertFalse(ok)
+        self.assertEqual(h.drives, 0, "camera loop drove through the lidar brake")
+        self.assertGreaterEqual(h.stops, 2)
 
 
 if __name__ == "__main__":

@@ -9,10 +9,10 @@ Pipeline:
     arm camera ──YOLO──▶ bbox ──geometry──▶ {x, y, z, w, height}(m) ──TCP 5555──▶
         x3plus_real_grasp.py  (run with --real --socket ...)
 
-All geometry — intrinsics, distortion, per-pose extrinsics, the ground model —
-lives in integration/arm_cam_geometry.py. This file no longer keeps its own copy
-of H/theta; that duplication is exactly why the 2026-08-01 arm-pose guard landed
-in vision_grasp_pipeline.py and not here.
+Intrinsics, distortion and pose stamps live in integration/arm_cam_geometry.py.
+The measured legacy nav-home projection remains available for diagnostics. At
+the v21 C3 grasp pose, runtime detections require a measured pixel-to-base
+homography; nav-home H/theta values are deliberately rejected there.
 
 Works against BOTH grasp stacks — the payload is a superset:
 
@@ -52,18 +52,19 @@ The grasp side (class DetectionReceiver) accepts one JSON object per TCP
 connection and reads until EOF, so this bridge opens a fresh connection for
 every message and closes it right after sending.
 
-Calibration status: see arm_cam_geometry.POSES. The v21 C3 grasp home extrinsics
-are currently a URDF-based PREDICTION, and this bridge refuses to send until you
-either measure them (CALIBRATION_PLAN.md Phase 1/2 + 3) or say out loud that you
-accept the prediction (--i-accept-predicted-extrinsics).
+Calibration status: see arm_cam_geometry.POSES. A predicted v21 C3 pose is not
+enough to generate grasp coordinates: collect bottom-centre pixel samples with
+``--calibration-only`` and supply the resulting verified calibration with
+``--homography``. ``--i-accept-predicted-extrinsics`` applies only to the legacy
+nav-home mode and cannot bypass the grasp-home homography gate.
 
 Examples:
-    # print what the geometry would send, without sending anything (calibration)
-    python vision_grasp_bridge.py --dry-run --show --stream 0
+    # collect stable undistorted pixels for grasp-home homography calibration
+    python vision_grasp_bridge.py --dry-run --calibration-only --show --stream 0
 
-    # continuous, arm-camera HTTP stream, measured extrinsics supplied
+    # continuous grasp-home bridge using a measured calibration
     python vision_grasp_bridge.py --host 192.168.1.11 \
-        --cam-theta 89.6 --cam-h 0.2151 --cam-x 0.2570 --cam-y -0.0030 \
+        --homography grasp_home_homography.json \
         --class-height sugarbox=0.065
 """
 from __future__ import annotations
@@ -72,6 +73,7 @@ import argparse
 import json
 import math
 import socket
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -96,6 +98,11 @@ CAMERA_OPEN_ATTEMPTS = 3
 CAMERA_PROBE_READS = 3
 CAMERA_PROBE_DELAY_SEC = 0.05
 
+# Legacy measured nav-home geometry.  Grasp-home never uses these values; it
+# requires a measured homography instead.
+H = 0.332
+FIXED_THETA = 36.40
+
 # Phase-3 camera ground coordinates -> PPO/URDF base_link mapping.
 CAM_TO_BASE_X = 0.1639
 CAM_TO_BASE_Y = 0.0331
@@ -112,8 +119,16 @@ def resolve_camera_geometry(args) -> None:
     Calibration-only mode never opens the TCP connection and therefore may
     collect pixels before a homography exists.
     """
+    # All four together, before any branch can return early. The hulls used to
+    # be set only on the load-succeeded path, so --calibration-only (which
+    # returns above without a homography) left them undefined; nothing reads
+    # them in that mode today, but that safety was a property of the control
+    # flow in the frame loop rather than of this function. Initialising here
+    # makes an unmapped read a clear None instead of an AttributeError.
     args.homography_matrix = None
     args.homography_document = None
+    args.homography_pixel_hull = None
+    args.homography_base_hull = None
     if args.calibration_only and args.camera_pose != "grasp-home":
         raise SystemExit("--calibration-only is only supported at --camera-pose grasp-home")
     if args.camera_pose == "grasp-home":
@@ -203,6 +218,14 @@ def point_in_convex_hull(point, hull, tolerance: float = 1e-7) -> bool:
 
 def apply_grasp_home_mapping(args, u: float, v: float):
     """Map one undistorted pixel and reject homography extrapolation."""
+    if (args.homography_matrix is None or args.homography_pixel_hull is None
+            or args.homography_base_hull is None):
+        # Reachable only if a future caller maps pixels without a loaded
+        # calibration. Say so, rather than dying inside the hull test on None.
+        raise ValueError(
+            "grasp-home mapping requires a loaded homography; "
+            "resolve_camera_geometry did not supply one"
+        )
     pixel = (float(u), float(v))
     if not point_in_convex_hull(pixel, args.homography_pixel_hull):
         raise ValueError(
@@ -223,6 +246,54 @@ def apply_grasp_home_mapping(args, u: float, v: float):
             "outside calibrated base hull"
         )
     return base_xy
+
+
+def median_calibration_record(records: List[dict]) -> dict:
+    """Collapse one stable detection batch to median undistorted pixels."""
+    if not records:
+        raise ValueError("calibration record batch is empty")
+
+    def med(key: str) -> float:
+        return round(float(statistics.median(row[key] for row in records)), 3)
+
+    return {
+        "camera_pose": "grasp-home",
+        "samples": len(records),
+        "class": records[0]["class"],
+        "u": med("u"),
+        "v": med("v"),
+        "left_u": med("left_u"),
+        "left_v": med("left_v"),
+        "right_u": med("right_u"),
+        "right_v": med("right_v"),
+        "raw_u": med("raw_u"),
+        "raw_v": med("raw_v"),
+    }
+
+
+def calibration_record_from_bbox(
+        box_xyxy: Tuple[float, float, float, float], class_name: str):
+    """Return one safe calibration sample, or a reason to skip the frame."""
+    x1, y1, x2, y2 = box_xyxy
+    clipped = acg.bbox_touches_border(x1, y1, x2, y2)
+    if clipped:
+        return None, clipped
+    raw_u = (x1 + x2) / 2.0
+    try:
+        u, v = acg.undistort_pixel(raw_u, y2)
+        left_u, left_v = acg.undistort_pixel(x1, y2)
+        right_u, right_v = acg.undistort_pixel(x2, y2)
+    except (ValueError, OverflowError) as exc:
+        return None, f"unusable calibration geometry: {exc}"
+    values = (u, v, left_u, left_v, right_u, right_v)
+    if not all(math.isfinite(value) for value in values):
+        return None, "unusable calibration geometry: non-finite pixel"
+    return {
+        "class": class_name, "u": u, "v": v,
+        "left_u": left_u, "left_v": left_v,
+        "right_u": right_u, "right_v": right_v,
+        "raw_u": raw_u, "raw_v": y2,
+    }, ""
 
 # An object wider than the jaw can open is physically ungraspable. The gripper's
 # measured pad separation is 72.3 mm fully open (S6=30 deg, URDF FK on the finger
@@ -517,6 +588,55 @@ def build_payload(box_xyxy: Tuple[float, float, float, float],
     return payload, note
 
 
+def build_homography_payload(args,
+                             box_xyxy: Tuple[float, float, float, float],
+                             class_name: str, pose: acg.ArmCamPose,
+                             class_z: Dict[str, float],
+                             class_height: Dict[str, float],
+                             max_width_m: float = MAX_GRASP_WIDTH_M):
+    """Build a grasp-home payload using only the measured pixel-to-base map."""
+    x1, y1, x2, y2 = box_xyxy
+    clipped = acg.bbox_touches_border(x1, y1, x2, y2)
+    if clipped:
+        return None, clipped
+    raw_u = (x1 + x2) / 2.0
+    try:
+        u, v = acg.undistort_pixel(raw_u, y2)
+        left_u, left_v = acg.undistort_pixel(x1, y2)
+        right_u, right_v = acg.undistort_pixel(x2, y2)
+        obj_x, obj_y = apply_grasp_home_mapping(args, u, v)
+        left_xy = apply_grasp_home_mapping(args, left_u, left_v)
+        right_xy = apply_grasp_home_mapping(args, right_u, right_v)
+    except ValueError as exc:
+        return None, f"unusable homography geometry: {exc}"
+
+    width_m = math.hypot(right_xy[0] - left_xy[0],
+                         right_xy[1] - left_xy[1])
+    obj_z = class_z.get(class_name, class_z["_fallback"])
+    obj_h = class_height.get(class_name)
+    values = (obj_x, obj_y, obj_z, width_m)
+    if not all(math.isfinite(value) for value in values):
+        return None, f"rejected non-finite homography geometry {values}"
+    if width_m > max_width_m:
+        return None, (f"object is {width_m*100:.1f} cm wide, past the "
+                      f"{max_width_m*100:.1f} cm the jaw can open — ungraspable")
+    if not TRAINED_X_RANGE[0] <= obj_x <= TRAINED_X_RANGE[1]:
+        return None, f"x={obj_x:.3f} is outside the policy's evaluated range"
+    if not TRAINED_Y_RANGE[0] <= obj_y <= TRAINED_Y_RANGE[1]:
+        return None, f"y={obj_y:+.3f} is outside the policy's evaluated range"
+
+    payload = {
+        "x": round(obj_x, 4), "y": round(obj_y, 4),
+        "z": round(obj_z, 4), "w": round(width_m, 4),
+        "class": class_name,
+    }
+    if obj_h is not None:
+        payload["height"] = round(obj_h, 4)
+    acg.stamp_payload(payload, pose)
+    return payload, (f"[homography] uv=({u:.1f},{v:.1f}) "
+                     f"w={width_m*100:.1f}cm")
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="X3Plus vision → grasp TCP bridge")
     p.add_argument("--host", default="127.0.0.1", help="grasp controller host (default 127.0.0.1)")
@@ -533,12 +653,23 @@ def parse_args():
                    help="compute and print detections without sending. Use this to "
                         "read off numbers during Phase 3 calibration.")
     # ── which arm pose the camera geometry belongs to ──
-    p.add_argument("--pose", default=acg.DEFAULT_POSE.name, choices=sorted(acg.POSES),
-                   help=f"arm-camera extrinsic set (default {acg.DEFAULT_POSE.name})")
-    p.add_argument("--cam-theta", type=float, default=None,
+    p.add_argument("--camera-pose", choices=("grasp-home", "nav-home"),
+                   default="grasp-home",
+                   help="arm pose used for detection (default grasp-home)")
+    p.add_argument("--pose", default=None, choices=sorted(acg.POSES),
+                   help="advanced: explicit arm-camera pose registry name")
+    p.add_argument("--homography", default=None,
+                   help="verified grasp-home pixel-to-base calibration JSON")
+    p.add_argument("--calibration-only", action="store_true",
+                   help="print median undistorted bbox pixels; never connect to TCP")
+    p.add_argument("--calibration-samples", type=int, default=10,
+                   help="valid frames per median calibration output (default 10)")
+    p.add_argument("--camera-theta", "--cam-theta", dest="camera_theta",
+                   type=float, default=None,
                    help="measured optical-axis depression (deg), towards base +X. "
                         "At the C3 pose this is near 90, NOT near 36.")
-    p.add_argument("--cam-h", type=float, default=None,
+    p.add_argument("--camera-height", "--cam-h", dest="camera_height",
+                   type=float, default=None,
                    help="measured camera height above the floor (m)")
     p.add_argument("--cam-x", type=float, default=None,
                    help="measured camera ground projection in the base frame, +X forward (m)")
@@ -546,6 +677,8 @@ def parse_args():
                    help="measured camera ground projection in the base frame, +Y left (m)")
     p.add_argument("--sign-y", type=float, default=None, choices=(-1.0, 1.0),
                    help="sign mapping image-right → grasp +Y (+1 or -1)")
+    p.add_argument("--sign-x", type=float, default=None, choices=(-1.0, 1.0),
+                   help="nav-home camera-forward to base +X sign")
     p.add_argument("--i-accept-predicted-extrinsics", action="store_true",
                    help="send detections even though the selected pose's extrinsics "
                         "are a URDF prediction rather than a hardware measurement. "
@@ -573,8 +706,16 @@ def parse_args():
 
 def resolve_pose(args) -> acg.ArmCamPose:
     """Select the extrinsic set and apply any measured overrides."""
-    pose = acg.get_pose(args.pose)
-    pose = pose.replace(theta_deg=args.cam_theta, h_m=args.cam_h,
+    expected_name = (acg.V17_NAV_HOME.name if args.camera_pose == "nav-home"
+                     else acg.V21_C3_GRASP_HOME.name)
+    if args.pose is not None and args.pose != expected_name:
+        raise SystemExit(
+            f"--camera-pose {args.camera_pose} conflicts with --pose {args.pose}; "
+            f"expected --pose {expected_name}"
+        )
+    pose_name = args.pose or expected_name
+    pose = acg.get_pose(pose_name)
+    pose = pose.replace(theta_deg=args.camera_theta, h_m=args.camera_height,
                         cam_x_m=args.cam_x, cam_y_m=args.cam_y,
                         sign_y=args.sign_y)
     print(f"[bridge] arm-camera geometry → {pose.describe()}")
@@ -596,11 +737,14 @@ def main():
         raise SystemExit("--rate must be finite and >= 0")
     if not math.isfinite(args.max_width) or args.max_width <= 0.0:
         raise SystemExit("--max-width must be finite and positive")
+    if args.calibration_samples <= 0:
+        raise SystemExit("--calibration-samples must be > 0")
 
     pose = resolve_pose(args)
     # Predicted extrinsics are a fine starting point for --dry-run, but they must
     # not reach a real arm without the operator saying so.
-    if not args.dry_run:
+    if (not args.dry_run and not args.calibration_only
+            and args.camera_pose == "nav-home"):
         pose.require_measured(real=True,
                               acknowledged=args.i_accept_predicted_extrinsics)
 
@@ -638,12 +782,19 @@ def main():
                       f"predict. Known classes: {sorted(known)}")
 
     print(f"[bridge] opening camera: {args.stream}")
-    cap = open_capture(args.stream)
-    if not cap.isOpened():
-        print("[bridge] ERROR: cannot open camera stream.")
-        return
+    cap, pending_frame, camera_error = open_capture_checked(args.stream)
+    if cap is None:
+        raise SystemExit(
+            f"[bridge] ERROR: camera {args.stream!r} failed after "
+            f"{CAMERA_OPEN_ATTEMPTS} attempts: {camera_error}. "
+            "Check that the device exists and no other process owns it.")
+    print(f"[bridge] camera ready: {args.stream} "
+          f"frame_shape={tuple(pending_frame.shape)}")
 
-    if args.dry_run:
+    if args.calibration_only:
+        print(f"[bridge] calibration-only: pose={args.camera_pose}, median of "
+              f"{args.calibration_samples} valid frames; TCP disabled")
+    elif args.dry_run:
         print("[bridge] DRY RUN: computing detections, sending nothing.")
     else:
         print(f"[bridge] streaming detections → {args.host}:{args.port} "
@@ -654,6 +805,8 @@ def main():
     last_note = ""
     infer_ema = None
     checked_frame_size = False
+    consecutive_read_failures = 0
+    calibration_records: List[dict] = []
     try:
         while True:
             if pending_frame is not None:
@@ -679,6 +832,11 @@ def main():
                             f"{camera_error}. Stopping instead of sending stale data."
                         )
                     consecutive_read_failures = 0
+                    # A reopened index/URL can resolve to a different camera or
+                    # resolution.  Re-run the calibration-size gate and never
+                    # combine samples collected across a broken stream.
+                    checked_frame_size = False
+                    calibration_records.clear()
                     print(f"[bridge] camera reopened and frame verified: "
                           f"{args.stream} frame_shape={tuple(pending_frame.shape)}")
                 else:
@@ -706,10 +864,37 @@ def main():
             if box is not None:
                 class_name = class_name_for_box(model, box)
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
-                payload, note = build_payload((x1, y1, x2, y2), class_name, pose,
-                                              class_z, class_height, args.max_width)
+                if args.calibration_only:
+                    record, note = calibration_record_from_bbox(
+                        (x1, y1, x2, y2), class_name)
+                    if record is not None and (calibration_records
+                            and calibration_records[0]["class"] != class_name):
+                        print("[bridge][calibration] class changed; resetting batch")
+                        calibration_records.clear()
+                    if record is not None:
+                        calibration_records.append(record)
+                        note = "collecting calibration samples"
+                    if (record is not None
+                            and len(calibration_records) >= args.calibration_samples):
+                        record = median_calibration_record(calibration_records)
+                        print("[bridge][calibration] "
+                              + json.dumps(record, sort_keys=True))
+                        calibration_records.clear()
+                        if args.once:
+                            break
+                elif args.camera_pose == "grasp-home":
+                    payload, note = build_homography_payload(
+                        args, (x1, y1, x2, y2), class_name, pose,
+                        class_z, class_height, args.max_width)
+                else:
+                    payload, note = build_payload(
+                        (x1, y1, x2, y2), class_name, pose,
+                        class_z, class_height, args.max_width)
                 if payload is None and note != last_note:
-                    print(f"[bridge] dropped {class_name}: {note}")
+                    if args.calibration_only and note != "collecting calibration samples":
+                        print(f"[bridge][calibration] skipped {class_name}: {note}")
+                    elif not args.calibration_only:
+                        print(f"[bridge] dropped {class_name}: {note}")
                     last_note = note
 
                 if args.show and annotated is not None:

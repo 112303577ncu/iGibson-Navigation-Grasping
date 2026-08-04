@@ -9,7 +9,7 @@ X3Plus 完整任務的整合。**程式整合已完成並在電腦端全部驗�
 ```bash
 # 任何一台電腦都可以跑，不需要機器人。約 100 秒。
 python3 integration/preflight.py --offline
-# 期望：OFFLINE: 16 pass, 0 warn, 0 fail
+# 期望：OFFLINE: 20 pass, 0 warn, 0 fail
 ```
 
 綠了就代表程式是完整的，接下來只剩實車。實車步驟見 [`integration/TEST_PLAN.md`](integration/TEST_PLAN.md)。
@@ -22,7 +22,7 @@ python3 integration/preflight.py --offline
 
 | | 進度 | 依據 |
 |---|---|---|
-| **程式整合** | **~95%** | 12 套測試、約 900 個檢查全綠；完整任務在假硬體上跑通 |
+| **程式整合** | **~95%** | 117 個測試 + preflight 20 項全綠；完整任務在假硬體上跑通 |
 | **實車驗證** | **~15%** | 只有夾取本身（v21）有實機證據；巡航、導航、交接、丟垃圾全部沒上過車 |
 
 那 15% 是這樣算的：六個上機關卡（T1–T6）裡，只有 T5 的**夾取核心**被證實過（v21 實機夾成功），其餘五關與 T5 的整合部分都是 0。
@@ -44,7 +44,7 @@ python3 integration/preflight.py --offline
 | 主程序 | `integration/mission_pipeline.py` | 單一 Py3.8 程序獨佔 `/dev/myserial` |
 | 導航策略 | `integration/nav_rl.py` | 55D obs、訓練 plant 復刻、48 束、幾何煞停（既有） |
 | 夾取 | `grasp/v21/` | v21 + 移植進來的放下動作 |
-| 起飛前檢查 | `integration/preflight.py` | 離線 16 項 + 上機 5 項 |
+| 起飛前檢查 | `integration/preflight.py` | 離線 20 項 + 上機 5 項 |
 
 ### 未完成
 
