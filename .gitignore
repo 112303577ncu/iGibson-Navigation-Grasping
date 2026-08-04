@@ -41,6 +41,17 @@ build/
 !detection/models/*.pt
 !yolo/**/*.pt
 
+# The release-branch drop-in: 205 MB, and 204 MB of it is a second copy of the
+# meshes already in grasp/x3plus/. Its one unique file is kept, labelled, at
+# grasp/v21/reference/ -- that is the provenance record for the ported release.
+# Ignored rather than deleted so nobody loses it by accident, but it must never
+# reach the repo: a `git add -A` would push 205 MB of duplicates.
+/training/
+/README.txt
+
+# Handoff archives are built artifacts; rebuild them, do not version them.
+/handoff_build/
+
 # Exclude zip by default except trained models.
 # This rule fails SILENTLY: git status never mentions a model you forgot to
 # except, so a "committed" model pair can be missing on the next clone. After
