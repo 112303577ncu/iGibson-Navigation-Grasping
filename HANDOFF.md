@@ -76,7 +76,7 @@ python3 integration/preflight.py --offline
 
 ---
 
-## 給接手的人：三個一定要先讀的坑
+## 給接手的人：四個一定要先讀的坑
 
 **1. 自動回報沒開 = odom 永遠是 0，而 AMCL 會相信它**
 
@@ -86,9 +86,13 @@ v21 的 `ServoController` 呼叫 `create_receive_threading()` 但**沒有** `set
 
 Jetson 上的 launch 註解說 `/scan` 的 frame 是 `laser`（相對機器人轉了 180°），主 repo 的紀錄說是 `laser_link`。兩邊量的是不同 launch，可以各自為真。AMCL 走 TF 所以永遠正確，但 `nav_rl.py` 直接讀 `/scan` 原始角度、**不碰 TF**。搞錯的話 policy 的「前方」是車後方，前方全讀成淨空、煞停永不觸發，而且**不會有任何錯誤訊息**。
 
-程式現在會檢查覆蓋率並在 `--real` 下拒絕啟動，但正確值要現場用 `rostopic echo -n1 /scan/header` 決定。
+**覆蓋率不能當證據**：360° 掃描前後都涵蓋，所以它永遠通過。frame_id 也不行，AMCL 正常更不行（它走 TF）。唯一能決定 0° 還是 180° 的是 Route B 的四方向板子測試 —— 板子放前／後／左／右各錄一次，verifier 會**自己量出** offset，你填的 `--offset-deg` 跟量測不合就拒發 marker。`--real` 沒有這份 marker 不會啟動。詳見 `TEST_PLAN.md` T2。
 
-**3. route.yaml 不能直接用**
+**3. AMCL 只在「有動」的時候更新，而夾取會靜止兩分鐘**
+
+AMCL 靜止時不發 `/amcl_pose`，但夾完的下一個狀態（DELIVER）把過期的 fix 當成阻斷性故障。任務層自己呼叫 `/request_nomotion_update` 解決，並在手臂佔住主迴圈之後補等一次新 fix。**前提是 rosbridge 有帶 rosapi、AMCL 真的提供那個 service** —— 沒有的話夾成功一次就停在 PAUSED，而且按 Enter 也救不回來（self-check 卡在同一個過期 pose）。self-check 和 `preflight --onboard` 都會擋，T0 先用 `rosservice list | grep request_nomotion_update` 確認省得白跑。
+
+**4. route.yaml 不能直接用**
 
 Route C 的 `route.yaml` 宣告 0.75 m 間距，實際最小 **0.049 m**（一個地圖格），117 個間隔裡 45 個不到 0.5 m，`patrol_001` 和 `patrol_116` 座標完全相同。程式預設 `--resample-m 0.75` 會重取樣成 83 點、最小間距 0.530 m。取樣點都落在原折線上，不會切出安全走廊。
 
@@ -109,13 +113,17 @@ roslaunch ydlidar_ros_driver TG.launch
 roslaunch <robot model>.launch          # robot_state_publisher
 rosrun map_server map_server site_map.yaml
 roslaunch amcl.launch                   # RViz 用 2D Pose Estimate 設緊初始化
-roslaunch rosbridge_server rosbridge_websocket.launch
+roslaunch rosbridge_server rosbridge_websocket.launch   # 要含 rosapi
 
-# 3. Jetson：上機前檢查
+# 3. Jetson：兩個一定要有的東西
+rosservice list | grep request_nomotion_update    # 沒有 → 夾完會停住，先解決
+ls ~/.route_b_runtime/scan_orientation_verified   # 沒有 → 先做 TEST_PLAN.md T2 四方向
+
+# 4. Jetson：上機前檢查
 source ~/grasp_venv/bin/activate
 python3 integration/preflight.py --onboard --ros-host 127.0.0.1
 
-# 4. 分段驗證（照 TEST_PLAN.md，一關一關來）
+# 5. 分段驗證（照 TEST_PLAN.md，一關一關來）
 #    先只跑巡航，不夾取也不送桶：
 python3 integration/mission_pipeline.py --real --show \
   --no-deliver --detection-streak 999 --max-laps 1 \

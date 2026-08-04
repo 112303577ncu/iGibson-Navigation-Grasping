@@ -18,9 +18,19 @@ ps -ef | grep -E '[r]osmaster_main|[M]cnamu_driver|[a]i_motor_server_B|[r]oute_a
 有其他程序佔著就先殺掉。手臂和輪子共用這條 UART，兩個程序開它 = 命令交錯。
 
 ROS 端起來（各自終端機）：`roscore` → TG30 driver → robot_state_publisher → map_server →
-AMCL → rosbridge。RViz 用 **2D Pose Estimate 設緊初始化**。
+AMCL → rosbridge（**要含 rosapi**）。RViz 用 **2D Pose Estimate 設緊初始化**。
 
-**通過條件**：`rostopic hz /scan` 約 10 Hz，RViz 看得到地圖和粒子雲。
+```bash
+rosservice list | grep request_nomotion_update    # 必須有這一行
+```
+
+沒有這個 service 就不要往下跑。AMCL 只在有動的時候更新並發佈 `/amcl_pose`，
+夾取一次會讓底盤靜止兩分鐘以上；任務層靠這個 service 在靜止時把 fix 叫回來。
+少了它，**第一次夾成功之後就會停在 PAUSED，而且按 Enter 也救不回來**（self-check
+會卡在同一個過期 pose）。`--real` 下 self-check 會擋，這裡先確認省得白跑。
+
+**通過條件**：`rostopic hz /scan` 約 10 Hz，RViz 看得到地圖和粒子雲，
+`rosservice list` 有 `/request_nomotion_update`。
 
 ---
 
@@ -87,29 +97,64 @@ NAV_RL.md 記的窗口只有 170°（−85~+85），如果那是感測器自己�
 資料裡** → 48 束前方全部讀成 no-hit 4.0 m → policy 認為永遠淨空、幾何煞停永遠不觸發 →
 直直撞上去，全程沒有任何錯誤訊息。
 
-### 決定性檢查（30 秒，不用碰車）
+### 先記錄現況（30 秒，不用碰車）
 
 ```bash
 rostopic echo -n1 /scan/header
 rostopic echo -n1 /scan/angle_min
 rostopic echo -n1 /scan/angle_max
-```
-
-- `frame_id: laser_link` 且角度涵蓋 ±90° → 預設的 offset 0 是對的
-- `frame_id: laser` → **不能直接猜 180°**；先完成 Route B 四方向板子 gate，
-  再把 evidence 中的 offset 用 `--lidar-yaw-offset-deg` 帶入
-- 角度窗口不含車子正前方 → **驅動的角度上下限要改**，offset 救不了沒被取樣的方向
-
-程式會檢查角度 metadata，但這只能證明資料有沒有覆蓋到該角度，不能證明
-raw index 的物理方向（`nav_rl.describe_scan`）：
-
-```bash
+rosrun tf tf_echo laser_link laser
 python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 ```
 
-會印 `scan frame_id = ...`、`window [...] deg`、`policy forward window is covered NN%`，
-覆蓋不到就大聲警告。`mission_pipeline` 的 `--real` 還要求四方向 evidence
-marker 與目前 frame/offset 相符；AMCL 正常不能代替這一步。
+**這些都不是決定性檢查，只是把現況存證。** 覆蓋率只證明「資料有沒有取樣到那個角度」，
+360° 掃描前後都涵蓋，所以它**永遠通過**，也就永遠證明不了 raw index 0 的物理方向。
+frame_id 也不行 —— 兩份交接量的是不同 launch，各自為真。AMCL 更不行，它走 TF。
+
+唯一能決定 0° 還是 180° 的是下面的四方向板子測試。**不要在做完之前先猜一個 offset 去跑。**
+
+覆蓋率若警告（`covered 0%` 之類），那是另一回事：代表驅動的角度上下限根本沒取樣到
+車子前方，offset 救不了，要改驅動設定。
+
+### 四方向板子 gate（決定性，唯一能發 marker 的路徑）
+
+先停底盤：`rosservice call /route_a/runtime/stop "{}"`。
+把寬板依序放在車體**前／後／左／右** 0.35–0.60 m，每個方向各跑一次：
+
+```bash
+cd <route_b_handoff>
+python2 scripts/diagnostics/scan_policy_orientation_gate.py \
+  --placement front --samples 20 --output /tmp/orientation-front.json
+# 依序重跑 back / left / right
+```
+
+這支只讀 topic，不會驅動任何東西。四份都有了再跑 verifier：
+
+```bash
+python2 scripts/diagnostics/verify_scan_policy_orientation.py \
+  --evidence /tmp/orientation-front.json --evidence /tmp/orientation-back.json \
+  --evidence /tmp/orientation-left.json  --evidence /tmp/orientation-right.json \
+  --operator-pass --tf-yaw-deg <0或180> --offset-deg <0或180> \
+  --scan-launch <實際 launch> --operator <你的名字> \
+  --output-marker ~/.route_b_runtime/scan_orientation_verified
+```
+
+**offset 是量出來的，不是你填的。** verifier 會自己算：板在前方時四個 raw sector
+裡最近的那一個決定 offset（`zero_deg`→0°、`raw180_deg`→180°），你填的 `--offset-deg`
+跟它不合就拒絕寫 marker。另外它會確認 front 的 policy 中央束比後／左／右近至少 0.25 m
+—— 四份讀數一樣代表板子根本沒移動，直接 FAIL。
+
+**marker 只能由 verifier 產生。** 手寫一份也能騙過下游（下游只檢查欄位齊不齊、offset
+跟執行時設定合不合），但那份 PASS 背後沒有任何量測。
+
+marker 有了之後才帶進去：
+
+```bash
+--lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified
+```
+
+舊的 `--i-confirm-lidar-orientation` 旗標還在，但已經**不算證明**，`--real` 不收。
+任何 LiDAR launch、TF、adapter 或 offset 變更後，**刪掉 marker 重測**。
 
 ### 順便驗：手臂會不會被自己的 LiDAR 看成障礙物
 
@@ -124,13 +169,17 @@ URDF 的 AABB 粗估顯示三種姿態都可能有連桿穿過 19.2 cm 掃描面
 估到 LiDAR 前方 18.9 cm，正好在 25 cm 煞停距離內）。AABB 是寬鬆上界不等於真的擋到，
 所以**以實測為準**。真的擋到就要調 nav 姿態，或把該角度區間排除。
 
-### 實物驗證（覆蓋率過了才做）
+### 左右順序驗證（marker 過了才做）
 
+四方向 gate 定的是「哪一邊是前面」，這一步定的是**左右有沒有鏡像**。
 在車子**正前方**放箱子 → 中間 sector 變短。**左邊** → 高 index（接近 47）變短。
 **右邊** → 低 index（接近 0）變短。
 
-**失敗**：左右反了或整體偏轉時，先保留現場 evidence、停止實機，不能邊猜
-`--lidar-dir`/offset 邊開巡航；刪除 marker，修正 adapter/TF 後重跑四方向 gate。
+左右反了就是 `lidar_angle_dir` 要改成 −1（`--lidar-dir -1`）。這是獨立的一件事：
+offset 對了但左右反了，policy 會把每個障礙物閃向錯的方向。
+
+**失敗**：先保留現場 evidence、停止實機，不能邊猜 `--lidar-dir`/offset 邊開巡航；
+刪除 marker，修正 adapter/TF 後重跑四方向 gate。
 
 ---
 
@@ -221,6 +270,15 @@ python3 integration/mission_pipeline.py --real --show \
 **失敗重試**：最多 3 次，之後會放棄、把該地點加入黑名單、回去巡航。
 確認第 4 次不會再對同一個物體重試。
 
+**夾完進 DELIVER 那一刻要盯著**：夾取全程底盤靜止，AMCL 在這段時間不會更新，
+所以離開 GRASP 時 fix 已經是兩分鐘前的。任務層會主動叫一次
+`/request_nomotion_update` 並等新的 pose 進來（預設最多 3 秒）。
+
+- 正常：直接進 DELIVER 開始走，看不到任何暫停
+- 看到 `[mission][WARN] the arm held the loop for ...s and AMCL did not refresh`
+  → T0 的 service 沒起來，或 AMCL 沒在跑。**這是唯一會讓「夾成功但任務停住」的原因**
+- 3 秒不夠（機器慢、rosbridge 塞）→ 加大 `--amcl-refresh-timeout`
+
 ---
 
 ## T6 — 丟垃圾（最簡化）
@@ -301,6 +359,7 @@ python3 integration/mission_pipeline.py --real --show \
 | ☐ | `preflight.py --offline` | 20 pass / 0 fail？ | |
 | ☐ | `fuser -v /dev/myserial` 只有一個 PID | | |
 | ☐ | ROS 六個節點都起來 | | |
+| ☐ | `rosservice list \| grep request_nomotion_update` 有東西 | | |
 | ☐ | RViz 緊初始化（std 0.15 m / 7°）已設 | | |
 | ☐ | `preflight.py --onboard` | | |
 
@@ -320,10 +379,16 @@ python3 integration/mission_pipeline.py --real --show \
 |---|---|---|---|
 | ☐ | `/scan/header` 的 frame_id | | `________` |
 | ☐ | `angle_min` / `angle_max` | | ____ / ____ deg |
-| ☐ | 最終使用的 `--lidar-yaw-offset-deg` | | ____ |
+| ☐ | `tf_echo laser_link laser` 的 yaw | | ____ deg |
+| ☐ | 四方向 gate：front JSON 已存 | | 路徑 ________ |
+| ☐ | 四方向 gate：back / left / right JSON 已存 | | |
+| ☐ | verifier **量出**的 offset | | ____ deg（不是你填的） |
+| ☐ | marker 已由 verifier 產生（非手寫） | | 路徑 ________ |
+| ☐ | 最終使用的 `--lidar-yaw-offset-deg` | | ____（須等於量出值） |
 | ☐ | probe：正前方箱子 → 中間 sector 變短 | | |
 | ☐ | probe：左邊 → 高 index 變短 | | |
 | ☐ | probe：右邊 → 低 index 變短 | | |
+| ☐ | 左右若相反 → `--lidar-dir -1` | | |
 | ☐ | 手臂在 nav home：正前方讀數 | | ____ m（固定 5–19 cm = 擋到了） |
 | ☐ | 手臂在 C3：正前方讀數 | | ____ m |
 
