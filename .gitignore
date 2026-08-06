@@ -52,6 +52,22 @@ build/
 # Handoff archives are built artifacts; rebuild them, do not version them.
 /handoff_build/
 
+# Competition paperwork: drafts, the submitted entry, and a third-party sample
+# SRS. This repo is public and the entry is the team's, not the code's, so it
+# stays local. document/build_srs.py builds the .docx from the Markdown source,
+# which is what makes the .docx safe to drop rather than version.
+/document/
+
+# The operator-console report is generated from ui/ and its screenshots. The
+# screenshots themselves ARE tracked, at docs/images/ui/ -- the README uses
+# them -- but the ~1 MB .docx/.pdf rebuild from those and do not belong here.
+/ui/report_output/
+
+# Run logs. Four mode-B bridge transcripts used to be committed at the root;
+# they are captured output, not source, and they made the root look like a
+# scratch directory.
+*.log
+
 # Exclude zip by default except trained models.
 # This rule fails SILENTLY: git status never mentions a model you forgot to
 # except, so a "committed" model pair can be missing on the next clone. After
