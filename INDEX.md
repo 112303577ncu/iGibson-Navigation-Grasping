@@ -6,7 +6,10 @@ Quick map for finding the right code without scanning the whole project.
 
 | Task | File | What to inspect first |
 |---|---|---|
-| PPO grasp deployment | `grasp/x3plus_real_grasp.py` | `DeployConfig`, `DetectionReceiver`, `GraspController.run()` |
+| **PPO grasp deployment** | `grasp/v21/x3plus_real_grasp.py` | `DeployConfig`, `FloorGuard`, `GraspController.run()` |
+| Full mission (patrol → grasp → bin) | `integration/mission_pipeline.py` | `MissionRunner`, the tick loop, `_await_operator()` |
+| Mission state machine | `integration/mission_fsm.py` | `State`, `Action`, `step()` — 20 states, `--diagram` |
+| Operator console | `ui/server.py` | request routing, SSE stream, the two `--allow-real` gates |
 | One-process navigation + grasp | `integration/vision_grasp_pipeline.py` | `Navigator`, `run_pipeline()`, camera constants |
 | RL navigation + grasp | `integration/nav_rl_grasp_pipeline.py` | `RLNavigator`, `_rl_navigate()`, shared Rosmaster device |
 | TG30 ROS scan adapter | `integration/nav_rl.py` | `RosLaserScanSource`, `laser_scan_to_points()`, `make_lidar()` |
@@ -33,7 +36,7 @@ Two supported integration modes:
 | Mode | Command path | Notes |
 |---|---|---|
 | Unified pipeline | `integration/vision_grasp_pipeline.py` | One process owns Rosmaster for wheels and arm. Preferred full robot loop. |
-| TCP bridge | `integration/vision_grasp_bridge.py` + `grasp/x3plus_real_grasp.py --socket` | Separate vision sender to grasp receiver on port 5555. |
+| TCP bridge | `integration/vision_grasp_bridge.py` + `grasp/v21/x3plus_real_grasp.py --socket` | Separate vision sender to grasp receiver on port 5555. |
 
 The `detection/rear_nav/` programs and older ROS `/cmd_vel` demos are retained
 as calibration/history references. They are not compatible with the current
@@ -42,11 +45,15 @@ explicit `--real` before any non-stop motor command is allowed.
 
 ## Grasp Code Landmarks
 
-In `grasp/x3plus_real_grasp.py`:
+In `grasp/v21/x3plus_real_grasp.py` — the current deployment script. The
+identically-named file at `grasp/x3plus_real_grasp.py` is the v17 fallback: it
+has most of the same class names but an **absolute** action contract, so read
+carefully which one you are in. See CLAUDE.md before mixing weights.
 
 | Code | Purpose |
 |---|---|
 | `DeployConfig` | Servo limits, home poses, socket config, thresholds, width grip config |
+| `FloorGuard` | Preventive: clamps commands that would drive the jaw through the floor |
 | `home_deg` | Navigation/cruise home pose |
 | `grasp_home_deg` | PPO training initial pose before policy starts |
 | `JointMapper` | sim radians <-> Rosmaster servo degrees, width -> S6 close angle |
