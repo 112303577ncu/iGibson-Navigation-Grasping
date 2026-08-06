@@ -58,6 +58,7 @@ try:  # direct script execution
     import vision_grasp_pipeline as vgp
     import map_goal_provider as mgp
     import mission_fsm as mfsm
+    import mission_status
     import ros_io
     from feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
 except ImportError:  # package import
@@ -66,6 +67,7 @@ except ImportError:  # package import
     from . import vision_grasp_pipeline as vgp
     from . import map_goal_provider as mgp
     from . import mission_fsm as mfsm
+    from . import mission_status
     from . import ros_io
     from .feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
 
@@ -265,6 +267,12 @@ class MissionRunner:
         self.self_check_passed = False
         self.operator_cleared = False
         self.fault = ""
+        # Off unless --status-udp was given, in which case every tick becomes a
+        # datagram an operator console can subscribe to.  Constructed here so
+        # the two operator prompts can announce themselves before they block.
+        self.status = mission_status.StatusEmitter(
+            getattr(args, "status_udp", None),
+            period=getattr(args, "status_period", mission_status.DEFAULT_PERIOD_S))
         self._last_det = 0.0
         self._det_streak = 0
         self._last_log = 0.0
@@ -951,6 +959,25 @@ class MissionRunner:
             self._place_finished = self._run_place()
             return
 
+    def _announce(self, state, action, reason: str, *, waiting: str = "") -> None:
+        """Publish a state the tick loop will not reach on its own.
+
+        The loop publishes what the FSM returned; these are the moments the
+        loop is about to stop running -- blocked on a human -- and so has no
+        transition to report.
+        """
+        # getattr, not self.status: the selftests exercise single methods on
+        # runners built without __init__, and a missing publisher must degrade
+        # to silence rather than taking the caller down with it.
+        status = getattr(self, "status", None)
+        if status is None or not status.enabled:
+            return
+        # changed=True so the heartbeat throttle cannot drop it. This is the
+        # last frame before the loop blocks on a human, and a console that goes
+        # quiet without saying why looks exactly like one whose robot crashed.
+        status.publish(mfsm.Transition(state, action, reason, changed=True),
+                       waiting=waiting, laps=getattr(self.goals, "laps", 0))
+
     def _await_operator(self) -> None:
         """Block in IDLE until a human says go.
 
@@ -964,6 +991,12 @@ class MissionRunner:
         print("  Self-check passed. The robot will start PATROLLING.")
         print("  Clear the area, then press Enter (Ctrl+C to abort).")
         print("=" * 60)
+        # Say so before blocking. The tick loop is about to stop publishing, and
+        # a console that went quiet with no explanation looks like a crash --
+        # exactly when a human is standing next to a robot deciding whether to
+        # hit the power switch.
+        self._announce(mfsm.State.IDLE, mfsm.Action.WAIT_OPERATOR,
+                       "waiting for the operator to start", waiting="start")
         try:
             input()
         except (EOFError, OSError):
@@ -1009,6 +1042,7 @@ class MissionRunner:
         print("  The base is stopped. Fix the cause (RViz pose, sensor, obstacle),")
         print("  then press Enter to re-run the self-check. Ctrl+C to quit.")
         print("=" * 60)
+        self._announce(mfsm.State.PAUSED, mfsm.Action.STOP, reason, waiting="pause")
         try:
             input()
         except (EOFError, OSError):
@@ -1091,6 +1125,13 @@ class MissionRunner:
                 sense = self._sense(now)
                 tr = self.fsm.step(sense)
 
+                if self.status.enabled:
+                    # Cheap enough to do every tick: one dict and one datagram.
+                    # Sampling it would make the console lag the robot, which
+                    # is the opposite of the point.
+                    self.status.publish(tr, sense, self.goals.get(now),
+                                        self.goals.pose, laps=self.goals.laps)
+
                 if tr.changed:
                     print(f"[mission] {tr.state.value:<16} {tr.reason}")
                 elif now - self._last_log >= LOG_PERIOD_S:
@@ -1146,6 +1187,11 @@ class MissionRunner:
             self.nav.stop()
         except Exception as exc:
             print(f"[mission][WARN] chassis stop failed: {exc}")
+        # After the wheels: a console watching this run should see the stop
+        # before the stream ends.
+        status = getattr(self, "status", None)
+        if status is not None:
+            status.close()
         if self.odom_pub is not None:
             self.odom_pub.stop()
             self.odom_pub.join(timeout=2.0)
@@ -1743,6 +1789,15 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--selftest", action="store_true", help="offline logic tests")
+    p.add_argument("--status-udp", default=None, metavar="HOST:PORT",
+                   help="publish JSON status datagrams (e.g. "
+                        f"{mission_status.DEFAULT_ENDPOINT}). Fire-and-forget: "
+                        "the mission is unaffected if nothing is listening.")
+    p.add_argument("--status-period", type=float,
+                   default=mission_status.DEFAULT_PERIOD_S, metavar="SECONDS",
+                   help="heartbeat interval between state changes (default "
+                        "%(default)s). State changes are always sent immediately; "
+                        "raise this to spend less on telemetry.")
     p.add_argument("--real", action="store_true", help="drive real hardware")
     p.add_argument("--dry-run", action="store_true",
                    help="run the full loop with hardware output suppressed")
@@ -1878,6 +1933,15 @@ def parse_args(argv=None):
         args.wait_start = bool(args.real)
     if args.release_extend_steps < 1:
         p.error("--release-extend-steps must be >= 1")
+    if args.status_udp:
+        # Fail on a typo now rather than raising out of the runner's
+        # constructor after the hardware has already been opened.
+        try:
+            mission_status.parse_endpoint(args.status_udp)
+        except ValueError as exc:
+            p.error(f"--status-udp: {exc}")
+    if not math.isfinite(args.status_period) or args.status_period < 0.0:
+        p.error("--status-period must be finite and >= 0")
     return args
 
 

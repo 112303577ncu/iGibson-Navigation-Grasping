@@ -38,9 +38,11 @@ from typing import Optional
 import numpy as np
 
 try:  # direct script execution: python3 integration/nav_rl_grasp_pipeline.py
+    import mission_status
     import nav_rl as nr
     import vision_grasp_pipeline as vgp
 except ImportError:  # package import used by tests/tools
+    from . import mission_status
     from . import nav_rl as nr
     from . import vision_grasp_pipeline as vgp
 
@@ -375,6 +377,11 @@ def run_pipeline(args):
         controller.close()
         raise
 
+    # Off unless --status-udp was given. Mode C is a straight sequence, so it
+    # reports the step it is on using the mission FSM's own state names -- an
+    # operator watching the console should not have to learn a second
+    # vocabulary just because a different pipeline is driving.
+    report = mission_status.SimpleReporter(getattr(args, "status_udp", None), mode="C")
     try:
         success = False
         for attempt in range(1, args.max_retries + 1):
@@ -386,20 +393,32 @@ def run_pipeline(args):
             # move_home() is guarded (FloorGuard) and blocks until the encoders
             # confirm arrival, unlike v17's fire-and-forget servo.move_to_home() --
             # so no fixed-duration sleep is needed after it.
+            report.say("SELF_CHECK", "RUN_SELF_CHECK",
+                       f"attempt {attempt}/{args.max_retries}: arm to nav home",
+                       attempt=attempt)
             controller.move_home()
 
+            report.say("APPROACH", "DRIVE_TARGET", "RL navigation toward the object",
+                       attempt=attempt)
             if not nav.approach():
+                report.say("RESUME", "STOP", "no object reachable", attempt=attempt)
                 print("[pipeline] no object reachable — stopping.")
                 break
 
             if args.nav_only:
+                report.say("COMPLETE", "STOP", "--nav-only: reached the stop distance",
+                           attempt=attempt)
                 print("[pipeline] --nav-only: RL navigation reached "
                       f"--nav-stop-dist — done (no fine-align, no grasp).")
                 success = True
                 break
 
+            report.say("LATCH", "LATCH", "freezing the object pose in the base frame",
+                       attempt=attempt)
             obj_pos, width, height = nav.latch_arm_object()
             if width is not None and width > vgp.MAX_GRASP_WIDTH_M:
+                report.say("FAULT", "STOP",
+                           f"object too wide: {width * 100:.1f} cm", attempt=attempt)
                 print(f"[pipeline] OBJECT TOO LARGE: width={width * 100:.1f}cm > "
                       f"max {vgp.MAX_GRASP_WIDTH_M * 100:.1f}cm — aborting.")
                 break
@@ -410,29 +429,47 @@ def run_pipeline(args):
             # applies its own symmetric-object estimate. `width` is used only as the
             # too-wide-to-grasp gate above and must never be passed here.
             controller.obj_provider = (lambda p=obj_pos, h=height: (p, h))
+            report.say("GRASP", "RUN_GRASP", "v21 grasp controller running",
+                       attempt=attempt, grasp={"latched": True, "finished": False,
+                                               "verified": False, "handoff_ready": True,
+                                               "align_failed": False})
             grasp_seq_ok = controller.run(max_steps=args.max_steps)
 
             if not grasp_seq_ok:
+                report.say("RETRY", "BACK_OFF",
+                           "grasp sequence never reached done", attempt=attempt)
                 print("[pipeline] grasp sequence did not complete (stage machine "
                       "never reached done) — counting as failure.")
-            elif nav.verify_grasp(obj_pos):
-                print(f"[pipeline] OK grasp succeeded on attempt {attempt}.")
-                success = True
-                break
+            else:
+                report.say("VERIFY", "VERIFY", "checking the object left the floor",
+                           attempt=attempt)
+                if nav.verify_grasp(obj_pos):
+                    report.say("COMPLETE", "STOP",
+                               f"grasp succeeded on attempt {attempt}", attempt=attempt,
+                               lifted=1)
+                    print(f"[pipeline] OK grasp succeeded on attempt {attempt}.")
+                    success = True
+                    break
+                report.say("RETRY", "BACK_OFF", "object is still on the floor",
+                           attempt=attempt)
             print("[pipeline] FAILED grasp — retreating and retrying.")
             controller.move_home()   # guarded; ensures gripper open for retry
             time.sleep(1.0)
             nav.back_off()
 
         if not success:
+            report.say("FAULT", "STOP",
+                       f"gave up after {args.max_retries} attempt(s)")
             print(f"\n[pipeline] gave up after {args.max_retries} attempt(s).")
     except KeyboardInterrupt:
+        report.say("ESTOP", "STOP", "interrupted by the operator")
         print("\n[pipeline] interrupted — emergency stop.")
         try:
             controller.servo.emergency_stop()
         except Exception:
             pass
     finally:
+        report.close()
         try:
             nav.stop()
         except Exception as e:
@@ -492,6 +529,9 @@ def parse_args():
     p.add_argument("--real", action="store_true", help="drive real wheels + servos")
     p.add_argument("--show", action="store_true", help="show arm camera window")
     p.add_argument("--selftest", action="store_true", help="pure-logic self-test")
+    p.add_argument("--status-udp", default=None, metavar="HOST:PORT",
+                   help="publish step telemetry to the operator console "
+                        f"(e.g. {mission_status.DEFAULT_ENDPOINT}). Fire-and-forget.")
     p.add_argument("--max-retries", type=int, default=3)
     p.add_argument("--max-steps", type=int, default=300)
     p.add_argument("--port", type=str, default="/dev/myserial", help="Rosmaster serial port")

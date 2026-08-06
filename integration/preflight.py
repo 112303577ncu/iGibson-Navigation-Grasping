@@ -52,12 +52,24 @@ def _default_route() -> Path:
 
 
 class Report:
-    def __init__(self):
+    """Collects check results, and prints them unless a machine is reading.
+
+    ``quiet`` exists for the operator console, which runs this as a subprocess
+    and needs the rows as data.  Scraping the pretty output would work until
+    somebody reworded a line, so the same rows go out as JSON instead and the
+    human format stays free to change.
+    """
+
+    def __init__(self, quiet=False):
         self.rows = []
+        self.quiet = quiet
+        self.sections = []
+        self.manual = []
 
     def add(self, status, name, detail=""):
         self.rows.append((status, name, detail))
-        print(f"  {_MARK[status]} {name}" + (f"\n         {detail}" if detail else ""))
+        if not self.quiet:
+            print(f"  {_MARK[status]} {name}" + (f"\n         {detail}" if detail else ""))
         return status
 
     def counts(self):
@@ -68,8 +80,26 @@ class Report:
 
     def finish(self, title):
         c = self.counts()
-        print(f"\n  {title}: {c[OK]} pass, {c[WARN]} warn, {c[BAD]} fail")
+        self.sections.append({
+            "title": title,
+            "pass": c[OK], "warn": c[WARN], "fail": c[BAD],
+            "checks": [{"status": s, "name": n, "detail": d} for s, n, d in self.rows],
+        })
+        # Both halves can run in one invocation, and they share this report so
+        # the JSON carries both. Reset here or the second section would repeat
+        # the first one's rows and double every count.
+        self.rows = []
+        if not self.quiet:
+            print(f"\n  {title}: {c[OK]} pass, {c[WARN]} warn, {c[BAD]} fail")
         return 0 if c[BAD] == 0 else 1
+
+    def as_json(self):
+        total = {"pass": 0, "warn": 0, "fail": 0}
+        for s in self.sections:
+            for k in total:
+                total[k] += s[k]
+        return {"schema": 1, "ok": total["fail"] == 0, "total": total,
+                "sections": self.sections, "manual": self.manual}
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -119,9 +149,10 @@ def _run(script, args, timeout=300):
         return 1, str(exc)
 
 
-def check_offline(args) -> int:
-    r = Report()
-    print("\n== OFFLINE: everything checkable without the robot ==\n")
+def check_offline(args, r=None) -> int:
+    r = r if r is not None else Report()
+    if not r.quiet:
+        print("\n== OFFLINE: everything checkable without the robot ==\n")
 
     for script, extra in SUITES:
         if not (ROOT / script).exists():
@@ -181,9 +212,10 @@ def check_offline(args) -> int:
 # Onboard
 # ════════════════════════════════════════════════════════════════════════════
 
-def check_onboard(args) -> int:
-    r = Report()
-    print("\n== ONBOARD: run this on the Jetson, with ROS up ==\n")
+def check_onboard(args, r=None) -> int:
+    r = r if r is not None else Report()
+    if not r.quiet:
+        print("\n== ONBOARD: run this on the Jetson, with ROS up ==\n")
 
     # ── serial ownership ──
     try:
@@ -289,8 +321,7 @@ def check_onboard(args) -> int:
     except Exception as exc:
         r.add(BAD, "/amcl_pose via rosbridge", f"{type(exc).__name__}: {exc}"[:200])
 
-    print("\n  Still needing a human, in this order — see TEST_PLAN.md:")
-    for line in (
+    manual = (
         "T1  push the robot 50 cm by hand, confirm /odom_setmotor grows to match",
         "T2  --probe: object in FRONT/LEFT/RIGHT lights the matching sector",
         "T2  --probe at both arm poses: a fixed 5-19 cm return dead ahead is the ARM",
@@ -298,8 +329,12 @@ def check_onboard(args) -> int:
         "T4  place an object beside the route; confirm it does NOT bounce back to PATROL",
         "T5  grasp: base must be completely still while the arm moves",
         "T6  bin: log must say the bin approach point, not a patrol waypoint",
-    ):
-        print(f"    [ ] {line}")
+    )
+    r.manual = list(manual)
+    if not r.quiet:
+        print("\n  Still needing a human, in this order — see TEST_PLAN.md:")
+        for line in manual:
+            print(f"    [ ] {line}")
 
     return r.finish("ONBOARD")
 
@@ -309,6 +344,9 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--onboard", action="store_true")
+    ap.add_argument("--json", action="store_true",
+                    help="emit the results as JSON on stdout and nothing else, "
+                         "for the operator console")
     ap.add_argument("--route", default=str(_default_route()))
     ap.add_argument("--resample-m", type=float, default=0.75)
     ap.add_argument("--ros-host", default="127.0.0.1")
@@ -326,11 +364,28 @@ def main() -> int:
 
     if not (args.offline or args.onboard):
         args.offline = True
+    r = Report(quiet=args.json)
     rc = 0
     if args.offline:
-        rc |= check_offline(args)
+        rc |= check_offline(args, r)
     if args.onboard:
-        rc |= check_onboard(args)
+        rc |= check_onboard(args, r)
+    if args.json:
+        # Sole occupant of stdout, so the caller can json.loads() it directly.
+        #
+        # Written as bytes through the buffer rather than through the text
+        # layer: check details quote the suites' own output, which contains
+        # em-dashes, and a redirected stdout on Windows encodes as cp950 and
+        # produces a document no JSON parser can read. Encoding here makes the
+        # output UTF-8 on every platform without the caller having to set
+        # PYTHONIOENCODING first.
+        blob = json.dumps(r.as_json(), ensure_ascii=False).encode("utf-8")
+        out = getattr(sys.stdout, "buffer", None)
+        if out is None:                     # a stdout replaced by a test harness
+            sys.stdout.write(blob.decode("utf-8") + "\n")
+        else:
+            out.write(blob + b"\n")
+            out.flush()
     return rc
 
 

@@ -69,7 +69,53 @@ v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 abso
 | `vision_grasp_bridge.py` | 模式B（除錯）：辨識→算 x/y/z/寬度/高度→TCP 5555 送夾取端。payload 是 superset，v17 讀 `w`、v21 讀 `height` |
 | `nav_rl.py` + `nav_rl_grasp_pipeline.py` | 模式C：RL 導航避障（PPO+48束LiDAR，訓練 plant 復刻+幾何煞停）→精對位→夾取，見 `NAV_RL.md` |
 | `nav_best_model/` | 導航 PPO 權重（best + checkpoint 281440，各配 vecnorm pkl，來源 igibson_x3_test） |
+| `mission_status.py` | 遙測發布器。`--status-udp` 每 tick 一個 JSON 封包（UDP），fire-and-forget，沒人聽也不影響任務 |
 | `README.md` | 兩種模式開啟流程、各檔用途、校正清單 |
+
+### `ui/`（操作台）
+
+手機/筆電網頁介面，讓使用者不用開終端機打指令。**網頁由 Jetson 自己提供**，
+伺服器本身不碰硬體（`/dev/myserial` 的唯一持有者仍然是任務程序）。
+只用標準函式庫，Jetson Nano 上不需要 pip install 任何東西。詳見 `ui/README.md`。
+
+| 檔案 | 說明 |
+|------|------|
+| `server.py` | ★HTTP + SSE 伺服器、任務程序監督、安全閘。`--simulate` 可在開發機無硬體執行 |
+| `static/` | 前端：連線 / 主控台 / 任務設定 / 地圖 / 紀錄 |
+| `make_qr.py` | 開機偵測 IP 並把連線 QR code 畫到桌面（`--watch` 隨 IP 變動重畫） |
+| `jetson_check.sh` | ★上機一鍵檢查：連接埠、防火牆、UDP 迴路、序列埠占用、路線 |
+| `test_server.py` | 回歸測試，須 **45** 全過 |
+| `prototype.html` | 早期靜態原型，單檔雙擊即開、免 Python。功能以 `static/` 為準 |
+
+```bash
+./ui/jetson_check.sh                # ★上機前先跑這個
+python3 ui/server.py --simulate     # 開發機，無硬體（狀態與位置由模擬器產生）
+python3 ui/server.py                # Jetson，唯讀監看（不驅動硬體）
+python3 ui/server.py --allow-real   # Jetson，允許驅動硬體
+```
+
+⚠️ **操作台刻意不顯示相機畫面。** Jetson Nano 跑這個專案 RAM 已經吃到九成，
+在控制迴路裡編 JPEG 是操作台成本最高的一項。2026-08-06 整條路徑（`camera_publish.py`、
+MJPEG 端點、`vision_grasp_pipeline` 的預覽掛勾）已全部移除，有測試擋著不讓它回來。
+**不要再加相機預覽。**
+
+操作台只做三件事：**下指令、看狀態、緊急停止**，外加地圖上的大概位置。
+
+省下來的成本：
+- 遙測**狀態變化立刻送，其餘 0.5 秒一次**（`--status-period`），不是每個 tick 都送
+- **操作台完全不跑出發前檢查** —— 那會另外開載入 torch 的程序；改在終端機跑 `preflight.py`
+- SSE 連線數上限 4，避免重連累積執行緒
+- 伺服器本身約 27 MB（含相機時是 49 MB）
+
+三個模式都會發 `--status-udp`；模式 B/C 沒有狀態機，用 `mission_status.SimpleReporter`
+講**同一套 FSM 狀態名稱**，傳沒定義的名字會直接報錯。
+
+操作台右上角顯示機器人**剩餘記憶體**（讀 `/proc/meminfo`），≥88% 轉黃、≥95% 轉紅。
+
+⚠️ **驅動硬體需要兩道獨立的閘同時成立**：伺服器以 `--allow-real` 啟動（有人在
+機器人旁邊打的指令），**且**該次請求帶著操作者在「任務設定」勾選的確認。
+網頁上的停止鈕送的是 `SIGINT`（走任務自己的關機路徑，才會把輪子歸零），
+夾取途中按下會等該次夾取結束才生效 —— **真正的急停是電源開關**。
 
 ---
 

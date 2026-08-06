@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1256B8">
+<title>X3Plus 智慧導航夾取機器人 — 操作台</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   X3Plus 操作台 — 介面原型 (P0)
+   調性：製造商官方說明頁。白底、深藍、細線、編號步驟、規格表。
+   兩種聲音：機器詞彙用等寬大寫，給人看的話用一般字體。
+   ═══════════════════════════════════════════════════════════ */
+
+:root{
+  --bg:#F3F6FA;      --panel:#FFFFFF;   --panel-2:#F7F9FC;
+  --line:#D6DEE9;    --line-soft:#E8EDF4;
+  --ink:#0F1B2A;     --ink-2:#41556C;   --ink-3:#71849A;
+  --accent:#1256B8;  --accent-ink:#FFFFFF; --accent-soft:#E1EBFA; --accent-2:#0E4494;
+  --ok:#1E7A48;      --ok-soft:#DBEFE3;
+  --warn:#9A6100;    --warn-soft:#F7E9CC;
+  --crit:#B32B2B;    --crit-soft:#F8DEDE;
+  --shadow:0 1px 2px rgba(15,27,42,.05), 0 12px 28px -20px rgba(15,27,42,.5);
+  --radius:8px;
+
+  --sans:"Segoe UI","PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Cascadia Code",Consolas,"Noto Sans Mono",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#090F16;    --panel:#111A23;   --panel-2:#16212C;
+    --line:#243441;  --line-soft:#1C2833;
+    --ink:#E4EDF5;   --ink-2:#9BAFC4;   --ink-3:#6E8298;
+    --accent:#5AA0F5;--accent-ink:#05182E; --accent-soft:#11294A; --accent-2:#8CC0FF;
+    --ok:#4FBF7E;    --ok-soft:#112C1D;
+    --warn:#E0A04A;  --warn-soft:#30240F;
+    --crit:#FF7676;  --crit-soft:#361819;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 14px 32px -22px #000;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#090F16;    --panel:#111A23;   --panel-2:#16212C;
+  --line:#243441;  --line-soft:#1C2833;
+  --ink:#E4EDF5;   --ink-2:#9BAFC4;   --ink-3:#6E8298;
+  --accent:#5AA0F5;--accent-ink:#05182E; --accent-soft:#11294A; --accent-2:#8CC0FF;
+  --ok:#4FBF7E;    --ok-soft:#112C1D;
+  --warn:#E0A04A;  --warn-soft:#30240F;
+  --crit:#FF7676;  --crit-soft:#361819;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 14px 32px -22px #000;
+}
+:root[data-theme="light"]{
+  --bg:#F3F6FA;      --panel:#FFFFFF;   --panel-2:#F7F9FC;
+  --line:#D6DEE9;    --line-soft:#E8EDF4;
+  --ink:#0F1B2A;     --ink-2:#41556C;   --ink-3:#71849A;
+  --accent:#1256B8;  --accent-ink:#FFFFFF; --accent-soft:#E1EBFA; --accent-2:#0E4494;
+  --ok:#1E7A48;      --ok-soft:#DBEFE3;
+  --warn:#9A6100;    --warn-soft:#F7E9CC;
+  --crit:#B32B2B;    --crit-soft:#F8DEDE;
+  --shadow:0 1px 2px rgba(15,27,42,.05), 0 12px 28px -20px rgba(15,27,42,.5);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg); color:var(--ink); font-family:var(--sans);
+     font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased}
+button,select,input{font:inherit; color:inherit}
+:where(button,select,input,a,[tabindex]):focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px; border-radius:3px}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.tok{font-family:var(--mono); font-size:.71rem; font-weight:600;
+     letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.spacer{flex:1}
+.wrap{max-width:1180px; margin:0 auto; width:100%; padding-inline:16px}
+
+/* ══ 頁首 ══════════════════════════════════════════════ */
+.masthead{background:var(--panel); border-bottom:1px solid var(--line)}
+.masthead .row{display:flex; align-items:center; gap:12px; padding-block:11px}
+.wordmark{display:flex; align-items:center; gap:9px; min-width:0}
+.wordmark .mk{
+  width:26px; height:26px; border-radius:5px; background:var(--accent); flex:none;
+  display:grid; place-items:center; color:var(--accent-ink);
+  font-family:var(--mono); font-weight:700; font-size:.8rem; letter-spacing:-.03em}
+.wordmark b{font-size:.97rem; font-weight:650; letter-spacing:-.01em; white-space:nowrap}
+.wordmark span{font-size:.76rem; color:var(--ink-3); white-space:nowrap; display:none}
+@media(min-width:720px){ .wordmark span{display:inline} }
+
+.iconbtn{border:1px solid var(--line); background:var(--panel-2); color:var(--ink-2);
+  border-radius:6px; padding:6px 11px; cursor:pointer; font-size:.79rem; white-space:nowrap}
+.iconbtn:hover{border-color:var(--accent); color:var(--accent)}
+.conn{display:inline-flex; align-items:center; gap:7px; padding:5px 10px;
+  border:1px solid var(--line); border-radius:6px; background:var(--panel-2);
+  font-size:.77rem; color:var(--ink-2); white-space:nowrap}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none}
+.dot.live{animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.3}}
+.estop{border:0; cursor:pointer; border-radius:6px; background:var(--crit); color:#fff;
+  font-weight:700; letter-spacing:.03em; padding:9px 14px; font-size:.81rem;
+  white-space:nowrap; box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.estop:active{transform:translateY(1px); box-shadow:none}
+.estop[data-latched="1"]{background:var(--ink-3)}
+.hazard{height:6px; background:repeating-linear-gradient(45deg,var(--warn) 0 9px,var(--warn-soft) 9px 18px)}
+
+/* 分頁列 */
+.rail{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding-top:7px}
+.rail::-webkit-scrollbar{display:none}
+.rail button{border:0; background:none; cursor:pointer; white-space:nowrap; padding:9px 13px;
+  color:var(--ink-3); font-size:.86rem; font-weight:550; border-bottom:2px solid transparent}
+.rail button:hover{color:var(--ink)}
+.rail button[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent)}
+.rail .badge{display:inline-block; margin-left:6px; min-width:17px; padding:0 5px;
+  border-radius:100px; background:var(--warn-soft); color:var(--warn);
+  font-family:var(--mono); font-size:.67rem; font-weight:700}
+
+/* ══ 通用 ══════════════════════════════════════════════ */
+.card{background:var(--panel); border:1px solid var(--line);
+      border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden}
+.card > header{display:flex; align-items:center; gap:10px; padding:11px 14px;
+  border-bottom:1px solid var(--line-soft); background:var(--panel-2)}
+.card > header h2{margin:0; font-size:.82rem; font-weight:650}
+.card .body{padding:14px}
+.grid{display:grid; gap:14px}
+@media(min-width:900px){ .cols-2{grid-template-columns:1fr 1fr}
+  .console-grid{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr)} }
+.view{display:none}
+.view.on{display:block; animation:fade .2s ease}
+@keyframes fade{from{opacity:0; transform:translateY(3px)}to{opacity:1; transform:none}}
+.note{display:flex; gap:9px; align-items:flex-start; padding:10px 12px; border-radius:6px;
+  font-size:.81rem; line-height:1.5; background:var(--panel-2);
+  border:1px solid var(--line-soft); color:var(--ink-2)}
+.note.warn{background:var(--warn-soft); border-color:transparent; color:var(--warn)}
+.note.crit{background:var(--crit-soft); border-color:transparent; color:var(--crit)}
+.note b{color:inherit}
+.chip{display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:100px;
+  font-family:var(--mono); font-size:.69rem; font-weight:650; letter-spacing:.05em;
+  background:var(--accent-soft); color:var(--accent)}
+.chip.ok{background:var(--ok-soft); color:var(--ok)}
+.chip.warn{background:var(--warn-soft); color:var(--warn)}
+.chip.crit{background:var(--crit-soft); color:var(--crit)}
+.chip.mute{background:var(--panel-2); color:var(--ink-3)}
+
+/* ══ 連線頁 ════════════════════════════════════════════ */
+.hero{background:var(--panel); border-bottom:1px solid var(--line)}
+.hero .inner{display:grid; gap:26px; padding-block:30px 34px}
+@media(min-width:940px){ .hero .inner{grid-template-columns:minmax(0,1fr) 380px; gap:44px; align-items:start} }
+.eyebrow{font-family:var(--mono); font-size:.71rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); font-weight:650}
+.hero h1{margin:9px 0 0; font-size:clamp(1.6rem,4.4vw,2.35rem); line-height:1.2;
+  letter-spacing:-.02em; font-weight:680; text-wrap:balance}
+.hero .lede{margin:11px 0 0; font-size:1.02rem; color:var(--ink-2); max-width:56ch; line-height:1.6}
+.specs{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; margin-top:22px;
+  background:var(--line-soft); border:1px solid var(--line-soft); border-radius:6px; overflow:hidden}
+@media(min-width:600px){ .specs{grid-template-columns:repeat(4,1fr)} }
+.specs div{background:var(--panel); padding:11px 13px}
+.specs .v{font-family:var(--mono); font-size:1.05rem; font-weight:650; line-height:1.25}
+.specs .k{font-size:.72rem; color:var(--ink-3); margin-top:2px}
+
+/* 連線卡 */
+.connect{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:hidden; position:sticky; top:14px}
+.connect > .top{padding:13px 15px; border-bottom:1px solid var(--line-soft); background:var(--panel-2);
+  display:flex; align-items:center; gap:9px}
+.connect > .top b{font-size:.87rem}
+.connect .body{padding:15px}
+.field{display:grid; gap:5px; margin-bottom:12px}
+.field > label{font-size:.77rem; font-weight:600; color:var(--ink-2)}
+.field .hint{font-size:.73rem; color:var(--ink-3); line-height:1.45}
+input[type="text"],input[type="number"],select{width:100%; padding:9px 11px;
+  border:1px solid var(--line); border-radius:6px; background:var(--panel-2)}
+input.ip{font-family:var(--mono); font-size:1.02rem; letter-spacing:.02em}
+input[aria-invalid="true"]{border-color:var(--crit); background:var(--crit-soft)}
+.iprow{display:grid; grid-template-columns:1fr 92px; gap:8px}
+.go{width:100%; border:0; cursor:pointer; border-radius:6px; padding:12px;
+  background:var(--accent); color:var(--accent-ink); font-weight:700; letter-spacing:.02em}
+.go:hover:not(:disabled){background:var(--accent-2)}
+.go:disabled{background:var(--line); color:var(--ink-3); cursor:not-allowed}
+.go.ghost{background:var(--panel-2); color:var(--ink-2); border:1px solid var(--line); font-weight:600}
+.go.ghost:hover{background:var(--panel-2); border-color:var(--accent); color:var(--accent)}
+.recents{display:flex; flex-wrap:wrap; gap:6px; margin-top:4px}
+.recents button{border:1px solid var(--line); background:var(--panel-2); border-radius:100px;
+  padding:4px 11px; font-family:var(--mono); font-size:.76rem; color:var(--ink-2); cursor:pointer}
+.recents button:hover{border-color:var(--accent); color:var(--accent)}
+
+/* 步驟 */
+.steps{counter-reset:s; display:grid; gap:1px; background:var(--line-soft);
+  border:1px solid var(--line-soft); border-radius:6px; overflow:hidden}
+.steps li{counter-increment:s; background:var(--panel); padding:13px 15px 13px 50px;
+  position:relative; list-style:none}
+.steps li::before{content:counter(s); position:absolute; left:15px; top:13px;
+  width:22px; height:22px; border-radius:4px; background:var(--accent-soft); color:var(--accent);
+  display:grid; place-items:center; font-family:var(--mono); font-size:.76rem; font-weight:700}
+.steps .t{font-size:.9rem; font-weight:620}
+.steps .d{font-size:.8rem; color:var(--ink-3); margin-top:3px; line-height:1.5}
+.steps ol,.steps ul{margin:0; padding:0}
+
+.qrbox{display:grid; gap:13px; align-items:center; grid-template-columns:auto 1fr}
+.qrbox svg{border:1px solid var(--line); border-radius:6px; background:#fff; padding:6px}
+
+table.data{width:100%; border-collapse:collapse; font-size:.82rem}
+table.data th,table.data td{padding:8px 14px; text-align:left; border-bottom:1px solid var(--line-soft)}
+table.data th{font-size:.71rem; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:600}
+table.data tr:last-child td{border-bottom:0}
+table.data td.n{font-family:var(--mono); font-variant-numeric:tabular-nums}
+table.data td:first-child{color:var(--ink-2); width:38%}
+
+/* ══ 主控台 ════════════════════════════════════════════ */
+.statehead{padding:16px 14px 14px; border-bottom:1px solid var(--line-soft)}
+.statetop{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.statename{font-family:var(--mono); font-size:clamp(1.5rem,4.6vw,1.95rem); font-weight:700;
+  letter-spacing:.02em; line-height:1.1; color:var(--accent)}
+.human{margin:9px 0 0; font-size:1.01rem; line-height:1.5; text-wrap:balance}
+.because{margin:5px 0 0; font-size:.81rem; color:var(--ink-3)}
+.because code{font-family:var(--mono); font-size:.95em}
+.ribbon{display:flex; gap:3px; padding:11px 14px; overflow-x:auto; scrollbar-width:none}
+.ribbon::-webkit-scrollbar{display:none}
+.ribbon i{font-style:normal; flex:none; padding:3px 8px; border-radius:4px;
+  font-family:var(--mono); font-size:.65rem; letter-spacing:.05em;
+  background:var(--panel-2); color:var(--ink-3)}
+.ribbon i.done{color:var(--ok); background:var(--ok-soft)}
+.ribbon i.now{color:var(--accent-ink); background:var(--accent); font-weight:700}
+.tele{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--line-soft)}
+@media(min-width:560px){ .tele{grid-template-columns:repeat(4,1fr)} }
+.tele div{background:var(--panel); padding:11px 13px}
+.tele .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.2rem;
+  font-weight:600; line-height:1.2}
+.tele .v small{font-size:.62em; font-weight:500; color:var(--ink-3); margin-left:2px}
+.tele .k{font-size:.72rem; color:var(--ink-3); margin-top:2px}
+
+.stages{display:grid; gap:8px}
+.stage{display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start;
+  padding:10px 11px; border-radius:6px; border:1px solid var(--line-soft); background:var(--panel-2)}
+.stage .n{width:24px; height:24px; border-radius:5px; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.74rem; font-weight:700;
+  background:var(--panel); color:var(--ink-3); border:1px solid var(--line)}
+.stage .t{font-size:.86rem; font-weight:600}
+.stage .d{font-size:.77rem; color:var(--ink-3); margin-top:1px}
+.stage[data-s="done"]{border-color:var(--ok-soft)}
+.stage[data-s="done"] .n{background:var(--ok); color:var(--panel); border-color:transparent}
+.stage[data-s="now"]{border-color:var(--accent); background:var(--accent-soft)}
+.stage[data-s="now"] .n{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+.stage[data-s="now"] .d{color:var(--accent)}
+
+.cam{background:#0A1219; aspect-ratio:4/3; display:block; width:100%}
+.camfoot{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:9px 12px;
+  border-top:1px solid var(--line-soft); font-size:.75rem; color:var(--ink-3)}
+
+.checks{display:grid; gap:1px; background:var(--line-soft)}
+.check{display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center;
+  background:var(--panel); padding:10px 13px}
+.check .lamp{width:9px; height:9px; border-radius:50%; background:var(--ok)}
+.check[data-s="warn"] .lamp{background:var(--warn)}
+.check[data-s="idle"] .lamp{background:var(--ink-3); opacity:.4}
+.check .name{font-size:.87rem}
+.check .sub{font-size:.74rem; color:var(--ink-3); margin-top:1px}
+.check .val{font-family:var(--mono); font-size:.74rem; color:var(--ink-3); text-align:right}
+.verdict{display:flex; align-items:center; gap:12px; padding:14px; flex-wrap:wrap}
+.verdict .big{font-size:1.03rem; font-weight:650}
+.verdict .sub{font-size:.82rem; color:var(--ink-2); margin-top:2px}
+
+.modes{display:grid; gap:8px; margin-bottom:14px}
+@media(min-width:640px){ .modes{grid-template-columns:repeat(3,1fr)} }
+.mode{text-align:left; cursor:pointer; padding:11px 12px; border-radius:6px;
+  border:1px solid var(--line); background:var(--panel-2)}
+.mode:hover{border-color:var(--accent)}
+.mode[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft)}
+.mode .mt{font-size:.86rem; font-weight:650}
+.mode[aria-pressed="true"] .mt{color:var(--accent)}
+.mode .md{font-size:.74rem; color:var(--ink-3); margin-top:3px; line-height:1.45}
+.toggle{display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none}
+.toggle input{position:absolute; opacity:0; width:0; height:0}
+.toggle .sw{width:38px; height:22px; border-radius:100px; background:var(--line);
+  position:relative; transition:background .18s; flex:none}
+.toggle .sw::after{content:""; position:absolute; inset:3px auto 3px 3px; width:16px;
+  border-radius:50%; background:var(--panel); transition:transform .18s;
+  box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.toggle input:checked + .sw{background:var(--accent)}
+.toggle input:checked + .sw::after{transform:translateX(16px)}
+.toggle input:focus-visible + .sw{outline:2px solid var(--accent); outline-offset:2px}
+.cmd{font-family:var(--mono); font-size:.75rem; line-height:1.75; white-space:pre;
+  overflow-x:auto; padding:12px 13px; border-radius:6px; background:var(--panel-2);
+  border:1px solid var(--line-soft); color:var(--ink-2)}
+.cmd b{color:var(--accent); font-weight:600}
+
+.tl{display:grid; padding:4px 0}
+.tl .row{display:grid; grid-template-columns:62px 132px 1fr; gap:11px; align-items:baseline;
+  padding:7px 14px; border-bottom:1px solid var(--line-soft); font-size:.81rem}
+.tl .row:last-child{border-bottom:0}
+.tl .ts{font-family:var(--mono); font-size:.72rem; color:var(--ink-3)}
+.tl .st{font-family:var(--mono); font-size:.72rem; font-weight:650; letter-spacing:.05em; color:var(--accent)}
+.tl .rs{color:var(--ink-2)}
+@media(max-width:600px){ .tl .row{grid-template-columns:58px 1fr; row-gap:2px} .tl .rs{grid-column:2} }
+.legend{display:flex; flex-wrap:wrap; gap:14px; padding:11px 14px; font-size:.75rem; color:var(--ink-2)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.sw-dot{width:9px; height:9px; border-radius:50%; flex:none}
+
+main{padding-block:16px 24px}
+section.block{padding-block:26px; border-top:1px solid var(--line)}
+section.block > h2{margin:0 0 4px; font-size:1.12rem; font-weight:650; letter-spacing:-.01em}
+section.block > p.sub{margin:0 0 16px; font-size:.87rem; color:var(--ink-2); max-width:62ch}
+footer.proto{padding:16px 0 30px; font-size:.75rem; color:var(--ink-3); line-height:1.6;
+  border-top:1px solid var(--line); margin-top:26px}
+@media(prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important} }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="wrap row" style="display:flex">
+    <div class="wordmark">
+      <span class="mk">X3</span>
+      <b>X3Plus 智慧導航夾取機器人</b>
+      <span>操作台</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="conn" id="connPill" hidden><span class="dot live"></span><span class="mono" id="connIp">—</span></span>
+    <button class="iconbtn" id="dcBtn" hidden>中斷連線</button>
+    <button class="iconbtn" id="themeBtn">深色</button>
+    <button class="estop" id="estopBtn" hidden>■ 停止</button>
+  </div>
+  <div class="wrap" id="railWrap" hidden>
+    <nav class="rail" role="tablist" aria-label="主要畫面">
+      <button role="tab" data-go="preflight" aria-selected="false">出發前檢查<span class="badge">1</span></button>
+      <button role="tab" data-go="console" aria-selected="true">主控台</button>
+      <button role="tab" data-go="setup" aria-selected="false">任務設定</button>
+      <button role="tab" data-go="map" aria-selected="false">地圖</button>
+      <button role="tab" data-go="log" aria-selected="false">紀錄</button>
+    </nav>
+  </div>
+</div>
+<div class="hazard" id="hazBar" aria-hidden="true" hidden></div>
+
+<!-- ═══════════ 連線頁 ═══════════ -->
+<div class="view on" id="v-landing">
+
+  <div class="hero">
+    <div class="wrap inner">
+      <div>
+        <div class="eyebrow">自主巡航 · 物體辨識 · 六自由度夾取</div>
+        <h1>不用打指令，用手機就能操作機器人</h1>
+        <p class="lede">
+          X3Plus 會沿著預設路線自己巡航，看到目標物體就靠近、夾起來、送到垃圾桶，然後回到路線繼續走。
+          這個操作台把整段過程變成看得懂的畫面 —— 它現在在做什麼、為什麼停下來、夾到了沒有。
+        </p>
+        <div class="specs">
+          <div><div class="v">5</div><div class="k">機械臂自由度</div></div>
+          <div><div class="v">4</div><div class="k">麥克納姆輪</div></div>
+          <div><div class="v">117</div><div class="k">巡航路徑點</div></div>
+          <div><div class="v">21</div><div class="k">任務狀態</div></div>
+        </div>
+      </div>
+
+      <!-- 連線卡：整個流程的第一步 -->
+      <div class="connect">
+        <div class="top">
+          <span class="dot" id="cDot" style="background:var(--ink-3)"></span>
+          <b id="cTitle">連線到機器人</b>
+        </div>
+        <div class="body" id="cBody">
+
+          <div id="cForm">
+            <div class="field">
+              <label for="ipIn">機器人 IP 位址</label>
+              <div class="iprow">
+                <input type="text" class="ip" id="ipIn" inputmode="decimal"
+                       placeholder="192.168.1.42" autocomplete="off" spellcheck="false">
+                <input type="number" id="portIn" value="8080" min="1" max="65535" aria-label="連接埠">
+              </div>
+              <div class="hint" id="ipHint">IP 會隨連到的網路改變。掃描機器人桌面的 QR code 會自動帶入。</div>
+            </div>
+            <div class="field" id="recentField">
+              <label>最近連線過</label>
+              <div class="recents" id="recents"></div>
+            </div>
+            <button class="go" id="cBtn">連線</button>
+            <p class="hint" style="margin:10px 0 0">
+              找不到 IP？在機器人畫面上執行 <code class="mono">hostname -I</code>，或直接試
+              <a href="#" id="mdnsLink" class="mono" style="color:var(--accent)">x3plus.local</a>。
+            </p>
+          </div>
+
+          <div id="cBusy" hidden style="display:grid; gap:12px; text-align:center; padding:8px 0">
+            <div class="mono" style="font-size:1.15rem" id="busyIp">192.168.1.42</div>
+            <div style="font-size:.87rem; color:var(--ink-2)" id="busyMsg">連線中…</div>
+            <button class="go ghost" id="cancelBtn">取消，改手動輸入</button>
+          </div>
+
+          <div id="cErr" hidden style="display:grid; gap:11px">
+            <div class="note crit" id="errMsg"></div>
+            <button class="go ghost" id="retryBtn">重新輸入</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="block" style="border-top:0">
+      <h2>操作步驟</h2>
+      <p class="sub">從開機到機器人開始工作，一共四步。前兩步只在第一次或換網路時需要。</p>
+      <ol class="steps">
+        <li>
+          <div class="t">開啟機器人電源，等待桌面出現連線 QR code</div>
+          <div class="d">機器人每次開機會偵測目前的 IP 並重新產生 QR code，所以換了網路也不用手動查。</div>
+        </li>
+        <li>
+          <div class="t">用手機掃描 QR code</div>
+          <div class="d">會直接開啟這個頁面並自動填入 IP。掃到的是舊的 QR code 也沒關係，在上方手動改就好。</div>
+        </li>
+        <li>
+          <div class="t">在「出發前檢查」確認 15 項狀態</div>
+          <div class="d">相機、伺服機、定位、權重指紋逐項檢查。有紅燈就不要出發。</div>
+        </li>
+        <li>
+          <div class="t">選擇執行方式，按下開始</div>
+          <div class="d">之後全程看主控台就好。要停下來隨時按右上角的停止鈕。</div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block">
+      <div class="grid cols-2">
+        <div class="card">
+          <header><h2>機器人桌面上的 QR code</h2></header>
+          <div class="body">
+            <div class="qrbox">
+              <svg width="108" height="108" viewBox="0 0 29 29" shape-rendering="crispEdges"
+                   role="img" aria-label="示意用的 QR code 圖樣">
+                <rect width="29" height="29" fill="#fff"/>
+                <g fill="#0F1B2A" id="qrCells"></g>
+              </svg>
+              <div>
+                <div style="font-size:.86rem; font-weight:620">掃描後直接進入操作台</div>
+                <p class="hint" style="margin:5px 0 0">
+                  QR code 內容是 <code class="mono">http://&lt;目前 IP&gt;:8080</code>，
+                  開機時由 <code class="mono">ui/make_qr.py</code> 重新產生。
+                  IP 變了圖也會跟著變，不會掃到過期的位址。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <header><h2>規格</h2></header>
+          <table class="data">
+            <tbody>
+              <tr><td>運算平台</td><td class="n">Jetson Nano</td></tr>
+              <tr><td>底盤</td><td class="n">麥克納姆輪 × 4</td></tr>
+              <tr><td>機械臂</td><td class="n">5 自由度 + 夾爪</td></tr>
+              <tr><td>感測</td><td class="n">雙相機 · 光達 · 里程計</td></tr>
+              <tr><td>物體辨識</td><td class="n">YOLOv11</td></tr>
+              <tr><td>夾取策略</td><td class="n">PPO · 28 維觀測</td></tr>
+              <tr><td>連線方式</td><td class="n">Wi-Fi · HTTP + WebSocket</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>機器上有什麼</h2>
+      <p class="sub">操作台顯示的每一個數字，都對應到下面某一個零件。</p>
+      <div class="card">
+        <svg viewBox="0 0 620 300" style="display:block; width:100%; background:var(--panel-2)"
+             role="img" aria-label="機器人側視示意圖，標示機械臂六個關節、兩具相機、光達與麥克納姆輪的位置">
+          <g fill="none" stroke="var(--ink-3)" stroke-width="1.4" stroke-linejoin="round">
+            <!-- 底盤 -->
+            <path d="M150 236 H430 V206 H150 Z"/>
+            <path d="M162 206 V196 H418 V206"/>
+            <!-- 輪 -->
+            <circle cx="196" cy="248" r="21" stroke="var(--ink-2)"/><circle cx="196" cy="248" r="7"/>
+            <circle cx="386" cy="248" r="21" stroke="var(--ink-2)"/><circle cx="386" cy="248" r="7"/>
+            <g stroke-width="1" opacity=".75">
+              <path d="M183 237 l9 -9 M191 241 l13 -13 M199 245 l13 -13 M207 249 l9 -9"/>
+              <path d="M373 237 l9 -9 M381 241 l13 -13 M389 245 l13 -13 M397 249 l9 -9"/>
+            </g>
+            <!-- 光達 -->
+            <path d="M362 196 h44 v-16 h-44 z"/><path d="M370 180 h28 v-7 h-28 z"/>
+            <!-- 後方相機 -->
+            <path d="M430 224 h16 v-14 h-16 z"/><circle cx="438" cy="217" r="3.6"/>
+            <!-- 手臂 -->
+            <path d="M214 196 h40 v-14 h-40 z" stroke="var(--accent)"/>
+            <path d="M234 182 V140" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+            <path d="M234 140 L288 104" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+            <path d="M288 104 L268 62"  stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+            <path d="M268 62  L302 44"  stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+            <!-- 夾爪 -->
+            <path d="M302 44 l26 -6 M302 44 l22 12" stroke="var(--accent)" stroke-width="4.5" stroke-linecap="round"/>
+            <!-- 手臂相機 -->
+            <path d="M258 78 h17 v-13 h-17 z" stroke="var(--accent)"/><circle cx="266.5" cy="71.5" r="3.4" stroke="var(--accent)"/>
+          </g>
+          <g fill="var(--accent)">
+            <circle cx="234" cy="182" r="4"/><circle cx="234" cy="140" r="4"/>
+            <circle cx="288" cy="104" r="4"/><circle cx="268" cy="62" r="4"/><circle cx="302" cy="44" r="4"/>
+          </g>
+          <g stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3">
+            <path d="M234 182 H120"/><path d="M234 140 H120"/><path d="M288 104 H120"/>
+            <path d="M268 62 H120"/><path d="M302 44 H120"/>
+            <path d="M266 68 L266 24 H352"/><path d="M384 188 L384 150 H470"/>
+            <path d="M446 217 H540"/><path d="M386 269 L386 286 H470"/>
+          </g>
+          <g font-family="ui-monospace,monospace" font-size="10" fill="var(--ink-2)">
+            <text x="114" y="185" text-anchor="end">S1 底座旋轉</text>
+            <text x="114" y="143" text-anchor="end">S2 肩</text>
+            <text x="114" y="107" text-anchor="end">S3 肘</text>
+            <text x="114" y="65"  text-anchor="end">S4 腕俯仰</text>
+            <text x="114" y="47"  text-anchor="end">S5 腕旋轉 · S6 夾爪</text>
+            <text x="356" y="27">手臂相機（隨手臂移動）</text>
+            <text x="474" y="153">光達</text>
+            <text x="544" y="220">後方相機</text>
+            <text x="474" y="289">麥克納姆輪 × 4</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <footer class="proto">
+      <b>介面原型（P0）</b> — 畫面上所有數值皆為模擬，未連線至實體機器人。用途是確認版面、資訊層級與操作流程。
+      實作時網頁由機器人自身提供，狀態由任務程序推送，網頁本身不接觸硬體。
+    </footer>
+  </div>
+</div>
+
+<!-- ═══════════ 主控台（連線後） ═══════════ -->
+<div class="view" id="v-app">
+  <main class="wrap">
+
+    <!-- ── 出發前檢查 ── -->
+    <section class="screen" id="s-preflight">
+      <div class="grid">
+        <div class="card">
+          <div class="verdict">
+            <span class="chip warn">1 項待確認</span>
+            <div>
+              <div class="big">可以出發，但夾取權重尚未通過完整硬體驗證</div>
+              <div class="sub">15 項自動檢查中 14 項通過。剩下那一項需要你判斷後手動解鎖。</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="iconbtn" id="recheckBtn">重新檢查</button>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <header><h2>硬體</h2><div class="spacer"></div><span class="tok">5 / 5</span></header>
+            <div class="checks">
+              <div class="check"><span class="lamp"></span><div><div class="name">底盤序列埠可用</div><div class="sub">沒有其他程式佔用，任務程序可以獨佔</div></div><div class="val">/dev/myserial</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">六顆伺服機全部回應</div><div class="sub">半雙工匯流排逐顆點名，確認 ID 對得上</div></div><div class="val">S1–S6</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">手臂相機</div><div class="sub">辨識與精對位的來源</div></div><div class="val">640×480 30fps</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">後方導航相機</div><div class="sub">巡航時的遠距偵測</div></div><div class="val">640×480 30fps</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">光達</div><div class="sub">48 束取樣供避障策略使用</div></div><div class="val">/scan 10Hz</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <header><h2>軟體與權重</h2><div class="spacer"></div><span class="tok">5 / 5</span></header>
+            <div class="checks">
+              <div class="check"><span class="lamp"></span><div><div class="name">夾取回歸測試</div><div class="sub">控制器、伺服機讀取、防撞地板三組</div></div><div class="val">119 / 37 / 641</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">夾取權重指紋相符</div><div class="sub">與 manifest 記錄的 sha256 一致</div></div><div class="val">v21 seed816</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">動作契約</div><div class="sub">增量式；餵錯版本手臂會暴走，所以逐次核對</div></div><div class="val">obs_28_incremental</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">空跑輸出合理</div><div class="sub">不驅動伺服機，先看角度算得對不對</div></div><div class="val">wrist_z 0.0564</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">辨識模型</div><div class="sub">單類別 sugarbox，全高 6.5 cm</div></div><div class="val">best.pt</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <header><h2>定位</h2><div class="spacer"></div><span class="tok">4 / 4</span></header>
+            <div class="checks">
+              <div class="check"><span class="lamp"></span><div><div class="name">地圖定位已收斂</div><div class="sub">粒子分佈收攏，位置可信</div></div><div class="val">σ 0.031 m</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">巡航路線已載入</div><div class="sub">依弧長重新取樣，避免密集點打結</div></div><div class="val">117 點</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">里程計校正值</div><div class="sub">直線與旋轉的實測補償</div></div><div class="val">0.650 / 0.501</div></div>
+              <div class="check"><span class="lamp"></span><div><div class="name">座標轉換鏈完整</div><div class="sub">里程計到底盤的變換有在發佈</div></div><div class="val">odom→base</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <header><h2>安全</h2><div class="spacer"></div><span class="chip warn">需要你確認</span></header>
+            <div class="checks">
+              <div class="check" data-s="warn"><span class="lamp"></span><div><div class="name">夾取權重仍是候選狀態</div><div class="sub">三項硬體驗證還沒做完，見下方</div></div><div class="val">candidate</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span><div><div class="name">防撞餘裕 8 mm 實機驗證</div><div class="sub">尚未在實體機器人上量測</div></div><div class="val">未完成</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span><div><div class="name">實機可達範圍</div><div class="sub">模擬邊界尚未與實體對照</div></div><div class="val">未完成</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span><div><div class="name">物體高度實測</div><div class="sub">目前用標稱值 6.5 cm</div></div><div class="val">未完成</div></div>
+            </div>
+            <div class="hazard" aria-hidden="true"></div>
+            <div class="body" style="display:grid; gap:11px">
+              <label class="toggle">
+                <input type="checkbox" id="unlockChk"><span class="sw"></span>
+                <span style="font-size:.85rem; font-weight:600">我了解上述限制，允許本次驅動實體手臂</span>
+              </label>
+              <div class="note warn"><span>⚠</span><div>解鎖後請<b>全程有人在場、手放在電源開關上</b>。網頁上的停止鈕是軟停止，會透過 Wi-Fi 送出，可能延遲；真正的急停是電源開關。</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 主控台 ── -->
+    <section class="screen on" id="s-console">
+      <div class="grid console-grid">
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <div class="statehead">
+              <div class="statetop">
+                <span class="statename" id="stName">IDLE</span>
+                <span class="chip" id="stAction">WAIT_OPERATOR</span>
+              </div>
+              <p class="human" id="stHuman">待命中，等待你按下開始。</p>
+              <p class="because">機器判定依據：<code id="stReason">idle</code></p>
+            </div>
+            <div class="ribbon" id="ribbon"></div>
+            <div class="tele">
+              <div><div class="v" id="tDist">—</div><div class="k">目標距離</div></div>
+              <div><div class="v" id="tWp">0<small>/117</small></div><div class="k">巡航點</div></div>
+              <div><div class="v" id="tPick">0</div><div class="k">已回收</div></div>
+              <div><div class="v" id="tBat">86<small>%</small></div><div class="k">電量</div></div>
+            </div>
+            <div class="camfoot">
+              <button class="iconbtn" id="playBtn">▶ 播放模擬任務</button>
+              <button class="iconbtn" id="resetBtn">重設</button>
+              <div class="spacer"></div>
+              <span class="tok" id="tickLbl">已停止</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <header><h2>夾取階段</h2><div class="spacer"></div><span class="tok" id="graspTok">未開始</span></header>
+            <div class="body">
+              <div class="stages" id="stages">
+                <div class="stage" data-s="idle"><span class="n">0</span><div><div class="t">對位</div><div class="d">策略微調手臂姿態，夾爪張開，等四項幾何條件同時成立</div></div></div>
+                <div class="stage" data-s="idle"><span class="n">1</span><div><div class="t">閉合並偵測接觸</div><div class="d">限速合攏；連續兩次「指令走了但角度沒跟上」＝碰到東西了</div></div></div>
+                <div class="stage" data-s="idle"><span class="n">2</span><div><div class="t">維持夾持並抬升</div><div class="d">整段維持同一個夾持角，抬起後手臂收回原位</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <header><h2>手臂相機</h2><div class="spacer"></div><span class="chip ok" id="detChip">已偵測</span></header>
+            <svg class="cam" viewBox="0 0 400 300" role="img" aria-label="手臂相機畫面，中央偏右有一個被框住的藍色盒子">
+              <defs>
+                <linearGradient id="flr" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#1C2B3A"/><stop offset="1" stop-color="#0A1219"/></linearGradient>
+                <linearGradient id="box" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#4A82C8"/><stop offset="1" stop-color="#2C5590"/></linearGradient>
+              </defs>
+              <rect width="400" height="300" fill="url(#flr)"/>
+              <g stroke="#2C3E50" stroke-width="1" opacity=".6">
+                <path d="M0 190 H400 M0 230 H400 M0 268 H400"/>
+                <path d="M60 300 L150 170 M170 300 L192 170 M290 300 L238 170 M400 300 L282 170"/>
+              </g>
+              <g>
+                <path d="M168 214 L168 176 L214 168 L214 206 Z" fill="url(#box)"/>
+                <path d="M214 206 L214 168 L238 176 L238 214 Z" fill="#22406E"/>
+                <path d="M168 176 L214 168 L238 176 L192 185 Z" fill="#639AD8"/>
+                <rect x="160" y="160" width="86" height="62" fill="none" stroke="#63A9FF" stroke-width="2"/>
+                <rect x="160" y="145" width="86" height="15" fill="#63A9FF"/>
+                <text x="164" y="156" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#05182E">sugarbox 0.94</text>
+              </g>
+              <g stroke="#63A9FF" stroke-width="1.6" fill="none" opacity=".85">
+                <path d="M12 12 H36 M12 12 V36"/><path d="M388 12 H364 M388 12 V36"/>
+                <path d="M12 288 H36 M12 288 V264"/><path d="M388 288 H364 M388 288 V264"/>
+              </g>
+              <g stroke="#E4EDF5" stroke-width="1" opacity=".4">
+                <path d="M200 138 V152 M200 148 H186 M200 148 H214"/></g>
+              <text x="14" y="52" font-family="ui-monospace,monospace" font-size="10" fill="#9BAFC4">ARM CAM · 12.4 fps</text>
+            </svg>
+            <div class="camfoot">
+              <span class="tok">前方 <span class="num">0.243</span> m</span>
+              <span class="tok">左右 <span class="num">-0.004</span> m</span>
+              <div class="spacer"></div>
+              <span class="tok">高度標稱 6.5 cm</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <header><h2>剛剛發生什麼</h2><div class="spacer"></div><span class="tok">最近 6 筆</span></header>
+            <div class="tl" id="miniLog"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 任務設定 ── -->
+    <section class="screen" id="s-setup">
+      <div class="grid cols-2">
+        <div class="card">
+          <header><h2>執行方式</h2></header>
+          <div class="body">
+            <div class="modes" id="modes">
+              <button class="mode" data-mode="A" aria-pressed="true">
+                <div class="mt">A · 完整自走</div>
+                <div class="md">巡航到辨識到夾取到送垃圾桶，一個程序全包。展示時用這個。</div></button>
+              <button class="mode" data-mode="B" aria-pressed="false">
+                <div class="mt">B · 拆開除錯</div>
+                <div class="md">辨識與夾取分成兩個程序，可以單獨測其中一邊。底盤要自己處理。</div></button>
+              <button class="mode" data-mode="C" aria-pressed="false">
+                <div class="mt">C · 導航避障</div>
+                <div class="md">用強化學習導航策略避障，再精對位夾取。</div></button>
+            </div>
+            <div class="field">
+              <label for="fRoute">巡航路線</label>
+              <select id="fRoute">
+                <option>route.yaml — 教室外走廊（117 點）</option>
+                <option>route_lab.yaml — 實驗室環形（64 點）</option></select>
+            </div>
+            <div class="field">
+              <label for="fClass">目標物體</label>
+              <select id="fClass"><option value="sugarbox">sugarbox — 藍色盒子</option></select>
+              <div class="hint">辨識模型目前只認得這一類。換物體要換權重。</div>
+            </div>
+            <div class="field">
+              <label for="fH">物體全高（公分）</label>
+              <input type="number" id="fH" value="6.5" step="0.1" min="1" max="20">
+              <div class="hint">從頂端量到地面。這個值決定手腕高度補償，<b>不能</b>從畫面框的高度推算。</div>
+            </div>
+            <div class="field">
+              <label for="fLaps">巡航圈數</label>
+              <select id="fLaps"><option value="0">不限，直到手動停止</option><option value="1">1 圈</option><option value="3">3 圈</option></select>
+            </div>
+            <label class="toggle" style="margin-bottom:14px">
+              <input type="checkbox" id="fDeliver" checked><span class="sw"></span>
+              <span style="font-size:.85rem">夾到之後送去垃圾桶</span></label>
+            <label class="toggle">
+              <input type="checkbox" id="fReal"><span class="sw"></span>
+              <span style="font-size:.85rem">驅動實體硬體（關閉則只做運算不動）</span></label>
+          </div>
+        </div>
+
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <header><h2>將要執行的指令</h2><div class="spacer"></div><button class="iconbtn" id="copyBtn">複製</button></header>
+            <div class="body">
+              <div class="cmd" id="cmdOut"></div>
+              <p class="hint" style="margin:11px 0 0; font-size:.73rem; color:var(--ink-3)">
+                這行就是原本要手打的指令。介面只是幫你把選項組起來，執行的還是同一支程式。</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="body" style="display:grid; gap:11px">
+              <div class="note" id="gateNote"></div>
+              <button class="go" id="startBtn">開始任務</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 地圖 ── -->
+    <section class="screen" id="s-map">
+      <div class="card">
+        <header><h2>巡航路線與位置</h2><div class="spacer"></div><span class="tok" id="mapTok">待命</span></header>
+        <svg viewBox="0 0 100 100" style="display:block; width:100%; background:var(--panel-2)"
+             role="img" aria-label="場地地圖，顯示巡航路線、機器人位置、目標物體與垃圾桶">
+          <g stroke="var(--line-soft)" stroke-width=".25">
+            <path d="M0 20H100M0 40H100M0 60H100M0 80H100M20 0V100M40 0V100M60 0V100M80 0V100"/></g>
+          <path d="M8 12 H92 V88 H8 Z" fill="none" stroke="var(--ink-3)" stroke-width=".8" opacity=".5"/>
+          <path id="routePath" d="M16 78 L16 26 L34 18 L66 18 L84 26 L84 74 L60 84 L30 84 Z"
+                fill="none" stroke="var(--accent)" stroke-width="1.1" stroke-dasharray="2.5 2" opacity=".6"/>
+          <g id="wpDots"></g>
+          <g>
+            <rect x="86" y="46" width="8" height="8" rx="1" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width=".7"/>
+            <text x="90" y="58.5" text-anchor="middle" font-size="3" fill="var(--warn)" font-family="ui-monospace,monospace">BIN</text></g>
+          <g id="tgtMark" opacity="0">
+            <circle cx="58" cy="80" r="3.4" fill="none" stroke="var(--crit)" stroke-width=".8"/>
+            <circle cx="58" cy="80" r="1.3" fill="var(--crit)"/>
+            <text x="58" y="74" text-anchor="middle" font-size="3" fill="var(--crit)" font-family="ui-monospace,monospace">TARGET</text></g>
+          <g id="robot" transform="translate(16,78) rotate(-90)">
+            <circle r="4.6" fill="var(--accent-soft)" opacity=".9"/>
+            <path d="M0 -3.6 L2.7 2.6 L0 1.3 L-2.7 2.6 Z" fill="var(--accent)"/></g>
+        </svg>
+        <div class="legend">
+          <span><span class="sw-dot" style="background:var(--accent)"></span>機器人與巡航路線</span>
+          <span><span class="sw-dot" style="background:var(--crit)"></span>偵測到的目標</span>
+          <span><span class="sw-dot" style="background:var(--warn)"></span>垃圾桶</span>
+          <span class="spacer"></span><span class="tok">位置來源：地圖定位</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 紀錄 ── -->
+    <section class="screen" id="s-log">
+      <div class="grid">
+        <div class="card">
+          <header><h2>狀態變化</h2><div class="spacer"></div>
+            <span class="tok" id="logCount">0 筆</span>
+            <button class="iconbtn" id="exportBtn">匯出</button></header>
+          <div class="tl" id="fullLog"></div>
+        </div>
+        <div class="card">
+          <header><h2>夾取結果</h2><div class="spacer"></div><span class="tok">本次開機</span></header>
+          <div style="overflow-x:auto">
+            <table class="data">
+              <thead><tr><th>時間</th><th>結果</th><th>嘗試</th><th>接觸角</th><th>備註</th></tr></thead>
+              <tbody>
+                <tr><td class="n">14:02:31</td><td><span class="chip ok">成功</span></td><td class="n">1 / 3</td><td class="n">148.2°</td><td>一次夾中</td></tr>
+                <tr><td class="n">13:51:08</td><td><span class="chip warn">重試後成功</span></td><td class="n">2 / 3</td><td class="n">151.6°</td><td>第一次偏左 1.8 cm，後退重對位</td></tr>
+                <tr><td class="n">13:44:55</td><td><span class="chip crit">空夾</span></td><td class="n">3 / 3</td><td class="n">180.0°</td><td>夾爪走到全閉，中間沒東西，未抬升</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="body">
+            <div class="note"><span>ℹ</span><div>夾爪一路合到全閉代表中間是空的，此時<b>不會抬升</b>，直接中止並退回重試。這是空夾與夾到的分界。</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="proto">
+      <b>介面原型（P0）</b> — 畫面上所有數值皆為模擬，未連線至實體機器人。
+    </footer>
+  </main>
+</div>
+
+<script>
+"use strict";
+const el = id => document.getElementById(id);
+
+/* ── 主題 ─────────────────────────────────────────── */
+const root = document.documentElement, themeBtn = el("themeBtn");
+const sysDark = () => matchMedia("(prefers-color-scheme:dark)").matches;
+const isDark  = () => root.dataset.theme ? root.dataset.theme === "dark" : sysDark();
+function paintTheme(){ themeBtn.textContent = isDark() ? "淺色" : "深色" }
+themeBtn.addEventListener("click", () => { root.dataset.theme = isDark() ? "light" : "dark"; paintTheme() });
+paintTheme();
+
+/* ── 示意 QR 圖樣（純裝飾，非可掃描）───────────────── */
+{
+  const N = 29, cells = [];
+  const finder = (ox, oy) => {
+    for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++){
+      const edge = x === 0 || x === 6 || y === 0 || y === 6;
+      const core = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+      if (edge || core) cells.push([ox + x, oy + y]);
+    }
+  };
+  finder(0,0); finder(22,0); finder(0,22);
+  let seed = 20260806;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const inFinder = (x < 9 && y < 9) || (x > 19 && y < 9) || (x < 9 && y > 19);
+    if (!inFinder && rnd() > .55) cells.push([x, y]);
+  }
+  el("qrCells").innerHTML = cells.map(([x,y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join("");
+}
+
+/* ── 連線 ─────────────────────────────────────────── */
+const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
+const validIp = v => IP_RE.test(v) && v.split(".").every(n => +n >= 0 && +n <= 255);
+const RECENT_KEY = "x3plus.recent";
+const loadRecent = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || [] } catch { return [] } };
+function pushRecent(ip){
+  const r = [ip, ...loadRecent().filter(x => x !== ip)].slice(0, 4);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(r)) } catch {}
+  paintRecent();
+}
+function paintRecent(){
+  const r = loadRecent();
+  el("recentField").hidden = r.length === 0;
+  el("recents").innerHTML = r.map(ip => `<button type="button" data-ip="${ip}">${ip}</button>`).join("");
+}
+el("recents").addEventListener("click", e => {
+  const b = e.target.closest("button[data-ip]"); if (!b) return;
+  el("ipIn").value = b.dataset.ip; el("ipIn").removeAttribute("aria-invalid");
+});
+paintRecent();
+
+const cForm = el("cForm"), cBusy = el("cBusy"), cErr = el("cErr");
+function connPhase(p){ cForm.hidden = p !== "form"; cBusy.hidden = p !== "busy"; cErr.hidden = p !== "err" }
+
+let autoTimer = null;
+function attempt(ip, port, auto){
+  connPhase("busy");
+  el("busyIp").textContent = `${ip}:${port}`;
+  el("cTitle").textContent = "連線中";
+  el("cDot").style.background = "var(--warn)";
+  el("busyMsg").textContent = auto ? "已從 QR code 取得位址，正在連線…" : "連線中…";
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    // 原型：192.168.* 視為成功，其餘示範失敗訊息
+    if (ip.startsWith("192.168.")) { pushRecent(ip); enterApp(ip, port); }
+    else {
+      connPhase("err");
+      el("cTitle").textContent = "連不上";
+      el("cDot").style.background = "var(--crit)";
+      el("errMsg").innerHTML =
+        `<span>✕</span><div><b>${ip}:${port}</b> 沒有回應。<br>
+         請確認手機和機器人連到<b>同一個 Wi-Fi</b>，並且機器人上的操作台服務已啟動。
+         IP 可能已經變了 —— 重新掃描機器人桌面上的 QR code 會取得最新的。</div>`;
+    }
+  }, auto ? 1600 : 1200);
+}
+el("cBtn").addEventListener("click", () => {
+  const ip = el("ipIn").value.trim(), port = el("portIn").value || "8080";
+  if (!validIp(ip)){
+    el("ipIn").setAttribute("aria-invalid", "true");
+    el("ipHint").innerHTML = `<span style="color:var(--crit)">請輸入四段數字的 IP，例如 192.168.1.42。</span>`;
+    el("ipIn").focus(); return;
+  }
+  el("ipIn").removeAttribute("aria-invalid");
+  attempt(ip, port, false);
+});
+el("ipIn").addEventListener("input", () => {
+  el("ipIn").removeAttribute("aria-invalid");
+  el("ipHint").textContent = "IP 會隨連到的網路改變。掃描機器人桌面的 QR code 會自動帶入。";
+});
+el("ipIn").addEventListener("keydown", e => { if (e.key === "Enter") el("cBtn").click() });
+el("cancelBtn").addEventListener("click", () => {
+  clearTimeout(autoTimer); connPhase("form");
+  el("cTitle").textContent = "連線到機器人"; el("cDot").style.background = "var(--ink-3)";
+  el("ipIn").focus(); el("ipIn").select();
+});
+el("retryBtn").addEventListener("click", () => {
+  connPhase("form"); el("cTitle").textContent = "連線到機器人";
+  el("cDot").style.background = "var(--ink-3)"; el("ipIn").focus(); el("ipIn").select();
+});
+el("mdnsLink").addEventListener("click", e => {
+  e.preventDefault(); el("ipIn").value = "192.168.1.42";
+  el("ipHint").textContent = "主機名稱連線成功時會顯示對應的 IP。部分 Android 不支援 .local，失敗請改打 IP。";
+});
+
+function enterApp(ip, port){
+  el("v-landing").classList.remove("on");
+  el("v-app").classList.add("on");
+  el("connPill").hidden = el("dcBtn").hidden = el("estopBtn").hidden = false;
+  el("railWrap").hidden = el("hazBar").hidden = false;
+  el("connIp").textContent = `${ip}:${port}`;
+  window.scrollTo({ top: 0 });
+}
+el("dcBtn").addEventListener("click", () => {
+  el("v-app").classList.remove("on"); el("v-landing").classList.add("on");
+  el("connPill").hidden = el("dcBtn").hidden = el("estopBtn").hidden = true;
+  el("railWrap").hidden = el("hazBar").hidden = true;
+  connPhase("form"); el("cTitle").textContent = "連線到機器人";
+  el("cDot").style.background = "var(--ink-3)";
+  el("resetBtn").click(); window.scrollTo({ top: 0 });
+});
+
+/* 掃 QR 進來：網址帶 ?ip= 就自動填好並自動連線 */
+{
+  const q = new URLSearchParams(location.search);
+  const ip = q.get("ip"), port = q.get("port") || "8080";
+  el("portIn").value = port;
+  if (ip && validIp(ip)){ el("ipIn").value = ip; attempt(ip, port, true); }
+  else { el("ipIn").value = loadRecent()[0] || ""; }
+}
+
+/* ── 分頁 ─────────────────────────────────────────── */
+const showScreen = id => document.querySelectorAll(".screen").forEach(s =>
+  s.style.display = s.id === id ? "block" : "none");
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-go]").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+  showScreen("s-" + b.dataset.go);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}));
+showScreen("s-console");
+
+/* ── 狀態機 ───────────────────────────────────────── */
+const CHAIN = ["BOOT","SELF_CHECK","IDLE","PATROL","INVESTIGATE","APPROACH","ALIGN",
+               "STATIONARY_GATE","LATCH","GRASP","VERIFY","CARRY_HOME","DELIVER",
+               "PLACE_ALIGN","PLACE","RESUME"];
+const ribbon = el("ribbon");
+ribbon.innerHTML = CHAIN.map(s => `<i>${s}</i>`).join("");
+
+const SCRIPT = [
+  {st:"BOOT",           ac:"RUN_SELF_CHECK", human:"系統啟動中。",                             reason:"boot",                         rob:[16,78,-90]},
+  {st:"SELF_CHECK",     ac:"RUN_SELF_CHECK", human:"正在自我檢查，等待地圖定位收斂。",           reason:"waiting for map pose",         rob:[16,78,-90]},
+  {st:"IDLE",           ac:"WAIT_OPERATOR",  human:"檢查通過，待命中。",                       reason:"self-check passed",            rob:[16,78,-90]},
+  {st:"PATROL",         ac:"DRIVE_PATROL",   human:"沿路線巡航中，尚未看到目標。",               reason:"patrolling",                   rob:[16,52,-90], wp:12},
+  {st:"PATROL",         ac:"DRIVE_PATROL",   human:"畫面裡出現疑似目標，先連看幾張確認不是誤判。", reason:"detection streak 1/3",        rob:[36,18,0],   wp:41},
+  {st:"INVESTIGATE",    ac:"TURN_TO_TARGET", human:"確認是目標，慢慢轉向對準它。",               reason:"streak 3/3 · bearing +21°",    rob:[62,18,20],  wp:58, tgt:1, dist:3.10},
+  {st:"APPROACH",       ac:"DRIVE_TARGET",   human:"朝目標前進，一路避開障礙物。",               reason:"camera dist 2.10 m",           rob:[74,44,70],  wp:58, tgt:1, dist:2.10},
+  {st:"APPROACH",       ac:"DRIVE_TARGET",   human:"快到了，準備交給手臂相機。",                 reason:"camera dist 0.94 m",           rob:[68,68,105], wp:58, tgt:1, dist:0.94},
+  {st:"ALIGN",          ac:"FINE_ALIGN",     human:"改用手臂相機做最後對位。",                   reason:"handoff at 0.72 m",            rob:[63,76,120], tgt:1, dist:0.72},
+  {st:"STATIONARY_GATE",ac:"SETTLE",         human:"等底盤完全停穩，車還在晃就不能動手臂。",       reason:"|v| 0.014 m/s · need < 0.010", rob:[61,78,124], tgt:1, dist:0.31},
+  {st:"LATCH",          ac:"LATCH",          human:"鎖定物體座標。手臂一動相機就會跟著動，所以現在記住位置，整輪不再更新。", reason:"obj frozen at base frame", rob:[61,78,124], tgt:1, dist:0.26},
+  {st:"GRASP",          ac:"RUN_GRASP",      human:"手臂對位中，夾爪張開。",                     reason:"stage 0 · xy 0.021 m",         rob:[61,78,124], tgt:1, dist:0.26, g:0},
+  {st:"GRASP",          ac:"RUN_GRASP",      human:"四項幾何條件成立，開始限速合攏夾爪。",         reason:"stage 1 · gates passed",       rob:[61,78,124], tgt:1, dist:0.26, g:1},
+  {st:"GRASP",          ac:"RUN_GRASP",      human:"偵測到接觸，停在接觸角再多壓 8 度當夾持力。",  reason:"stage 2 · contact @ 148.2°",   rob:[61,78,124], tgt:1, dist:0.26, g:2},
+  {st:"VERIFY",         ac:"VERIFY",         human:"抬升後確認物體確實離地。",                   reason:"object lifted",                rob:[61,78,124], tgt:0, g:2, pick:1},
+  {st:"CARRY_HOME",     ac:"STOP",           human:"手臂收回原位，準備移動。",                   reason:"arm at home · object held",    rob:[61,78,124], pick:1},
+  {st:"DELIVER",        ac:"DRIVE_BIN",      human:"帶著物體前往垃圾桶。",                       reason:"bin dist 1.84 m",              rob:[78,66,30],  pick:1, dist:1.84},
+  {st:"PLACE_ALIGN",    ac:"SETTLE",         human:"到垃圾桶前，對位並停穩。",                   reason:"bin dist 0.28 m",              rob:[84,56,0],   pick:1, dist:0.28},
+  {st:"PLACE",          ac:"PLACE",          human:"伸出手臂、鬆開夾爪、收回。",                 reason:"release sequence",             rob:[84,54,0],   pick:1},
+  {st:"RESUME",         ac:"RESUME_PATROL",  human:"放好了，回到路線繼續巡航。",                 reason:"map goal re-armed",            rob:[84,60,90],  pick:1},
+  {st:"PATROL",         ac:"DRIVE_PATROL",   human:"沿路線巡航中，尚未看到目標。",               reason:"patrolling",                   rob:[84,74,90],  pick:1, wp:96}
+];
+const GRASP_LABEL = ["對位中","閉合中","夾持中"];
+
+const stName=el("stName"), stAction=el("stAction"), stHuman=el("stHuman"), stReason=el("stReason");
+const tDist=el("tDist"), tWp=el("tWp"), tPick=el("tPick"), stagesBox=el("stages"), graspTok=el("graspTok");
+const miniLog=el("miniLog"), fullLog=el("fullLog"), robot=el("robot"), tgtMark=el("tgtMark");
+const mapTok=el("mapTok"), tickLbl=el("tickLbl"), playBtn=el("playBtn"), detChip=el("detChip");
+
+{
+  const p = el("routePath"), L = p.getTotalLength(); let s = "";
+  for (let i = 0; i < 40; i++){
+    const q = p.getPointAtLength(L * i / 40);
+    s += `<circle cx="${q.x.toFixed(2)}" cy="${q.y.toFixed(2)}" r=".7" fill="var(--accent)" opacity=".4"/>`;
+  }
+  el("wpDots").innerHTML = s;
+}
+
+let idx = -1, timer = null, latched = false;
+const log = [];
+const clock = i => { const t = 840 + i * 7;
+  return `14:${String(Math.floor(t/60)%60).padStart(2,"0")}:${String(t%60).padStart(2,"0")}` };
+const EMPTY = `<div class="row"><span class="ts">—</span><span class="st">—</span><span class="rs" style="color:var(--ink-3)">還沒有紀錄。到主控台按「播放模擬任務」。</span></div>`;
+
+function renderLog(){
+  const rows = log.map(e => `<div class="row"><span class="ts">${e.t}</span><span class="st">${e.st}</span><span class="rs">${e.h}</span></div>`);
+  miniLog.innerHTML = rows.slice(-6).reverse().join("") || EMPTY;
+  fullLog.innerHTML = rows.slice().reverse().join("") || EMPTY;
+  el("logCount").textContent = `${log.length} 筆`;
+}
+
+function apply(i){
+  const s = SCRIPT[i];
+  stName.textContent = s.st; stAction.textContent = s.ac;
+  stHuman.textContent = s.human; stReason.textContent = s.reason;
+  stName.style.color = "var(--accent)"; stAction.className = "chip";
+  const at = CHAIN.indexOf(s.st);
+  ribbon.querySelectorAll("i").forEach((n, k) => n.className = k < at ? "done" : (k === at ? "now" : ""));
+  const now = ribbon.querySelector("i.now");
+  if (now) now.scrollIntoView({ block:"nearest", inline:"center", behavior:"smooth" });
+  tDist.innerHTML = s.dist ? `${s.dist.toFixed(2)}<small>m</small>` : "—";
+  if (s.wp) tWp.innerHTML = `${s.wp}<small>/117</small>`;
+  tPick.textContent = s.pick || 0;
+  const g = ("g" in s) ? s.g : -1;
+  stagesBox.querySelectorAll(".stage").forEach((n, k) =>
+    n.dataset.s = g < 0 ? "idle" : (k < g ? "done" : (k === g ? "now" : "idle")));
+  graspTok.textContent = g < 0 ? "未開始" : GRASP_LABEL[g];
+  detChip.textContent = s.tgt ? "已偵測" : "搜尋中";
+  detChip.className = s.tgt ? "chip ok" : "chip mute";
+  robot.setAttribute("transform", `translate(${s.rob[0]},${s.rob[1]}) rotate(${s.rob[2]})`);
+  tgtMark.setAttribute("opacity", s.tgt ? "1" : "0");
+  mapTok.textContent = s.st;
+  log.push({ t: clock(i), st: s.st, h: s.human });
+  renderLog();
+  tickLbl.textContent = `第 ${i + 1} / ${SCRIPT.length} 步`;
+}
+function step(){ if (++idx >= SCRIPT.length){ stop(); tickLbl.textContent = "模擬結束"; return } apply(idx) }
+function play(){ if (latched) return; timer = setInterval(step, 2100); step(); playBtn.textContent = "❚❚ 暫停" }
+function stop(){ clearInterval(timer); timer = null; playBtn.textContent = "▶ 播放模擬任務" }
+playBtn.addEventListener("click", () => timer ? (stop(), tickLbl.textContent = "已暫停") : play());
+
+el("resetBtn").addEventListener("click", () => {
+  stop(); idx = -1; log.length = 0; latched = false;
+  el("estopBtn").dataset.latched = "0"; el("estopBtn").textContent = "■ 停止";
+  stName.textContent = "IDLE"; stName.style.color = "var(--accent)";
+  stAction.textContent = "WAIT_OPERATOR"; stAction.className = "chip";
+  stHuman.textContent = "待命中，等待你按下開始。"; stReason.textContent = "idle";
+  ribbon.querySelectorAll("i").forEach(n => n.className = "");
+  tDist.textContent = "—"; tWp.innerHTML = "0<small>/117</small>"; tPick.textContent = "0";
+  stagesBox.querySelectorAll(".stage").forEach(n => n.dataset.s = "idle");
+  graspTok.textContent = "未開始"; detChip.textContent = "搜尋中"; detChip.className = "chip mute";
+  robot.setAttribute("transform", "translate(16,78) rotate(-90)");
+  tgtMark.setAttribute("opacity", "0"); mapTok.textContent = "待命";
+  tickLbl.textContent = "已停止"; renderLog();
+});
+
+el("estopBtn").addEventListener("click", () => {
+  if (latched) return;
+  stop(); latched = true;
+  el("estopBtn").dataset.latched = "1"; el("estopBtn").textContent = "已停止 · 需重設";
+  stName.textContent = "ESTOP"; stName.style.color = "var(--crit)";
+  stAction.textContent = "STOP"; stAction.className = "chip crit";
+  stHuman.textContent = "已送出停止指令，輪子與手臂都停住了。這是軟停止 —— 真正的急停請按電源開關。";
+  stReason.textContent = "ESTOP latched — manual reset only";
+  ribbon.querySelectorAll("i.now").forEach(n => n.className = "");
+  mapTok.textContent = "ESTOP";
+  log.push({ t: clock(Math.max(idx, 0) + 1), st:"ESTOP", h:"操作者按下停止。" });
+  renderLog();
+});
+
+/* ── 設定 → 指令 ──────────────────────────────────── */
+const modes = el("modes");
+modes.addEventListener("click", e => {
+  const b = e.target.closest(".mode"); if (!b) return;
+  modes.querySelectorAll(".mode").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  buildCmd();
+});
+["fRoute","fClass","fH","fLaps","fDeliver","fReal","unlockChk"].forEach(id =>
+  el(id).addEventListener("change", buildCmd));
+
+function buildCmd(){
+  const mode = modes.querySelector('[aria-pressed="true"]').dataset.mode;
+  const h = (parseFloat(el("fH").value) / 100).toFixed(3);
+  const real = el("fReal").checked, unlocked = el("unlockChk").checked;
+  const script = mode === "A" ? "mission_pipeline.py"
+               : mode === "B" ? "vision_grasp_bridge.py" : "nav_rl_grasp_pipeline.py";
+  const parts = [`python3 integration/${script} \\`];
+  if (mode === "A"){
+    parts.push(`  --route ${el("fRoute").value.split(" ")[0]} \\`);
+    parts.push(`  --max-laps ${el("fLaps").value} \\`);
+    if (!el("fDeliver").checked) parts.push(`  --no-deliver \\`);
+  }
+  parts.push(`  --class-height ${el("fClass").value}=${h} \\`);
+  parts.push(real ? `  <b>--real</b>${unlocked ? " <b>--unlock-candidate-real</b>" : ""}` : `  --dry-run`);
+  el("cmdOut").innerHTML = parts.join("\n");
+
+  const gate = el("gateNote"), start = el("startBtn");
+  if (!real){
+    gate.innerHTML = `<span>✓</span><div>不驅動硬體，可以直接執行。</div>`;
+    gate.className = "note"; start.disabled = false; start.textContent = "開始任務（不驅動硬體）";
+  } else if (!unlocked){
+    gate.innerHTML = `<span>🔒</span><div>實體執行需要先到<b>出發前檢查</b>把安全解鎖打開。目前尚未解鎖。</div>`;
+    gate.className = "note"; start.disabled = true; start.textContent = "開始任務";
+  } else {
+    gate.innerHTML = `<span>⚠</span><div>將驅動實體手臂。請確認<b>有人在場、手放在電源開關上</b>。</div>`;
+    gate.className = "note warn"; start.disabled = false; start.textContent = "開始任務（驅動實體硬體）";
+  }
+}
+buildCmd(); renderLog();
+
+el("copyBtn").addEventListener("click", e => {
+  navigator.clipboard?.writeText(el("cmdOut").textContent);
+  e.target.textContent = "已複製"; setTimeout(() => e.target.textContent = "複製", 1400);
+});
+el("startBtn").addEventListener("click", () => {
+  document.querySelector('[data-go="console"]').click(); el("resetBtn").click(); play();
+});
+el("recheckBtn").addEventListener("click", e => {
+  e.target.textContent = "檢查中…"; setTimeout(() => e.target.textContent = "重新檢查", 1100);
+});
+el("exportBtn").addEventListener("click", e => {
+  e.target.textContent = "已匯出 CSV"; setTimeout(() => e.target.textContent = "匯出", 1400);
+});
+</script>
+</body>
+</html>

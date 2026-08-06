@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1256B8">
+<title>X3Plus 智慧導航夾取機器人 — 操作台</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="masthead">
+  <div class="wrap row" style="display:flex">
+    <div class="wordmark">
+      <span class="mk">X3</span>
+      <b>X3Plus 智慧導航夾取機器人</b>
+      <span>操作台</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="conn" id="connPill" hidden><span class="dot live" id="connDot"></span><span class="mono" id="connIp">—</span></span>
+    <span class="conn" id="memPill" hidden title="機器人剩餘記憶體"><span class="mono" id="memTxt">—</span></span>
+    <button class="iconbtn" id="dcBtn" hidden>離開</button>
+    <button class="iconbtn" id="themeBtn">深色</button>
+    <button class="estop" id="estopBtn" hidden>■ 停止</button>
+  </div>
+  <div class="wrap" id="railWrap" hidden>
+    <nav class="rail" role="tablist" aria-label="主要畫面">
+      <button role="tab" data-go="console" aria-selected="true">主控台</button>
+      <button role="tab" data-go="setup" aria-selected="false">任務設定</button>
+      <button role="tab" data-go="map" aria-selected="false">地圖</button>
+    </nav>
+  </div>
+</div>
+<div class="hazard" id="hazBar" aria-hidden="true" hidden></div>
+
+<div class="banner" id="banner" hidden></div>
+
+<!-- ═══════════ 連線頁 ═══════════ -->
+<div class="view on" id="v-landing">
+  <div class="hero">
+    <div class="wrap inner">
+      <div>
+        <div class="eyebrow">自主巡航 · 物體辨識 · 六自由度夾取</div>
+        <h1>不用打指令，用手機就能操作機器人</h1>
+        <p class="lede">
+          X3Plus 會沿著預設路線自己巡航，看到目標物體就靠近、夾起來、送到垃圾桶，然後回到路線繼續走。
+          這個操作台把整段過程變成看得懂的畫面 —— 它現在在做什麼、為什麼停下來、夾到了沒有。
+        </p>
+        <div class="specs">
+          <div><div class="v">5</div><div class="k">機械臂自由度</div></div>
+          <div><div class="v">4</div><div class="k">麥克納姆輪</div></div>
+          <div><div class="v">117</div><div class="k">巡航路徑點</div></div>
+          <div><div class="v">21</div><div class="k">任務狀態</div></div>
+        </div>
+      </div>
+
+      <div class="connect">
+        <div class="top">
+          <span class="dot" id="cDot" style="background:var(--ink-3)"></span>
+          <b id="cTitle">連線到機器人</b>
+        </div>
+        <div class="body">
+          <div id="cForm">
+            <div class="field">
+              <label for="ipIn">機器人 IP 位址</label>
+              <div class="iprow">
+                <input type="text" class="ip" id="ipIn" inputmode="decimal"
+                       placeholder="192.168.1.42" autocomplete="off" spellcheck="false">
+                <input type="number" id="portIn" value="8080" min="1" max="65535" aria-label="連接埠">
+              </div>
+              <div class="hint" id="ipHint">已自動帶入這個頁面來源的位址。要操作另一台機器人才需要改。</div>
+            </div>
+            <button class="go" id="cBtn">連線</button>
+            <p class="hint" style="margin:10px 0 0">
+              位址不對？在機器人畫面上執行 <code class="mono">hostname -I</code>，
+              或重新掃描桌面上的 QR code。
+            </p>
+          </div>
+
+          <div id="cBusy" hidden style="display:grid; gap:12px; text-align:center; padding:8px 0">
+            <div class="mono" style="font-size:1.15rem" id="busyIp">—</div>
+            <div style="font-size:.87rem; color:var(--ink-2)" id="busyMsg">連線中…</div>
+          </div>
+
+          <div id="cErr" hidden style="display:grid; gap:11px">
+            <div class="note crit" id="errMsg"></div>
+            <button class="go ghost" id="retryBtn">重新輸入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="block" style="border-top:0">
+      <h2>操作步驟</h2>
+      <p class="sub">從開機到機器人開始工作，一共三步。前兩步只在第一次或換網路時需要。</p>
+      <ol class="steps">
+        <li><div class="t">開啟機器人電源，等待桌面出現連線 QR code</div>
+            <div class="d">機器人每次開機會偵測目前的 IP 並重新產生 QR code，所以換了網路也不用手動查。</div></li>
+        <li><div class="t">用手機掃描 QR code</div>
+            <div class="d">會直接開啟這個頁面。掃到的是舊的 QR code 也沒關係，在上方手動改位址就好。</div></li>
+        <li><div class="t">在「任務設定」選好執行方式，按下開始</div>
+            <div class="d">之後全程看主控台就好。要停下來隨時按右上角的停止鈕。</div></li>
+      </ol>
+    </section>
+
+    <section class="block">
+      <div class="grid cols-2">
+        <div class="card">
+          <header><h2>機器人桌面上的 QR code</h2></header>
+          <div class="body">
+            <div class="qrbox">
+              <svg width="108" height="108" viewBox="0 0 29 29" shape-rendering="crispEdges"
+                   role="img" aria-label="示意用的 QR code 圖樣">
+                <rect width="29" height="29" fill="#fff"/><g fill="#0F1B2A" id="qrCells"></g>
+              </svg>
+              <div>
+                <div style="font-size:.86rem; font-weight:620">掃描後直接進入操作台</div>
+                <p class="hint" style="margin:5px 0 0">
+                  內容是 <code class="mono">http://&lt;目前 IP&gt;:8080</code>，開機時由
+                  <code class="mono">ui/make_qr.py</code> 重新產生。IP 變了圖也跟著變。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <header><h2>規格</h2></header>
+          <table class="data"><tbody>
+            <tr><td>運算平台</td><td class="n">Jetson Nano</td></tr>
+            <tr><td>底盤</td><td class="n">麥克納姆輪 × 4</td></tr>
+            <tr><td>機械臂</td><td class="n">5 自由度 + 夾爪</td></tr>
+            <tr><td>感測</td><td class="n">雙相機 · 光達 · 里程計</td></tr>
+            <tr><td>物體辨識</td><td class="n">YOLOv11</td></tr>
+            <tr><td>夾取策略</td><td class="n">PPO · 28 維觀測</td></tr>
+            <tr><td>連線方式</td><td class="n">HTTP + Server-Sent Events</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </section>
+    <footer class="proto" id="landFoot"></footer>
+  </div>
+</div>
+
+<!-- ═══════════ 主控台 ═══════════ -->
+<div class="view" id="v-app">
+  <main class="wrap">
+
+    <!-- ── 主控台 ── -->
+    <section class="screen on" id="s-console">
+      <div class="grid console-grid">
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <div class="statehead">
+              <div class="statetop">
+                <span class="statename" id="stName">—</span>
+                <span class="chip mute" id="stAction">待命</span>
+                <div class="spacer"></div>
+                <span class="chip mute" id="ageChip" hidden></span>
+              </div>
+              <p class="human" id="stHuman">尚未收到任務狀態。啟動任務後這裡會即時更新。</p>
+              <p class="because">機器判定依據：<code id="stReason">—</code></p>
+            </div>
+            <div class="ribbon" id="ribbon"></div>
+            <div class="tele">
+              <div><div class="v" id="tDist">—</div><div class="k">目標距離</div></div>
+              <div><div class="v" id="tWp">—</div><div class="k">目前航點</div></div>
+              <div><div class="v" id="tPick">0</div><div class="k">已夾起</div></div>
+              <div><div class="v" id="tLap">0</div><div class="k">已完成圈數</div></div>
+            </div>
+            <div class="camfoot">
+              <button class="iconbtn" id="confirmBtn" hidden>▶ 確認開始</button>
+              <button class="iconbtn" id="stopBtn" hidden>■ 停止任務</button>
+              <span class="tok" id="procTok">任務未啟動</span>
+              <div class="spacer"></div>
+              <span class="tok" id="seqTok"></span>
+            </div>
+          </div>
+
+          <div class="card">
+            <header><h2>夾取階段</h2><div class="spacer"></div><span class="tok" id="graspTok">未開始</span></header>
+            <div class="body">
+              <div class="stages" id="stages">
+                <div class="stage" data-s="idle"><span class="n">0</span><div class="t">對位</div></div>
+                <div class="stage" data-s="idle"><span class="n">1</span><div class="t">閉合夾爪</div></div>
+                <div class="stage" data-s="idle"><span class="n">2</span><div class="t">抬升並收回</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <header><h2>大概位置</h2><div class="spacer"></div><span class="tok" id="miniMapTok">—</span></header>
+            <svg id="miniMap" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+                 style="display:block; width:100%; max-height:230px; background:var(--panel-2)"
+                 role="img" aria-label="機器人在巡航路線上的大概位置">
+              <polyline id="miniRoute" fill="none" stroke="var(--accent)" stroke-width="1.1"
+                        stroke-linejoin="round" opacity=".45" points=""/>
+              <g id="miniRobot" transform="translate(50,50)" opacity="0">
+                <circle r="3.2" fill="var(--accent-soft)"/>
+                <path d="M0 -2.6 L2 1.9 L0 1 L-2 1.9 Z" fill="var(--accent)"/></g>
+            </svg>
+            <div class="camfoot">
+              <span class="tok" id="miniPose">尚未收到位置</span>
+              <div class="spacer"></div>
+              <span class="chip mute" id="detChip">未偵測</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <header><h2>目前狀況</h2></header>
+            <table class="data"><tbody id="senseTbl">
+              <tr><td>底盤</td><td class="n" id="vBase">—</td></tr>
+              <tr><td>手臂</td><td class="n" id="vArm">—</td></tr>
+              <tr><td>物體已鎖定</td><td class="n" id="vLatch">—</td></tr>
+              <tr><td>夾取已確認</td><td class="n" id="vVerify">—</td></tr>
+              <tr><td>目前航點距離</td><td class="n" id="vGoal">—</td></tr>
+              <tr><td>阻擋原因</td><td class="n" id="vBlock">—</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="card">
+            <header><h2>剛剛發生什麼</h2><div class="spacer"></div><span class="tok">狀態變化</span></header>
+            <div class="tl" id="miniLog"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 任務設定 ── -->
+    <section class="screen" id="s-setup">
+      <div class="grid cols-2">
+        <div class="card">
+          <header><h2>執行方式</h2></header>
+          <div class="body">
+            <div class="note"><span>✓</span><div><b>A · 完整自走</b><br>巡航、辨識、夾取與送回垃圾桶由同一個任務完成。</div></div>
+            <div class="field">
+              <label for="fRoute">巡航路線（留空用預設）</label>
+              <input type="text" id="fRoute" placeholder="route.yaml" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="fClass">目標物體</label>
+              <input type="text" id="fClass" value="sugarbox" autocomplete="off">
+              <div class="hint">辨識模型目前只認得這一類。換物體要換權重。</div>
+            </div>
+            <div class="field">
+              <label for="fH">物體全高（公分）</label>
+              <input type="number" id="fH" value="6.5" step="0.1" min="0.5" max="30">
+              <div class="hint">從頂端量到地面。這個值決定手腕高度補償，<b>不能</b>從畫面框的高度推算。</div>
+            </div>
+            <div class="field">
+              <label for="fLaps">巡航圈數（0 = 不限）</label>
+              <input type="number" id="fLaps" value="0" min="0" max="99">
+            </div>
+            <label class="toggle" style="margin-bottom:14px">
+              <input type="checkbox" id="fDeliver" checked><span class="sw"></span>
+              <span style="font-size:.85rem">夾到之後送去垃圾桶</span></label>
+            <label class="toggle">
+              <input type="checkbox" id="fReal"><span class="sw"></span>
+              <span style="font-size:.85rem">驅動實體硬體（關閉則只做運算不動）</span></label>
+          </div>
+
+          <!-- 第二道閘。放在「驅動實體硬體」正下方，因為它就是那個開關的條件。 -->
+          <div class="hazard" aria-hidden="true"></div>
+          <div class="body" style="display:grid; gap:11px" id="safetyBlock">
+            <div style="font-size:.82rem; font-weight:650">實機執行前必須知道的事</div>
+            <div class="checks" style="border:1px solid var(--line-soft); border-radius:6px; overflow:hidden">
+              <div class="check" data-s="warn"><span class="lamp"></span>
+                <div><div class="name">夾取權重仍是候選狀態</div><div class="sub">下面三項硬體驗證還沒做完</div></div>
+                <div class="val">candidate</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span>
+                <div><div class="name">防撞餘裕 8 mm 實機驗證</div><div class="sub">尚未在實體機器人上量測</div></div>
+                <div class="val">未完成</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span>
+                <div><div class="name">實機可達範圍</div><div class="sub">模擬邊界尚未與實體對照</div></div>
+                <div class="val">未完成</div></div>
+              <div class="check" data-s="idle"><span class="lamp"></span>
+                <div><div class="name">物體高度實測</div><div class="sub">目前用標稱值</div></div>
+                <div class="val">未完成</div></div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="unlockChk"><span class="sw"></span>
+              <span style="font-size:.85rem; font-weight:600">我了解上述限制，允許本次驅動實體手臂</span>
+            </label>
+            <div class="note warn"><span>⚠</span><div>解鎖後請<b>全程有人在場、手放在電源開關上</b>。網頁上的停止鈕是軟停止，會透過網路送出，可能延遲；真正的急停是電源開關。</div></div>
+            <div class="note" id="allowRealNote"></div>
+          </div>
+        </div>
+
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <div class="body" style="display:grid; gap:11px">
+              <div class="note" id="gateNote">正在讀取伺服器設定…</div>
+              <button class="go" id="startBtn" disabled>開始任務</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 地圖 ── -->
+    <section class="screen" id="s-map">
+      <div class="card">
+        <header><h2>巡航路線與位置</h2><div class="spacer"></div>
+          <span class="tok" id="routeTok">路線未載入</span>
+          <button class="iconbtn" id="reloadRoute">重新載入路線</button>
+          <span class="tok" id="mapTok">待命</span></header>
+        <svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+             style="display:block; width:100%; background:var(--panel-2)"
+             role="img" aria-label="場地地圖，顯示巡航路線與機器人位置">
+          <g id="mapGrid" stroke="var(--line-soft)" stroke-width=".2"></g>
+          <polyline id="routeLine" fill="none" stroke="var(--accent)" stroke-width=".9"
+                    stroke-linejoin="round" stroke-dasharray="2 1.6" opacity=".6" points=""/>
+          <g id="routeDots"></g>
+          <g id="binMark" opacity="0">
+            <rect x="-2" y="-2" width="4" height="4" rx=".6" fill="var(--warn-soft)"
+                  stroke="var(--warn)" stroke-width=".5"/>
+            <text y="5" text-anchor="middle" font-size="2.4" fill="var(--warn)"
+                  font-family="ui-monospace,monospace">BIN</text></g>
+          <polyline id="trail" fill="none" stroke="var(--ok)" stroke-width=".7"
+                    stroke-linejoin="round" opacity=".7" points=""/>
+          <g id="robot" transform="translate(50,50)" opacity="0">
+            <circle r="2.6" fill="var(--accent-soft)" opacity=".9"/>
+            <path d="M0 -2.2 L1.7 1.6 L0 .8 L-1.7 1.6 Z" fill="var(--accent)"/></g>
+        </svg>
+        <div class="legend">
+          <span><span class="sw-dot" style="background:var(--accent)"></span>巡航路線</span>
+          <span><span class="sw-dot" style="background:var(--ok)"></span>實際走過</span>
+          <span><span class="sw-dot" style="background:var(--warn)"></span>垃圾桶</span>
+          <span class="spacer"></span>
+          <span class="tok" id="scaleTok"></span>
+          <span class="tok" id="poseTok">尚未收到位置</span>
+        </div>
+        <div class="body">
+          <div class="note" id="mapNote">位置來自地圖定位。定位還沒收斂或 ROS 沒開時機器人不會出現。</div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="proto" id="appFoot"></footer>
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

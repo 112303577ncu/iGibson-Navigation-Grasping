@@ -81,6 +81,7 @@ from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arm_cam_geometry as acg  # noqa: E402
+import mission_status           # noqa: E402  (stdlib only)
 
 # cv2 and ultralytics are imported inside main(), not here, so the pure functions
 # below (geometry, payload construction, the z/height reconciliation) can be
@@ -646,6 +647,9 @@ def parse_args():
     p.add_argument("--conf", type=float, default=0.3, help="YOLO confidence threshold (default 0.3)")
     p.add_argument("--imgsz", type=int, default=IMG_SIZE, help="YOLO inference size (default 640)")
     p.add_argument("--rate", type=float, default=0.3, help="min seconds between sends (default 0.3)")
+    p.add_argument("--status-udp", default=None, metavar="HOST:PORT",
+                   help="publish detection telemetry to the operator console "
+                        f"(e.g. {mission_status.DEFAULT_ENDPOINT}). Fire-and-forget.")
     p.add_argument("--once", action="store_true",
                    help="send/output the first valid detection batch then exit")
     p.add_argument("--show", action="store_true", help="show annotated camera window")
@@ -802,8 +806,12 @@ def main():
               f"{' [--once]' if args.once else ''}")
 
     last_send = 0.0
+    last_status = 0.0
     last_note = ""
     infer_ema = None
+    # Off unless --status-udp was given. The bridge reports in the mission FSM's
+    # vocabulary so the console reads the same whichever mode is running.
+    report = mission_status.SimpleReporter(getattr(args, "status_udp", None), mode="B")
     checked_frame_size = False
     consecutive_read_failures = 0
     calibration_records: List[dict] = []
@@ -912,13 +920,27 @@ def main():
                 if args.dry_run:
                     last_send = now
                     print(f"[bridge][dry] would send {payload}   {note}")
+                    report.say("ALIGN", "FINE_ALIGN", f"dry: {note or 'detection ready'}",
+                               target={"visible": True, "streak": 3,
+                                       "dist": payload.get("x"), "age": 0.0})
                     if args.once:
                         break
                 elif send_detection(args.host, args.port, payload):
                     last_send = now
                     print(f"[bridge] sent {payload}   {note}")
+                    # The bridge only ever locates; the grasp side decides. ALIGN
+                    # is what it is really doing, and using the mission's own
+                    # name keeps one vocabulary across all three modes.
+                    report.say("ALIGN", "FINE_ALIGN", note or "detection sent",
+                               target={"visible": True, "streak": 3,
+                                       "dist": payload.get("x"), "age": 0.0})
                     if args.once:
                         break
+            elif payload is None and report.enabled and (now - last_status) >= 1.0:
+                last_status = now
+                report.say("INVESTIGATE", "TURN_TO_TARGET", note or "no usable detection",
+                           target={"visible": False, "streak": 0,
+                                   "dist": None, "age": None})
 
             if args.show and annotated is not None:
                 center = int(acg.CX)
@@ -931,6 +953,7 @@ def main():
     except KeyboardInterrupt:
         print("\n[bridge] interrupted.")
     finally:
+        report.close()
         if cap is not None:
             cap.release()
         if args.show:
