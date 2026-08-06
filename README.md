@@ -57,6 +57,43 @@ real hardware — **first successful physical grasp: 2026-07-31.**
 
 ---
 
+## 虛實整合：兩支策略，兩個模擬器，一層契約
+
+這個 repo 叫 iGibson，因為**導航策略是在 [iGibson](https://svl.stanford.edu/igibson/) 的室內
+場景中訓練出來的**（48 束 LiDAR 學局部避障與趨近目標）；夾取策略則在 **PyBullet** 中以 6D
+增量動作學對位與閉合。訓練端是另一個 repo：
+
+> **[koala915/igibson_x3_test](https://github.com/koala915/igibson_x3_test)** —— 訓練、評估、選模、打包
+> **本 repo** —— 部署、實機控制、安全閘、任務整合
+
+分工是刻意的：**那裡訓練，這裡部署**。權重不是用複製貼上交接的，而是經 `model_tools/` 打包，
+以 **SHA256 + 契約字串**綁定後發佈，部署端驗證通過才收。流程見
+[`docs/planning/MODEL_RELEASE_WORKFLOW.md`](docs/planning/MODEL_RELEASE_WORKFLOW.md)。
+
+### 模擬 → 實機：逐項復刻，不是「跑得動就好」
+
+sim-to-real 最常見的死法，是策略在模擬器裡學到了一組模擬器才有的動力學。
+所以訓練端 plant 的每一項特性，部署端都**照抄同一個數字**而不是重新調參
+（見 [`integration/nav_rl.py`](integration/nav_rl.py) 的 `NavRLConfig`）：
+
+| 特性 | 訓練端（iGibson） | 部署端（實機） |
+|------|------------------|---------------|
+| 控制頻率 | `action_repeat(5) × 1/30 s` ≈ 6 Hz | `control_period_s = 1/6` |
+| 馬達延遲 | 2 步 | `motor_delay_steps = 2` |
+| 油門→速度 | 前進 ×0.5、後退 ×0.15 m/s、轉向 ×1.2 rad/s | 同左，逐項相同 |
+| 近障調速 | 0.66 m 內線速度降到 ×0.24 | `near_obstacle_slowdown_dist = 0.66` |
+| 脫困助推 | 最低油門 0.28 | `stall_assist_min_throttle = 0.28` |
+| LiDAR | 48 束、180° FOV | `lidar_num_rays = 48` |
+
+程式裡那句註解寫得很直接：**「Do not "tune" the plant」** —— 動了它，策略面對的世界就
+不是它學過的那個了。
+
+夾取端的契約同樣是硬綁的：v21 是 `obs_28_incremental`（增量），v17/v18 是 absolute。
+**兩者 shape 都是 28D/6D，任何 shape 檢查都抓不到**，混用手臂會直接暴走 —— 所以才用
+manifest 的 sha256 當唯一憑據。
+
+---
+
 ## 硬體與技術棧
 
 | 項目 | 內容 |
