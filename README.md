@@ -1,5 +1,9 @@
 # iGibson Navigation & Grasping
 
+[![tests](https://github.com/koala915/iGibson-Navigation-Grasping/actions/workflows/tests.yml/badge.svg)](https://github.com/koala915/iGibson-Navigation-Grasping/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.8%20%7C%203.12-blue.svg)](#快速開始)
+
 > 透過機器視覺與強化學習，讓一台 Yahboom X3Plus 從環境感知、自主避障導航，
 > 到精準夾取物品並投入垃圾桶 —— 完整跑完一輪，不需要人在終端機前面。
 
