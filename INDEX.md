@@ -8,7 +8,7 @@ Quick map for finding the right code without scanning the whole project.
 |---|---|---|
 | **PPO grasp deployment** | `grasp/v21/x3plus_real_grasp.py` | `DeployConfig`, `FloorGuard`, `GraspController.run()` |
 | Full mission (patrol → grasp → bin) | `integration/mission_pipeline.py` | `MissionRunner`, the tick loop, `_await_operator()` |
-| Mission state machine | `integration/mission_fsm.py` | `State`, `Action`, `step()` — 20 states, `--diagram` |
+| Mission state machine | `integration/mission_fsm.py` | `State`, `Action`, `step()` — 21 states, `--diagram` |
 | Operator console | `ui/server.py` | request routing, SSE stream, the two `--allow-real` gates |
 | One-process navigation + grasp | `integration/vision_grasp_pipeline.py` | `Navigator`, `run_pipeline()`, camera constants |
 | RL navigation + grasp | `integration/nav_rl_grasp_pipeline.py` | `RLNavigator`, `_rl_navigate()`, shared Rosmaster device |

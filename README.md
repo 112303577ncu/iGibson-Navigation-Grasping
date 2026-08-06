@@ -10,7 +10,7 @@
 **Sim-to-real deployment of a PPO 6-DOF grasping policy on a Yahboom X3Plus
 (mecanum base + 5-DOF arm, Jetson Nano).** A YOLOv11 arm camera locates the
 object, a PPO policy aligns and closes the jaw by contact detection, and a
-20-state mission machine drives the patrol → detect → approach → grasp →
+21-state mission machine drives the patrol → detect → approach → grasp →
 deliver loop. Everything runs in one Python 3.8 process that owns the serial
 port; a phone-friendly web console drives it. Trained in PyBullet, deployed on
 real hardware — **first successful physical grasp: 2026-07-31.**
@@ -50,7 +50,7 @@ real hardware — **first successful physical grasp: 2026-07-31.**
 
 | 模式 | 用途 | 入口 |
 |------|------|------|
-| **完整任務** | 巡航→辨識→接近→夾取→投放→續巡，20 狀態任務機 | [`integration/mission_pipeline.py`](integration/mission_pipeline.py) |
+| **完整任務** | 巡航→辨識→接近→夾取→投放→續巡，21 狀態任務機 | [`integration/mission_pipeline.py`](integration/mission_pipeline.py) |
 | **模式 A** | 自走夾取全流程（雙相機導航 → 夾取 → 驗證重試 ≤3） | [`integration/vision_grasp_pipeline.py`](integration/vision_grasp_pipeline.py) |
 | **模式 B** | 除錯用：辨識與夾取拆成兩個行程，TCP 5555 傳座標 | [`integration/vision_grasp_bridge.py`](integration/vision_grasp_bridge.py) |
 | **模式 C** | RL 導航避障（PPO + 48 束 LiDAR）→ 精對位 → 夾取 | [`integration/nav_rl_grasp_pipeline.py`](integration/nav_rl_grasp_pipeline.py) |
