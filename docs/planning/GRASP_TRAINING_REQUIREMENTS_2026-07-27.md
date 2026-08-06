@@ -47,7 +47,7 @@ policy 學到的是「把**指尖**帶到物體」，但部署端餵給它的是
 | v18/C3 鎖定 | 6.9 cm | 13.6 cm | 3.5 cm | +10.1 cm | 夾不到 |
 | 舊紀錄 obj-z=0.15 | — | ~14.5 cm | 15 cm | ≈0 | **成功** |
 
-最後一列是關鍵反證：`progress.md` 舊紀錄「z=0.15 三個位置成功夾取、z≥0.10 可行、z≤0.05 失敗」，
+最後一列是關鍵反證：`../../progress.md` 舊紀錄「z=0.15 三個位置成功夾取、z≥0.10 可行、z≤0.05 失敗」，
 正是因為 15 cm 恰好是夾爪實際所在的高度。**不是 trigger 的問題，是夾爪根本沒下去。**
 
 ### 這一項不需要重訓
@@ -232,5 +232,5 @@ C3 已在實機驗證通過（側面輪廓正確、相機視野確實變大、FK
 - 2026-07-27：使用者指出「v17 從未真正成功」→ 推翻既有假設，找到 TCP 定義不一致
 - 2026-07-27：讀 `x3plus_ground_grasp_env.py` 確認訓練用指尖、部署用 `arm_link5` 質心
 
-相關檔案：`grasp/trained_6d_models_v18/manifest.json`、`JETSON_DRYRUN_CHECKLIST.md`、
-`arm_pose.md`、`progress.md`（2026-07-26 更正條目）
+相關檔案：`grasp/trained_6d_models_v18/manifest.json`、`../operations/JETSON_DRYRUN_CHECKLIST.md`、
+`../calibration/arm_pose.md`、`../../progress.md`（2026-07-26 更正條目）

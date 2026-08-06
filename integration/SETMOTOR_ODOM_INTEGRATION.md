@@ -2,7 +2,7 @@
 
 > 狀態：設計／驗收規格 v1.1（2026-07-16）。ROS `/scan`→Python 3.8 adapter 已實作；
 > set_motor、feedback odom、TF、AMCL／巡航狀態機仍**尚未實作**。
-> 本文件補充 `MISSION_PLAN.md` 的 Phase 8 底層接線細節。真正的
+> 本文件補充 `docs/planning/MISSION_PLAN.md` 的 Phase 8 底層接線細節。真正的
 > `/home/jetson/ai_motor_server_B.py` 尚未進入本 repo；取得原檔並核對四輪映射前，
 > 不可猜測馬達正負號或直接上實車。
 

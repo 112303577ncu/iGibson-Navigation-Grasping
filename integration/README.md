@@ -118,8 +118,8 @@ python3 integration/vision_grasp_pipeline.py --real --show \
 > 唯一同時存在的時刻。不符在 `--real` 下直接中止。
 >
 > ⚠ **C3 的外參目前是 URDF 推算的預測值，不是實測。** bridge 會拒絕送出，除非跑完
-> `CALIBRATION_PLAN.md` Phase 2，或明示 `--i-accept-predicted-extrinsics`。
-> 上機步驟見 **`MODE_B_TEST_PLAN.md`**。
+> `docs/calibration/CALIBRATION_PLAN.md` Phase 2，或明示 `--i-accept-predicted-extrinsics`。
+> 上機步驟見 **`docs/operations/MODE_B_TEST_PLAN.md`**。
 
 ## 1. 端到端開啟流程
 

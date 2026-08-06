@@ -815,9 +815,9 @@ policy deployment 現在主要根據 rate-limited commanded state 建 observatio
 | `integration/verify_camera_grasp_frame.py` | nav/grasp camera FK sanity check |
 | `integration/vision_grasp_bridge.py` | intrinsics、undistort、grasp-home homography bridge |
 | `integration/grasp_home_homography.py` | pixel→canonical XY calibration solver |
-| `CALIBRATION_PLAN.md` | Phase 3B/4 gate 與 holdout 需求 |
+| `../calibration/CALIBRATION_PLAN.md` | Phase 3B/4 gate 與 holdout 需求 |
 | `TROUBLESHOOTING.md` | v17 OOD、視覺／reach 架構問題與 Z 陷阱 |
-| `arm_pose.md` | 兩種 home 的歷史設計；部分舊 latch 敘述應以目前程式為準 |
+| `../calibration/arm_pose.md` | 兩種 home 的歷史設計；部分舊 latch 敘述應以目前程式為準 |
 | 本次對話的尺規照片 | 不在 repo；本文件已記錄 `0–7 cm` 結論，若交接介面允許請另附原始圖片 |
 
 本文件的核心完成標準不是「找到一組看起來比較高的角度」，而是：**相機實機確實覆蓋 `0–18 cm`、姿態與轉場安全、policy 起點與訓練一致、可達區量化、校正重做、model/VecNormalize 成對，且在 dry-run 與固定網格驗收後才允許 real grasp。**

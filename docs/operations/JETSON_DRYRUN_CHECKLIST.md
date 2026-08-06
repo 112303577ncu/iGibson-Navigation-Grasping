@@ -2,7 +2,7 @@
 
 > 適用：commit `bb51a61`（v17 權重 + 新 `grasp_home_deg`）之後的版本。
 > 目標：確認 v17 模型與新的準備夾取姿態在實機上正確，才進行第一次 `--real` 夾取。
-> 姿態原理見 [arm_pose.md](arm_pose.md)；視覺 pipeline 的完整驗證另見
+> 姿態原理見 [../calibration/arm_pose.md](../calibration/arm_pose.md)；視覺 pipeline 的完整驗證另見
 > [integration/DEPLOY_VERIFY.md](integration/DEPLOY_VERIFY.md)（本清單只聚焦夾取端 dry-run）。
 
 ---
@@ -63,7 +63,7 @@ python3 grasp/x3plus_real_grasp.py          # 不加 --real；預設物體 (0.25
 - [ ] 結尾：`[Done] Returned to home. Object held.` 與 `[End] Grasp succeeded — keeping gripper closed...`
 - [ ] 全程角度都在範圍內（S1–S4: 0–180、S5: 0–270、S6: 30–180），無單步跳變
 
-任一項不符 → 停在 dry-run，先查 `DeployConfig` 與 [arm_pose.md](arm_pose.md)，不要上 `--real`。
+任一項不符 → 停在 dry-run，先查 `DeployConfig` 與 [../calibration/arm_pose.md](../calibration/arm_pose.md)，不要上 `--real`。
 
 ## Phase 4 — 首次 `--real`：只驗證姿態（低速，不夾）
 
@@ -78,7 +78,7 @@ python3 grasp/x3plus_real_grasp.py --real
 - [ ] **Yahboom App 讀值 ≈ `[90, 147, 170, 147, 90]`（物理角，容差 ±5°）**
       —— API 送 32.7/9.8/32.7，App 顯示 147/170/147 才是正確的（API 鏡像）
 - [ ] 目視：相機朝前下方看得到地面、夾爪張開懸在前方放物區（base 前方 x 0.17–0.33 m）上方
-- [ ] 若 App 讀值或姿態不符：**先懷疑該關節的 API 鏡像假設**（見 arm_pose.md 校正原則第 4 點），
+- [ ] 若 App 讀值或姿態不符：**先懷疑該關節的 API 鏡像假設**（見 ../calibration/arm_pose.md 校正原則第 4 點），
       不要直接改 `grasp_home_deg` 數字
 
 ## Phase 5 — 首次實夾

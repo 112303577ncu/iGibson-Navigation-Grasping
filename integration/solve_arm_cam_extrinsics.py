@@ -16,7 +16,7 @@ re-derive them at C3 for two reasons:
 
 So instead of measuring "distance from the camera's ground point", you place the
 object at positions you know in the BASE frame — the same frame the policy
-grasps in, established exactly as CALIBRATION_PLAN.md Phase 3 describes — and
+grasps in, established exactly as docs/calibration/CALIBRATION_PLAN.md Phase 3 describes — and
 this solves the extrinsics that map pixels onto them.
 
     obj_x = cam_x + H / tan(theta + alpha)          alpha = atan((v - cy) / fy)
@@ -269,7 +269,7 @@ def report(obs: Sequence[Obs], pose: acg.ArmCamPose, lateral_spread: float) -> b
     if worst > PASS_TOL_M:
         print("  FAIL: residuals exceed the gate. If the error grows with distance, "
               "H is wrong; if it is a constant shift, re-check the base-frame "
-              "reference mark (CALIBRATION_PLAN.md Phase 3 step 1).")
+              "reference mark (docs/calibration/CALIBRATION_PLAN.md Phase 3 step 1).")
         ok = False
 
     print("""

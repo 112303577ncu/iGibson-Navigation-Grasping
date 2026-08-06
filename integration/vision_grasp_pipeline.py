@@ -52,7 +52,7 @@ import arm_cam_geometry as acg  # noqa: E402  (pure math, no cv2/torch)
 
 # ════════════════════════════════════════════════════════════════════════════
 # Calibration constants — measured on the robot 2026-07-08 (Phase 1/2,
-# chessboard 6x9 inner corners @20mm; see progress.md / CALIBRATION_PLAN.md).
+# chessboard 6x9 inner corners @20mm; see progress.md / docs/calibration/CALIBRATION_PLAN.md).
 # ════════════════════════════════════════════════════════════════════════════
 
 JETSON_IP = os.getenv("X3PLUS_JETSON_HOST", "127.0.0.1")
@@ -252,7 +252,7 @@ def check_arm_cam_pose(detect_home_deg, *, real: bool, acknowledged: bool = Fals
         "    geometry valid at ONE pose only, and nothing downstream can catch a\n"
         "    mismatch: the model returns a confident number at any pose and the arm\n"
         "    then grasps precisely in the wrong place.\n"
-        "    Fix: re-measure at the pose you actually detect from (CALIBRATION_PLAN.md\n"
+        "    Fix: re-measure at the pose you actually detect from (docs/calibration/CALIBRATION_PLAN.md\n"
         "    Phase 1/2 + 3 — intrinsics and distortion carry over unchanged), or drive\n"
         "    the arm to a calibrated pose for detection via --nav-home-deg and set\n"
         "    --grasp-home-deg to the trained C3 pose."

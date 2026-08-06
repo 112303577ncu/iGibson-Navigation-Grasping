@@ -25,7 +25,7 @@ Usage:
     # verify an existing result: live undistort preview (needs a display)
     python3 calibrate_intrinsics.py --source 1 --check rear_cam_intrinsics.json
 
-Pass criteria (see CALIBRATION_PLAN.md Phase 1):
+Pass criteria (see docs/calibration/CALIBRATION_PLAN.md Phase 1):
     reprojection error < 0.5 px (ideally < 0.3), fx ~= fy within ~2%,
     (cx, cy) within ~(320, 240) +- 40 for the 640x480 streams.
 """
@@ -126,7 +126,7 @@ def calibrate(args):
 
     # Distortion displacement: how far raw pixels move after undistortion.
     # The ground-distance model reads RAW y2/cx_box, so this decides whether
-    # distortion can be ignored (see CALIBRATION_PLAN.md Phase 1).
+    # distortion can be ignored (see docs/calibration/CALIBRATION_PLAN.md Phase 1).
     w, h = img_size
     probes = np.array([
         [w * 0.50, h * 0.85],   # bbox-bottom region (drives estimate_ground_distance)

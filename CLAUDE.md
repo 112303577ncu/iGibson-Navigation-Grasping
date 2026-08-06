@@ -10,11 +10,27 @@
 
 ---
 
-## 檔案結構（三資料夾：夾取 / 辨識 / 整合）
+## 檔案結構（四資料夾：夾取 / 辨識 / 整合 / 操作台）
 
-專案根目錄分成三個資料夾，另保留 `CLAUDE.md`、`AGENTS.md`、`progress.md`、
-`TROUBLESHOOTING.md`（問題與解決紀錄：症狀→原因→解法→教訓）、`INDEX.md`、
-`arm_pose.md`、`JETSON_DRYRUN_CHECKLIST.md`。
+程式碼分成 `grasp/`、`detection/`、`integration/`、`ui/` 四個資料夾，另有
+`tests/`（跨模組回歸測試）與 `model_tools/`（模型打包與發佈）。
+
+根目錄只留六份文件：`README.md`（對外門面）、`CLAUDE.md`（本檔）、`AGENTS.md`、
+`INDEX.md`（程式碼導覽）、`TROUBLESHOOTING.md`（症狀→原因→解法→教訓）、
+`progress.md`（進度與實機紀錄）。
+
+其餘工作文件 2026-08-06 起收在 `docs/` 底下，**引用時要帶路徑**：
+
+| 目錄 | 內容 |
+|------|------|
+| `docs/calibration/` | 校正計畫、相機參數、`arm_pose.md`、實測校正資料 |
+| `docs/operations/` | `JETSON_DRYRUN_CHECKLIST.md`、開機設備檢查、模式 B 測試計畫 |
+| `docs/handoff/` | 訓練端／部署端交接文件 |
+| `docs/planning/` | 任務規劃、訓練需求、模型發佈流程 |
+| `docs/images/` | README 用的操作台截圖 |
+
+⚠️ `grasp/v21/HANDOFF.md` 是 v21 自己的交接文件，**不是** `docs/handoff/HANDOFF.md`。
+兩者同名不同檔，改到時別搞混。
 
 ### `grasp/`（夾取）
 
@@ -84,7 +100,7 @@ v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 abso
 | `static/` | 前端：連線 / 主控台 / 任務設定 / 地圖 / 紀錄 |
 | `make_qr.py` | 開機偵測 IP 並把連線 QR code 畫到桌面（`--watch` 隨 IP 變動重畫） |
 | `jetson_check.sh` | ★上機一鍵檢查：連接埠、防火牆、UDP 迴路、序列埠占用、路線 |
-| `test_server.py` | 回歸測試，須 **45** 全過 |
+| `test_server.py` | 回歸測試，須 **47** 全過 |
 | `prototype.html` | 早期靜態原型，單檔雙擊即開、免 Python。功能以 `static/` 為準 |
 
 ```bash
@@ -142,7 +158,7 @@ pip install -r ~/Documents/deploy_jetson2/detection/requirements_detection.txt
 ```bash
 cd grasp/v21
 
-# 0) 上機前置檢查：93/37/641 全過、wrist_z_offset=0.0564、安全閘 exit 3
+# 0) 上機前置檢查：119/37/641 全過、wrist_z_offset=0.0564、安全閘 exit 3
 ./jetson_verify.sh
 
 # 1) 空跑測試（不驅動伺服機，確認角度輸出合理）

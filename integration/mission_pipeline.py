@@ -86,7 +86,7 @@ except ImportError:  # package import
 POLICY_X_OF_BASE_FOOTPRINT = 0.0199   # m, policy-frame x of base_footprint
 FRONT_AXLE_FROM_FOOTPRINT = 0.08      # m, front wheel axle ahead of base_footprint
 
-# ── the two arm homes (arm_pose.md) ──
+# ── the two arm homes (docs/calibration/arm_pose.md) ──
 # Driving and grasping want different arm poses, and v21 collapsed them: its
 # DeployConfig.home_deg IS the trained C3 grasp pose and grasp_home_deg defaults
 # to None. That is right for a standalone grasp run, which starts already parked
@@ -98,7 +98,7 @@ FRONT_AXLE_FROM_FOOTPRINT = 0.08      # m, front wheel axle ahead of base_footpr
 # v21 anticipated this: run() takes its starting pose from grasp_home_deg when
 # set, and _scripted_lift_and_return brings the arm back to home_deg afterwards,
 # so setting both makes the object travel home at the nav pose too.
-NAV_HOME_DEG = (90.0, 140.0, 0.0, 0.0, 90.0, 30.0)      # arm_pose.md travel pose
+NAV_HOME_DEG = (90.0, 140.0, 0.0, 0.0, 90.0, 30.0)      # docs/calibration/arm_pose.md travel pose
 GRASP_HOME_DEG = (90.0, 67.08, 9.79, 9.79, 90.0, 30.0)  # C3, the trained pose
 
 ODOM_RATE_HZ = 20.0           # Route A's measured /odom_setmotor rate

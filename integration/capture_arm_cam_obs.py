@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Capture arm-camera calibration observations, one object placement at a time.
 
-CALIBRATION_PLAN.md Phase 2 needs, for each placement of the object, a base-frame
+docs/calibration/CALIBRATION_PLAN.md Phase 2 needs, for each placement of the object, a base-frame
 coordinate you measured with a ruler and the bbox bottom-centre pixel the camera
 sees it at. Doing that by hand means reading a number off a video window,
 transcribing it, and typing it into a solver command — for eight placements,
@@ -40,7 +40,7 @@ Real session
 
 Coordinates are BASE-FRAME ABSOLUTE, not distances from the ground mark. If your
 reference mark is at (0.167, 0.018) and you put the object 8 cm ahead of it, that
-is 0.247, 0.018 — see CALIBRATION_PLAN.md Phase 3 step 1.
+is 0.247, 0.018 — see docs/calibration/CALIBRATION_PLAN.md Phase 3 step 1.
 
 Where the object has to be: at the C3 pose the camera sees the ground over
 roughly x = 0.195-0.32 m, and laterally from about -5.9 cm to +10.7 cm. That
@@ -393,7 +393,7 @@ def main() -> int:
 
     print("\nType the object's BASE-FRAME coordinate as 'x y' (metres) and press")
     print("Enter. That is the absolute base coordinate, not a distance from your")
-    print("ground mark — CALIBRATION_PLAN.md Phase 3 step 1.")
+    print("ground mark — docs/calibration/CALIBRATION_PLAN.md Phase 3 step 1.")
     print("Enter 'u' to undo the last placement, 'd' to done, 'q' to quit.\n")
 
     try:

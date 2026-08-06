@@ -289,7 +289,7 @@ THETA_REAR = 16.35
 
 ## 7. 版本與使用警告
 
-1. 正式參數來源為 `CALIBRATION_PLAN.md`、`progress.md` 與 `integration/vision_grasp_pipeline.py`。
+1. 正式參數來源為 `CALIBRATION_PLAN.md`、`../../progress.md` 與 `integration/vision_grasp_pipeline.py`。
 2. 舊工具中可能仍出現 `650` 或 `957.6253` 等歷史暫用焦距，這些不是正式校正值，不應複製到正式 pipeline。
 3. 手臂相機 bbox 底邊中點必須先去畸變；後方相機目前僅在地面測距用途下允許忽略畸變。
 4. 改變解析度、影像裁切方式、相機固定位置或手臂觀測姿勢後，必須重新確認相關參數。

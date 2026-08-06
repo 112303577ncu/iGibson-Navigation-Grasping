@@ -98,7 +98,7 @@
 
 > ⚠️ **2026-07-27 更新**：本節內容早於「TCP 定義不一致」的發現。實機夾取**從未真正成功過**
 > （v17 與 v18 皆是）。根因與後續規格見本檔最末 2026-07-26/07-27 節與
-> `GRASP_TRAINING_REQUIREMENTS_2026-07-27.md`。下方的 Phase 完成度僅指電腦端工作。
+> `docs/planning/GRASP_TRAINING_REQUIREMENTS_2026-07-27.md`。下方的 Phase 完成度僅指電腦端工作。
 
 **Phase 0–7 現有視覺導航＋夾取的電腦端工作已完成，剩下上機實測；Phase 8 的 ROS
 `/scan` bridge 已先完成，但 set_motor／odom／ROS 定位／巡航送物仍是規劃，尚未實作。**
@@ -170,7 +170,7 @@
 6. 備忘：訓練機 per-seed CSV 在其 scratchpad（`eval_best_model.csv`、`eval_ckpt281440.csv`），
    需要逐集失敗分析時再取。
 
-工具備忘：`startup_device_check.py`（開機檢查）、`STARTUP_DEVICE_CHECK.md`（流程）、
+工具備忘：`startup_device_check.py`（開機檢查）、`docs/operations/STARTUP_DEVICE_CHECK.md`（流程）、
 `stream_cam.py`（瀏覽器預覽/點擊取 raw x,y）、`solve_cam_to_base.py`（Phase 3 求解）。
 
 ---
@@ -194,7 +194,7 @@
 - `integration/vision_grasp_bridge.py`：同步常數 + `undistort_pixel()`，
   main loop 的 `(cx_box, y2)` 先去畸變；docstring 校正狀態更新（內參/θ 已完成，cam-x/y 等 Phase 3）。
 - `detection/arm_cam.py`：同步常數 + `undistort_pixel()`，主迴圈先去畸變再算距離/偏移。
-- `CALIBRATION_PLAN.md` 常數對照表①②畸變決策已填值標記完成。
+- `docs/calibration/CALIBRATION_PLAN.md` 常數對照表①②畸變決策已填值標記完成。
 
 驗證：`py_compile` 三檔通過；`vision_grasp_pipeline.py --selftest` 全過——
 undistort 純數學版往返誤差 0.0000px，Phase 2 四點回推距離誤差最大 **0.33cm**
@@ -259,7 +259,7 @@ README 也已同步標注；per-seed CSV 在訓練機 scratchpad。
 - 當次 Rosmaster 是 ch341 `/dev/ttyUSB0`，`/dev/myserial` 當時指向它。
 - 當次 CP210x LiDAR 是 `/dev/ttyUSB1`；這些 ttyUSB 編號不可沿用到下一次開機。
 - 已把主要入口的預設 Rosmaster port 統一改成 `/dev/myserial`，避免 USB 枚舉順序改變時誤送到 LiDAR。
-- 已新增 `startup_device_check.py` 與 `STARTUP_DEVICE_CHECK.md`，開機後先跑設備檢查再進校正/實機測試。
+- 已新增 `startup_device_check.py` 與 `docs/operations/STARTUP_DEVICE_CHECK.md`，開機後先跑設備檢查再進校正/實機測試。
 - 相機 USB 重新枚舉後，目前對應為：
   - `/dev/video2`：手臂相機（原本無 SN0001 的 Sonix camera）
   - `/dev/video1`：後鏡頭（SN0001 的 Sonix camera）
@@ -1108,7 +1108,7 @@ FK 告訴 policy 手臂在鏡像位置 → policy 輸出反方向動作 → dist
 - 本機 main 同步到遠端 v17（350ab8f）；原未提交修改保留在 `backup-local-20260705` 分支。
 - Jetson 環境更新：目前 IP `172.31.28.252`；部署夾 `~/Documents/deploy_jetson`（非 git → scp 整包覆蓋）；
   `Rosmaster_Lib` 從 `~/Documents/x3plus_pipeline_deploy/grasp/` 重新本地化。
-- `JETSON_DRYRUN_CHECKLIST.md` **Phase 0–4 全數通過**：
+- `docs/operations/JETSON_DRYRUN_CHECKLIST.md` **Phase 0–4 全數通過**：
   - v17 模型/VecNormalize 載入正確；`verify_x3plus_deploy.py` 通過（port 7000 無佔用）。
   - `verify_camera_grasp_frame.py`：nav home 相機朝 +X 前下方（俯角 40°）健康；grasp home 相機下俯 75° 屬預期。
   - dry-run + `--real` **三階段狀態機跑完**：grasp home `[90, 32.704, 9.786, 32.704, 90, 30]` →
@@ -1202,7 +1202,7 @@ FK 告訴 policy 手臂在鏡像位置 → policy 輸出反方向動作 → dist
 
 ## 2026-07-07 — 校正→整合路線圖 + 內參工具 + gate 切乾淨（PR #2 續）
 
-### 新增：完整校正路線圖 `CALIBRATION_PLAN.md`（8 個 Phase，含過關標準/失敗排查/常數對照表）
+### 新增：完整校正路線圖 `docs/calibration/CALIBRATION_PLAN.md`（8 個 Phase，含過關標準/失敗排查/常數對照表）
 使用者要「一步一步」照做的計畫，順序＝地基相依：
 內參是距離模型的地基、距離模型是座標對齊的地基、座標對齊沒過夾取一定夾空。
 - Phase 0 環境同步 → 1 相機內參(重投影<0.5px) → 2 地面距離模型(θ/H，手臂±3cm) →
@@ -1245,7 +1245,7 @@ repo 原本**沒有真的內參校正**——現有 fx≈957 是「先沿用近�
 ### 使用者回報：Phase 0 環境準備完成
 - **部署夾改為 `~/Documents/deploy_jetson2`**（舊 `deploy_jetson` 的 Rosmaster_Lib 已複製到
   `deploy_jetson2/grasp/`）；記憶 [[jetson-network]] 已更新路徑。
-- `calibrate_intrinsics.py` + `CALIBRATION_PLAN.md` 已在 Jetson；venv 正常、OpenCV 4.13.0。
+- `calibrate_intrinsics.py` + `docs/calibration/CALIBRATION_PLAN.md` 已在 Jetson；venv 正常、OpenCV 4.13.0。
 - **相機身分確認**：`/dev/video0`=手臂相機、`/dev/video1`=後鏡頭（與既有記憶一致）。
 
 ### 計畫微調（配合實況）
@@ -1265,7 +1265,7 @@ repo 原本**沒有真的內參校正**——現有 fx≈957 是「先沿用近�
 
 **訓練端與部署端在 28D 觀測裡取的 TCP 不是同一個點，相差約 8cm。**
 這使得 v17 與 v18 在實機上**從來沒有真正夾到過地面上的物體**，與物體高度、
-與觸發門檻都無關。詳細規格與移交事項見 `GRASP_TRAINING_REQUIREMENTS_2026-07-27.md`。
+與觸發門檻都無關。詳細規格與移交事項見 `docs/planning/GRASP_TRAINING_REQUIREMENTS_2026-07-27.md`。
 
 | | 觀測裡的 `tcp_pos` | C3 home 離地 |
 |---|---|---|

@@ -59,7 +59,7 @@
 - **症狀**：dry-run 下 TCP z 從 home 0.21 衝到 0.573 並飽和，dist 從 ~0.2 漲到 0.55 卡死，Stage 永遠 0，跑滿 300 步沒夾取。
 - **診斷線索**：①XY 大致趨近物體、**Z 方向完全相反**（物體 z=0.02 在下方，手臂卻往上）。②`min dist` 在第 1 步就出現 → 第一個 action 起即遠離。③換物體座標最終姿勢幾乎不變 → policy 幾乎不隨物體反應。
 - **確認非以下原因**：傳輸（已驗證正確）、物體座標（latch 正確凍結）、stale（連續送無 stale）。
-- **解法（2026-07-05）**：**v17 模型 + 對應的新 `grasp_home_deg=(90, 32.704, 9.786, 32.704, 90, 30)`**（repo commit bb51a61）。部署後照 `JETSON_DRYRUN_CHECKLIST.md` Phase 0–4 全數通過：Stage 0 兩步收斂觸發、S6 30→180 閉合、Stage 2 帶物回 home。
+- **解法（2026-07-05）**：**v17 模型 + 對應的新 `grasp_home_deg=(90, 32.704, 9.786, 32.704, 90, 30)`**（repo commit bb51a61）。部署後照 `docs/operations/JETSON_DRYRUN_CHECKLIST.md` Phase 0–4 全數通過：Stage 0 兩步收斂觸發、S6 30→180 閉合、Stage 2 帶物回 home。
 - **教訓**：sim-to-real「往固定飽和姿勢衝、不理會目標」是典型的 obs/action 慣例不一致或訓練起始姿勢不符；根治靠模型與部署姿勢成對更新，不要先動相機座標校正（那不是主因）。
 
 ### 8. DetectionReceiver 關閉時崩潰（✅ 已修 2026-07-16）

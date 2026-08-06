@@ -316,7 +316,7 @@ def _validate_geometry(spec: RouteSpec,
         ax, ay, _ = spec.bin_approach
         cx, cy = spec.bin_center
         reach = math.hypot(cx - ax, cy - ay)
-        # The arm's verified forward reach envelope; see CLAUDE.md / arm_pose.md.
+        # The arm's verified forward reach envelope; see CLAUDE.md / docs/calibration/arm_pose.md.
         if not 0.10 <= reach <= 0.60:
             raise ValueError(
                 f"bin approach point is {reach:.3f} m from the bin centre, "

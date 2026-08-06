@@ -57,7 +57,7 @@ python integration/vision_grasp_bridge.py --i-accept-predicted-extrinsics ...
 
 bridge 會拒絕送出，除非你：
 
-- 跑完 `CALIBRATION_PLAN.md` Phase 2（推薦），或
+- 跑完 `../calibration/CALIBRATION_PLAN.md` Phase 2（推薦），或
 - 明示接受預測值：`--i-accept-predicted-extrinsics`（只建議在 §2 的空跑觀察用）
 
 ---
@@ -98,7 +98,7 @@ bash grasp/v21/jetson_verify.sh     # 需 119 / 37 / 641 一字不差
 
 ## 2. 校正（Phase 2，第一次上機必做，約 2 小時）
 
-依 `CALIBRATION_PLAN.md` Phase 3 步驟 1 建 base 基準點，再做 Phase 2。
+依 `../calibration/CALIBRATION_PLAN.md` Phase 3 步驟 1 建 base 基準點，再做 Phase 2。
 
 手臂開到 C3 並停住：
 
@@ -235,7 +235,7 @@ python integration/vision_grasp_bridge.py --host <JETSON_IP> \
 | bridge 印 `[bottom-edge]` 而不是 `[centroid]` | 沒給 `--class-height` | 補上。近垂直視角下底邊法會偏 −11～−45 mm |
 | bridge 印 `outside the policy's evaluated range` | 物體不在 policy 訓練過的 x 0.20–0.33 / y ±0.10 內 | 把物體或車子挪進範圍。相機看得到 x 0.200–0.318，比訓練區還往外探，所以畫面最底那排就已經在邊界上 |
 | 夾取端印 `[SAFETY] REFUSED: target is outside the region` | 同上，但 bridge 沒擋到（例如外參偏移） | 先回 §3 確認座標對，再重擺 |
-| latch 位置固定偏移 | base 基準點記錯 | 回 `CALIBRATION_PLAN.md` Phase 3 步驟 1 |
+| latch 位置固定偏移 | base 基準點記錯 | 回 `../calibration/CALIBRATION_PLAN.md` Phase 3 步驟 1 |
 | 左右反了 | `sign_y` 反號 | `--sign-y` 改號，重跑 §3 |
 | S6 走到 180° 沒停 | 夾空，或 latch 位置偏了 | 先看 latch 位置；再看 Stage 0 的 `centred`/`pads_ready` |
 

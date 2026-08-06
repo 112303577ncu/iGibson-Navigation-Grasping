@@ -5,7 +5,7 @@ The arm camera (URDF ``mono_link``) is bolted to ``arm_link4``, so it MOVES WITH
 THE ARM. Its extrinsics — height above the floor, optical-axis depression, and
 where its ground projection sits in the base frame — are mounting geometry that
 is valid at exactly ONE arm pose. Only the intrinsics and distortion
-coefficients are pose-independent (CAMERA_CALIBRATION_PARAMETERS.md section 6).
+coefficients are pose-independent (docs/calibration/CAMERA_CALIBRATION_PARAMETERS.md section 6).
 
 Before this module the constants lived in three separate copies —
 ``integration/vision_grasp_bridge.py``, ``integration/vision_grasp_pipeline.py``
@@ -84,7 +84,7 @@ DIST = (-0.3764, -0.0748, -0.0015, 0.0035, 0.4793)  # k1 k2 p1 p2 k3
 
 # The image size those numbers were solved at. Intrinsics are only meaningful
 # together with it: a stream that resizes or crops invalidates all five
-# (CAMERA_CALIBRATION_PARAMETERS.md line 13 says so explicitly), silently, and
+# (docs/calibration/CAMERA_CALIBRATION_PARAMETERS.md line 13 says so explicitly), silently, and
 # every coordinate downstream comes out confidently wrong.
 #
 # Note how far off-centre the principal point is -- 212 in a 640-wide frame, not
@@ -180,7 +180,7 @@ class ArmCamPose:
             f"    {self.describe()}\n"
             f"    source: {self.source}\n"
             "    These came from URDF FK plus the mounting error solved at the nav\n"
-            "    home, not from the hardware. Run CALIBRATION_PLAN.md Phase 1/2 at\n"
+            "    home, not from the hardware. Run docs/calibration/CALIBRATION_PLAN.md Phase 1/2 at\n"
             "    this pose (intrinsics and distortion carry over unchanged; only\n"
             "    theta/H/cam_x/cam_y need redoing) and pass the results with\n"
             "    --cam-theta/--cam-h/--cam-x/--cam-y."
@@ -340,7 +340,7 @@ def frame_size_mismatch(width: int, height: int) -> Optional[str]:
         return None
     return (f"frame is {int(width)}x{int(height)} but the arm-camera intrinsics "
             f"were calibrated at {IMG_W}x{IMG_H}. fx/fy/cx/cy do not transfer "
-            f"across a resize or a crop (CAMERA_CALIBRATION_PARAMETERS.md), so "
+            f"across a resize or a crop (docs/calibration/CAMERA_CALIBRATION_PARAMETERS.md), so "
             f"every coordinate computed from this frame would be wrong. Either "
             f"stream at {IMG_W}x{IMG_H}, or re-run Phase 1 at the size you are "
             f"actually using. If this is a {IMG_W}x{IMG_H} camera reporting "

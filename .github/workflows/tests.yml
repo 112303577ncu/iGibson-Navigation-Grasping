@@ -1,0 +1,78 @@
+name: tests
+
+# Every suite below runs without a robot: no serial port, no camera, no ROS.
+# That is deliberate -- the hardware-dependent behaviour is covered by fakes and
+# recorded fixtures, so a regression in the safety guards or the mission machine
+# is caught here rather than next to a moving robot.
+
+on:
+  push:
+    branches: [main, 'merge-**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU torch only. The Jetson runs an NVIDIA-built wheel that is not
+          # installable here, and none of these tests touch the GPU anyway.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy pybullet pyyaml stable-baselines3 gymnasium
+          # opencv-python-headless, not opencv-python: the runner has no display
+          # and the GUI build pulls X11 libraries that are not installed.
+          pip install opencv-python-headless
+
+      - name: Grasp deployment controller (119 checks)
+        run: python grasp/v21/test_deploy_controller.py
+
+      - name: Servo reads over the half-duplex bus (37 checks)
+        run: python grasp/v21/test_servo_read.py
+
+      - name: Preventive floor guard (641 checks)
+        run: python grasp/v21/test_deploy_floor_guard.py
+
+      - name: Safety guards
+        run: python tests/test_safety_guards.py
+
+      - name: Mission layer, end to end
+        run: python tests/test_mission_end_to_end.py
+
+      - name: Model packaging
+        run: python tests/test_model_package.py
+
+      - name: Grasp-home homography
+        run: python tests/test_grasp_home_homography.py
+
+      - name: Camera capture recovery
+        run: python tests/test_stream_cam_capture.py
+
+      - name: Vision bridge pose
+        run: python tests/test_vision_grasp_bridge_pose.py
+
+      - name: Operator console
+        run: python ui/test_server.py
+
+      # The three pure-logic selftests. They need neither hardware nor torch,
+      # and they are the fastest thing that will tell you the FSM wiring broke.
+      - name: Mission FSM selftest
+        run: python integration/mission_fsm.py --selftest
+
+      - name: Mission pipeline selftest
+        run: python integration/mission_pipeline.py --selftest
+
+      - name: Vision grasp pipeline selftest
+        run: python integration/vision_grasp_pipeline.py --selftest
