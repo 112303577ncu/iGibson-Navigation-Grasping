@@ -70,7 +70,7 @@ home_deg       = (90, 140, 0, 0, 90, 30)   # navigation/cruise home
 grasp_home_deg = (90, 32.704, 9.786, 32.704, 90, 30)   # PPO training home
 S6 open=30 deg, closed=180 deg
 arm_hw_invert = (False, False, False, False, False)
-max_delta_deg=3.0
+max_delta_deg = 8.0    # v21. The v17 fallback uses 3.0 -- do not mix them up.
 ```
 
 ## Vision And Coordinate Code
@@ -103,13 +103,14 @@ Current calibration status: `vision_grasp_bridge.py`、`vision_grasp_pipeline.py
 
 | Path | Purpose |
 |---|---|
-| `grasp/trained_6d_models_v17/ppo_6d_final_ready_for_real_robot.zip` | PPO policy |
-| `grasp/trained_6d_models_v17/vecnormalize_6d_final.pkl` | VecNormalize stats |
+| `grasp/v21/models/candidate_v21_seed816_ckpt550000.zip` + `_vec.pkl` | **Current** grasp policy + VecNormalize. Contract `obs_28_incremental` |
+| `grasp/v21/manifest.json` | Single source of truth: weight sha256, contract, hardware gates |
+| `grasp/trained_6d_models_v17/*.zip` `.pkl` | v17 fallback policy. Absolute contract — never feed these to v21 |
 | `integration/nav_best_model/ppo_nav_281440_steps.zip` + `ppo_nav_vecnormalize_281440_steps.pkl` | Current nav baseline/default |
 | `integration/nav_best_model/doorway_ft_final.zip` + `doorway_ft_final_vecnormalize.pkl` | Candidate nav pair; on-robot A/B required before default switch |
 | `grasp/x3plus/yahboomcar.urdf` | FK/URDF frame source |
-| `detection/models/best.pt` | Current YOLO model |
-| `detection/models/data.yaml` | YOLO class names: `bottle-cap`, `paper-ball` |
+| `detection/models/best.pt` | Current YOLO model, single class `sugarbox` |
+| `detection/models/data.yaml` | Class names plus the measured object geometry the grasp side needs |
 
 ## Calibration And Verification Commands
 
@@ -130,9 +131,16 @@ python3 integration/verify_x3plus_deploy.py
 # TCP bridge one detection
 python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
 
-# Grasp with a calibrated external XYZ sender
-python3 grasp/x3plus_real_grasp.py --real --socket --width-grip --latch-obj \
-  --i-confirm-external-frame
+# Pre-flight before any --real run: 119/37/641, dry-run offset, safety gate
+./grasp/v21/jetson_verify.sh
+
+# Grasp with a calibrated external XYZ sender (v21). --width-grip and
+# --latch-obj do not exist here: the jaw closes on contact rather than on a
+# width-derived angle, and the caller's obj_provider owns target latching.
+python3 grasp/v21/x3plus_real_grasp.py --real --socket --unlock-candidate-real \
+  --model grasp/v21/models/candidate_v21_seed816_ckpt550000.zip \
+  --vecnorm grasp/v21/models/candidate_v21_seed816_ckpt550000_vec.pkl \
+  --contract obs_28_incremental --i-confirm-external-frame
 ```
 
 Useful pose/class arguments:
@@ -140,7 +148,7 @@ Useful pose/class arguments:
 ```bash
 --nav-home-deg 90,140,0,0,90,30
 --grasp-home-deg 90,140,0,0,90,30
---class-z bottle-cap=0.012 --class-z paper-ball=0.035
+--class-height sugarbox=0.065 --class-z sugarbox=0.0325
 ```
 
 ## Fast Search Keywords
