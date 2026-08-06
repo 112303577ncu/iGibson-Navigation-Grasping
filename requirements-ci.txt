@@ -1,0 +1,20 @@
+# Dependencies for running the test suites in CI (.github/workflows/tests.yml).
+#
+# This is NOT the deployment dependency list. The robot installs
+# grasp/requirements_jetson.txt and detection/requirements_detection.txt, which
+# pin older versions because the Jetson runs Python 3.8 with an NVIDIA-built
+# torch wheel that cannot be installed anywhere else.
+#
+# torch is deliberately absent: the workflow installs the CPU build from
+# PyTorch's own index first, because the default PyPI wheel is the CUDA one and
+# none of these tests touch a GPU.
+
+numpy
+pybullet
+pyyaml
+stable-baselines3
+gymnasium
+
+# headless, not opencv-python: the CI runner has no display, and the GUI build
+# pulls X11 libraries that are not installed there.
+opencv-python-headless
