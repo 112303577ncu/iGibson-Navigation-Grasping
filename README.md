@@ -54,8 +54,9 @@ graph TD
     Return["返回巡航路線<br>繼續執行任務"]
 
     RearCam["後相機<br>/back_cam/image_raw"]
-    SAM2["YOLOv11 + SAM2<br>遮罩最低點 → homography<br>離機執行，尚未接入任務迴圈"]
-    Topic["/trash_target/detection<br>目前無訂閱者"]
+    SAM2["YOLOv11 + SAM2（離機）<br>遮罩最低點 → homography<br>base_footprint 座標"]
+    Topic["/trash_target/detection<br>rosbridge"]
+    Adapter["trash_target 轉接<br>左正 → 右正、時效檢查"]
 
     TF["TF 座標關係<br>map → odom → base_footprint → base_link → laser_link"]
 
@@ -83,14 +84,24 @@ graph TD
     Trash --> Return
     Return -->|回到任務狀態機| FSM
 
-    RearCam -.-> SAM2
-    SAM2 -.-> Topic
+    RearCam --> SAM2
+    SAM2 --> Topic
+    Topic --> Adapter
+    Adapter -->|--target-source offboard| FSM
 
     Loc ~~~ TF
 ```
 
-實線是任務迴圈；虛線是離機執行的後相機 SAM2 路線，發布 `/trash_target/detection`
-但尚未有訂閱者，任務層目前仍以 `_detect_rear` 的 bbox 取得目標。
+目標偵測有兩個可切換的來源，兩者都回傳同一組 `(found, 前向距離, 右正橫向偏移)`，
+所以下游的一致性閘、黑名單與狀態機完全相同：
+
+| `--target-source` | 來源 | 特性 |
+|---|---|---|
+| `onboard`（預設） | 機上後相機 YOLO bbox | 不依賴外部連線 |
+| `offboard` | 離機 YOLO + SAM2 遮罩最低點 | 接地點較準，但需 rosbridge 連線 |
+
+離機來源逾時（預設 1 秒，以**本地到達時間**計算而非發布端時鐘）即回報「沒偵測到」，
+機器人繼續巡航而不是朝著過期座標前進。
 
 四種執行模式共用同一套夾取核心與狀態名稱：
 

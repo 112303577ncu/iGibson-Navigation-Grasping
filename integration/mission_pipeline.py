@@ -60,6 +60,7 @@ try:  # direct script execution
     import mission_fsm as mfsm
     import mission_status
     import ros_io
+    import trash_target as tt
     from feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
 except ImportError:  # package import
     from . import nav_rl as nr
@@ -69,6 +70,7 @@ except ImportError:  # package import
     from . import mission_fsm as mfsm
     from . import mission_status
     from . import ros_io
+    from . import trash_target as tt
     from .feedback_odom import FeedbackOdomConfig, FeedbackOdomReader
 
 # ── frame offsets, measured from the deployed FK and the URDF, not assumed ──
@@ -275,6 +277,11 @@ class MissionRunner:
             period=getattr(args, "status_period", mission_status.DEFAULT_PERIOD_S))
         self._last_det = 0.0
         self._det_streak = 0
+        # getattr so the selftests, which build runners from partial arg
+        # namespaces, keep working and default to the onboard camera.
+        self._target_source = getattr(args, "target_source", "onboard")
+        self._trash_max_age_s = getattr(args, "trash_max_age",
+                                        tt.DEFAULT_MAX_AGE_S)
         self._last_log = 0.0
         self._t_prev = time.time()
         self._latched: Optional[Tuple[list, Optional[float], Optional[float]]] = None
@@ -531,6 +538,27 @@ class MissionRunner:
             return False
 
     # ── perception ──
+    def _read_detection(self) -> Tuple[bool, float, float]:
+        """``(found, dist_front, offset)`` from whichever source was selected.
+
+        Both sources answer the same question -- where is the object, in metres
+        ahead and metres to the RIGHT -- so the consistency gate, the
+        blacklist and the FSM below are identical either way. The only thing
+        that changes is who measured it.
+
+        ``offboard`` is the SAM2 publisher on a development machine. If that
+        link dies the adapter reports "not found" rather than the last thing it
+        said, so the robot keeps patrolling instead of driving at a stale fix.
+        """
+        # getattr, not self._target_source: the selftests exercise single
+        # methods on runners built without __init__, and the onboard camera is
+        # the right default for a runner that never chose a source.
+        if getattr(self, "_target_source", "onboard") == "offboard":
+            target = self.rio.latest_trash_target()
+            max_age = getattr(self, "_trash_max_age_s", tt.DEFAULT_MAX_AGE_S)
+            return tt.to_rear_detection(target, time.time(), max_age_s=max_age)
+        return self.nav._detect_rear()
+
     def _run_detection(self, now: float) -> None:
         """Rear-camera YOLO during patrol, with a spatial consistency gate.
 
@@ -545,7 +573,7 @@ class MissionRunner:
             return
         self._last_det = now
         try:
-            found, dist_f, off = self.nav._detect_rear()
+            found, dist_f, off = self._read_detection()
         except Exception as exc:
             print(f"[mission][det] rear detection failed: {exc}")
             # An exception is a missed frame, not part of a consecutive streak.
@@ -1340,8 +1368,12 @@ def build_and_run(args) -> int:
     controller = None
     odom_pub = None
     try:
-        rio = ros_io.make_ros_io(args.ros_backend, host=args.ros_host,
-                                 port=args.ros_port)
+        rio = ros_io.make_ros_io(
+            args.ros_backend, host=args.ros_host, port=args.ros_port,
+            # Only subscribe when the offboard source is actually selected;
+            # an unused subscription is a thread and a queue for nothing.
+            trash_topic=(ros_io.TRASH_TOPIC
+                         if args.target_source == "offboard" else None))
         controller = g.GraspController(gcfg, real_servo=args.real, use_socket=False)
         nav = MissionNavigator(
             controller.servo.device, model,
@@ -1789,6 +1821,19 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--selftest", action="store_true", help="offline logic tests")
+    p.add_argument("--target-source", choices=("onboard", "offboard"),
+                   default="onboard",
+                   help="where patrol detections come from. 'onboard' (default) "
+                        "runs YOLO on the robot's rear camera. 'offboard' "
+                        f"subscribes to {ros_io.TRASH_TOPIC}, published by "
+                        "detection/rear_cam_sam2_publisher.py on a development "
+                        "machine (YOLO + SAM2, mask bottom point). The offboard "
+                        "source needs --ros-backend ros.")
+    p.add_argument("--trash-max-age", type=float, default=tt.DEFAULT_MAX_AGE_S,
+                   metavar="SECONDS",
+                   help="offboard detections older than this are treated as no "
+                        "detection (default %(default)s). Aged by local arrival "
+                        "time, not the publisher's clock.")
     p.add_argument("--status-udp", default=None, metavar="HOST:PORT",
                    help="publish JSON status datagrams (e.g. "
                         f"{mission_status.DEFAULT_ENDPOINT}). Fire-and-forget: "
@@ -1942,6 +1987,15 @@ def parse_args(argv=None):
             p.error(f"--status-udp: {exc}")
     if not math.isfinite(args.status_period) or args.status_period < 0.0:
         p.error("--status-period must be finite and >= 0")
+    if args.target_source == "offboard":
+        if args.ros_backend != "ros":
+            # NullRosIO's latest_trash_target always returns None, so this
+            # combination patrols forever and never sees anything. Fail here
+            # rather than let it look like the publisher is at fault.
+            p.error("--target-source offboard needs --ros-backend ros; "
+                    f"the target arrives over rosbridge on {ros_io.TRASH_TOPIC}")
+        if not math.isfinite(args.trash_max_age) or args.trash_max_age <= 0.0:
+            p.error("--trash-max-age must be finite and > 0")
     return args
 
 

@@ -81,7 +81,8 @@ v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 abso
 | `mission_fsm.py` | 21 狀態任務機（純邏輯，`--selftest`/`--diagram`）。強制「輪子與手臂不同時動」「換目標來源必重置 nav」 |
 | `map_goal_provider.py` | route.yaml 117 waypoint + AMCL pose → `(dist, bearing)`。含 `--validate` 與弧長重取樣（Route C 原檔最小間距只有 0.049 m） |
 | `feedback_odom.py` | `get_motion_data()` → odom pose，移植 Route A 校正值（linear 0.65 / angular 0.501） |
-| `ros_io.py` | rosbridge：發 `/odom_setmotor` + `odom→base_footprint` TF、收 `/amcl_pose`（含 covariance 發散門檻） |
+| `ros_io.py` | rosbridge：發 `/odom_setmotor` + `odom→base_footprint` TF、收 `/amcl_pose`（含 covariance 發散門檻）與 `/trash_target/detection`（僅 `--target-source offboard` 時訂閱） |
+| `trash_target.py` | 離機 SAM2 目標的轉接層。**發布端 y 左為正、pipeline offset 右為正，這裡負號翻轉** —— 兩邊都是同範圍的 float，接錯不會報錯只會轉錯邊。逾時／無效／後方目標一律 fail closed |
 | `vision_grasp_pipeline.py` | ★模式A 自走全流程：雙相機導航(set_car_motion)→handoff→PPO 夾取(obj_provider)→驗證/重試(≤3)。含 `--selftest` |
 | `vision_grasp_bridge.py` | 模式B（除錯）：辨識→算 x/y/z/寬度/高度→TCP 5555 送夾取端。payload 是 superset，v17 讀 `w`、v21 讀 `height` |
 | `nav_rl.py` + `nav_rl_grasp_pipeline.py` | 模式C：RL 導航避障（PPO+48束LiDAR，訓練 plant 復刻+幾何煞停）→精對位→夾取，見 `NAV_RL.md` |

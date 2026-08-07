@@ -65,6 +65,9 @@ jobs:
       - name: Vision bridge pose
         run: python tests/test_vision_grasp_bridge_pose.py
 
+      - name: Offboard SAM2 target adapter (sign convention)
+        run: python tests/test_trash_target.py
+
       - name: Operator console
         run: python ui/test_server.py
 

@@ -35,12 +35,16 @@ from typing import Any, Mapping, Optional, Tuple
 
 try:  # direct execution vs package import, same pattern as the other modules
     from map_goal_provider import MapPose
+    import trash_target
 except ImportError:  # pragma: no cover - exercised by the package path
     from .map_goal_provider import MapPose
+    from . import trash_target
 
 ODOM_TOPIC = "/odom_setmotor"      # NOT /odom: Route A's canonical name
 TF_TOPIC = "/tf"
 AMCL_TOPIC = "/amcl_pose"
+# Published by detection/rear_cam_sam2_publisher.py, which runs OFF the robot.
+TRASH_TOPIC = "/trash_target/detection"
 ODOM_FRAME = "odom"
 BASE_FRAME = "base_footprint"
 
@@ -189,6 +193,9 @@ class NullRosIO:
     def latest_pose(self):
         return None
 
+    def latest_trash_target(self):
+        return None
+
     def pose_age(self, now: Optional[float] = None) -> float:
         return float("inf")
 
@@ -215,6 +222,7 @@ class RosBridgeIO:
                  connect_timeout_s: float = 5.0,
                  odom_topic: str = ODOM_TOPIC,
                  amcl_topic: str = AMCL_TOPIC,
+                 trash_topic: Optional[str] = None,
                  tf_topic: str = TF_TOPIC,
                  odom_frame: str = ODOM_FRAME,
                  base_frame: str = BASE_FRAME,
@@ -238,6 +246,9 @@ class RosBridgeIO:
         self._pose: Optional[MapPose] = None
         self._pos_var = self._yaw_var = float("nan")
         self._recv_ts = 0.0
+        self._trash: Optional["trash_target.TrashTarget"] = None
+        self._trash_recv_ts = 0.0
+        self._trash_error = ""
         self._lock = threading.Lock()
         self._last_error = ""
         self.published = 0
@@ -257,7 +268,7 @@ class RosBridgeIO:
                 ) from exc
 
         self._client = roslibpy.Ros(host=host, port=int(port))
-        self._odom = self._tf = self._amcl = None
+        self._odom = self._tf = self._amcl = self._trash_topic = None
         try:
             self._client.run(timeout=float(connect_timeout_s))
             if not self._client.is_connected:
@@ -271,6 +282,10 @@ class RosBridgeIO:
                 self._client, amcl_topic,
                 "geometry_msgs/PoseWithCovarianceStamped", queue_length=1)
             self._amcl.subscribe(self._on_amcl)
+            if trash_topic:
+                self._trash_topic = roslibpy.Topic(
+                    self._client, trash_topic, "std_msgs/String", queue_length=1)
+                self._trash_topic.subscribe(self._on_trash)
             # Constructing a Service does not require it to be advertised yet;
             # whether AMCL actually offers it is checked by the preflight.
             self._nomotion = roslibpy.Service(self._client, nomotion_service,
@@ -300,6 +315,37 @@ class RosBridgeIO:
             self._pos_var, self._yaw_var = pos_var, yaw_var
             self._recv_ts = time.monotonic()
             self._last_error = ""
+
+    def _on_trash(self, message: Mapping[str, Any]) -> None:
+        target = trash_target.parse_trash_target(message)
+        if target is None:
+            error = "unparseable /trash_target/detection payload"
+            if error != self._trash_error:
+                print(f"[ros-io] {error}")
+                self._trash_error = error
+            return
+        self._trash_error = ""
+        with self._lock:
+            self._trash = target
+            self._trash_recv_ts = time.monotonic()
+
+    def latest_trash_target(self):
+        """Latest offboard target, restamped to LOCAL arrival time.
+
+        Same reasoning as ``latest_pose``, and it matters more here: the
+        publisher runs on a development machine, so its ``timestamp_unix``
+        comes off a different clock entirely. Ageing by it would let a skewed
+        laptop clock either hide a dead link or expire a live one. Local
+        receipt time is the only clock both ends agree on.
+        """
+        with self._lock:
+            target, ts = self._trash, self._trash_recv_ts
+        if target is None:
+            return None
+        wall = time.time() - (time.monotonic() - ts)
+        return trash_target.TrashTarget(
+            target.valid, target.x_forward_m, target.y_left_m,
+            target.distance_m, wall, target.reason, target.source)
 
     def latest_pose(self) -> Optional[MapPose]:
         """Latest AMCL pose, restamped to LOCAL arrival time.
@@ -463,7 +509,7 @@ class RosBridgeIO:
 
     def close(self) -> None:
         self._nomotion = None
-        for attr in ("_amcl", "_odom", "_tf"):
+        for attr in ("_amcl", "_trash_topic", "_odom", "_tf"):
             topic = getattr(self, attr, None)
             setattr(self, attr, None)
             if topic is None:
