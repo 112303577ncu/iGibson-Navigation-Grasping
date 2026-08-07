@@ -28,14 +28,69 @@ and grasping in PyBullet. First successful physical grasp: 2026-07-31.
 機器人沿預錄路線巡航，用手臂相機找地上的目標物，轉向接近後以 PPO 策略夾取，
 帶到垃圾桶投放，再回到路線上。
 
-```text
-巡航 route.yaml（117 waypoints）
-  → 手臂相機 → YOLOv11 → bbox 幾何 → 目標 (x, y, z, height)
-  → 底盤接近，於 home 姿勢鎖定座標
-  → 28D 觀測 → PPO → Rosmaster 伺服機指令
-       Stage 0 對位 / Stage 1 接觸夾持 / Stage 2 抬升
-  → 送至垃圾桶投放 → 回巡航
+```mermaid
+graph TD
+    UI["操作人員<br>X3Plus Lite UI<br>任務設定 / 啟動 / 停止"]
+    FSM["任務狀態機（21 狀態）<br>巡航 → 辨識 → 接近 → 夾取 → 投放 → 續巡"]
+
+    Map["場域地圖<br>route.yaml<br>117 waypoints"]
+    Lidar["YDLIDAR TG30<br>/scan<br>障礙物距離資料"]
+    ArmCam["手臂相機<br>掛載於 arm_link4"]
+
+    Loc["AMCL 定位<br>TF 座標轉換<br>目前位姿 (x, y, yaw)"]
+    Vision["YOLOv11 目標辨識<br>bbox 幾何反投影<br>目標 (x, y, z, height)"]
+
+    NavObs["55D 導航觀測<br>距離 / 方位 sin·cos<br>速度回授 + 前一步動作<br>LiDAR 48 rays"]
+    NavPPO["PPO 導航策略<br>iGibson 訓練"]
+    ChassisCtrl["底盤控制<br>Rosmaster / set_motor"]
+    Chassis["麥克納姆輪底盤<br>巡航 / 避障 / 接近目標"]
+
+    HomePose["home 姿勢鎖定座標<br>目標接近與對位"]
+    GraspObs["28D 夾取觀測<br>obs_28_incremental"]
+    GraspPPO["PPO 夾取策略<br>PyBullet 訓練"]
+    ArmCtrl["機械手臂控制<br>Stage 0 對位<br>Stage 1 接觸夾持<br>Stage 2 抬升<br>FloorGuard 預防式防護"]
+
+    Trash["送至垃圾桶投放"]
+    Return["返回巡航路線<br>繼續執行任務"]
+
+    RearCam["後相機<br>/back_cam/image_raw"]
+    SAM2["YOLOv11 + SAM2<br>遮罩最低點 → homography<br>離機執行，尚未接入任務迴圈"]
+    Topic["/trash_target/detection<br>目前無訂閱者"]
+
+    TF["TF 座標關係<br>map → odom → base_footprint → base_link → laser_link"]
+
+    UI --> FSM
+    FSM --> Map
+    FSM --> Lidar
+    FSM --> ArmCam
+
+    Map --> Loc
+    Lidar --> Loc
+    Loc --> NavObs
+    Lidar --> NavObs
+    NavObs --> NavPPO
+    NavPPO --> ChassisCtrl
+    ChassisCtrl --> Chassis
+
+    ArmCam --> Vision
+    Vision --> HomePose
+    HomePose --> GraspObs
+    GraspObs --> GraspPPO
+    GraspPPO --> ArmCtrl
+
+    Chassis --> Trash
+    ArmCtrl --> Trash
+    Trash --> Return
+    Return -->|回到任務狀態機| FSM
+
+    RearCam -.-> SAM2
+    SAM2 -.-> Topic
+
+    Loc ~~~ TF
 ```
+
+實線是任務迴圈；虛線是離機執行的後相機 SAM2 路線，發布 `/trash_target/detection`
+但尚未有訂閱者，任務層目前仍以 `_detect_rear` 的 bbox 取得目標。
 
 四種執行模式共用同一套夾取核心與狀態名稱：
 
@@ -90,7 +145,7 @@ and grasping in PyBullet. First successful physical grasp: 2026-07-31.
 | 運算 | Jetson Nano（JetPack），Rosmaster 擴充板經 `/dev/myserial` |
 | 夾取策略 | Stable-Baselines3 PPO，28D 觀測 / 6D 動作，incremental 控制 |
 | 物理 | PyBullet（僅用於 FK，headless，不跑模擬） |
-| 視覺 | YOLOv11（Ultralytics），單類別 `sugarbox` |
+| 視覺 | YOLOv11（Ultralytics），單類別 `sugarbox`；後相機另有 SAM2 遮罩路線（離機） |
 | 定位 | AMCL + `/scan`，rosbridge 收發，odom 由輪速回推 |
 | 操作介面 | 純標準函式庫的 HTTP + SSE 伺服器，手機瀏覽器即可操作 |
 
