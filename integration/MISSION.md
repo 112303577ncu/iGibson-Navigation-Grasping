@@ -18,9 +18,26 @@
 |------|------|---------|
 | `map_goal_provider.py` | route.yaml 117 waypoint + AMCL pose → `(dist, bearing)`；到點/繞行/中斷續巡/禁區 | `--selftest`、`--validate` |
 | `feedback_odom.py` | `get_motion_data()` → odom pose（Route A 校正值 0.65 / 0.501） | `--selftest` |
-| `ros_io.py` | rosbridge 發 `/odom_setmotor`+TF、收 `/amcl_pose` | `--selftest`、`--probe` |
+| `ros_io.py` | rosbridge 發 `/odom_setmotor`+TF、收 `/amcl_pose`；`--target-source offboard` 時另收 `/trash_target/detection` | `--selftest`、`--probe` |
+| `trash_target.py` | 離機 SAM2 目標 → `(found, dist, offset)`。**負號翻轉**與時效判定 | `tests/test_trash_target.py`（18） |
 | `mission_fsm.py` | 21 狀態任務機（純邏輯，含 `--no-deliver` 的終止持物狀態） | `--selftest`、`--diagram` |
 | `mission_pipeline.py` | 主程序，接起全部 | `--selftest` |
+
+### 偵測來源（`--target-source`）
+
+| 值 | 來源 | 說明 |
+|---|---|---|
+| `onboard`（預設） | `vision_grasp_pipeline._detect_rear` | 機上後相機 YOLO bbox，不依賴外部連線 |
+| `offboard` | `/trash_target/detection` | 離機 YOLO + SAM2 遮罩最低點；需 `--ros-backend ros`，否則解析參數時就擋下 |
+
+兩者回傳同一組 `(found, 前向距離 m, 右正橫向偏移 m)`，下游的一致性閘、黑名單與
+狀態機完全相同。
+
+⚠️ **發布端 `object_y_base` 左為正，`estimate_offset_x` 右為正**，`trash_target.py`
+是唯一做負號翻轉的地方。兩邊都是同範圍的 float，接錯不會報錯，只會每次都轉錯邊。
+
+離機來源逾時（`--trash-max-age`，預設 1 秒）即回報「沒偵測到」繼續巡航。時效以
+**本地到達時間**計算 —— 發布端在另一台機器上，時鐘不同。
 
 全部離線可測：
 

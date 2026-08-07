@@ -10,6 +10,8 @@ Quick map for finding the right code without scanning the whole project.
 | Full mission (patrol → grasp → bin) | `integration/mission_pipeline.py` | `MissionRunner`, the tick loop, `_await_operator()` |
 | Mission state machine | `integration/mission_fsm.py` | `State`, `Action`, `step()` — 21 states, `--diagram` |
 | Operator console | `ui/server.py` | request routing, SSE stream, the two `--allow-real` gates |
+| Offboard SAM2 detector | `detection/rear_cam_sam2_publisher.py` | mask bottom point, `GroundProjector`, the published payload |
+| Offboard target adapter | `integration/trash_target.py` | `to_rear_detection` — **the left/right sign flip**, staleness, fail-closed |
 | One-process navigation + grasp | `integration/vision_grasp_pipeline.py` | `Navigator`, `run_pipeline()`, camera constants |
 | RL navigation + grasp | `integration/nav_rl_grasp_pipeline.py` | `RLNavigator`, `_rl_navigate()`, shared Rosmaster device |
 | TG30 ROS scan adapter | `integration/nav_rl.py` | `RosLaserScanSource`, `laser_scan_to_points()`, `make_lidar()` |
@@ -167,6 +169,12 @@ rg -n "mono_link|mono_joint|arm_joint|base_link" grasp/x3plus/yahboomcar.urdf
 - Freeze the target for one PPO episode; do not continuously update object position while the arm camera is moving.
 - If `x/y` looks consistently shifted, tune camera-to-base offsets (`CAM_TO_BASE_X/Y` or bridge `--cam-x/--cam-y`).
 - If left/right is reversed, flip `SIGN_Y` or bridge `--sign-y`.
+- With `--target-source offboard`, left/right is NOT `SIGN_Y`'s job. The publisher
+  is left-positive and `estimate_offset_x` is right-positive, and
+  `trash_target.to_rear_detection` is the single place that negates. Both are
+  plain floats over the same range, so a wrong sign steers away from the object
+  while looking entirely reasonable — `tests/test_trash_target.py` is what
+  catches it.
 - If distance scale changes with range, recalibrate camera `H/theta/FX/FY`.
 - `grasp/x3plus_deploy_bridge.py` was deleted 2026-08-01 (never imported; its own
   docstring said so). Recover from git history if ever needed.

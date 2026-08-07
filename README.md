@@ -227,14 +227,17 @@ python3 grasp/v21/test_deploy_floor_guard.py   # 641 checks — 預防式地板�
 python3 ui/test_server.py                      #  47 tests  — 操作台伺服器
 python3 tests/test_safety_guards.py            #  63 tests  — 安全閘
 python3 tests/test_mission_end_to_end.py       #  23 tests  — 任務層端到端
+python3 tests/test_model_package.py            #   9 tests  — 模型打包驗證
+python3 tests/test_trash_target.py             #  18 tests  — 離機目標轉接（符號慣例）
 ```
 
-另有三支純邏輯自測（不需相機、硬體或 torch）：
+另有四支純邏輯自測（不需相機、硬體或 torch）：
 
 ```bash
 python3 integration/mission_fsm.py --selftest
 python3 integration/mission_pipeline.py --selftest
 python3 integration/vision_grasp_pipeline.py --selftest
+python3 integration/ros_io.py --selftest
 ```
 
 ---
