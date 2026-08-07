@@ -66,6 +66,7 @@ v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 abso
 | 檔案 | 說明 |
 |------|------|
 | `arm_cam.py` | ★手臂相機 + YOLO，bbox → 前向距離+左右偏移（橋接幾何來源） |
+| `rear_cam_sam2_publisher.py` | 後相機 + YOLO + **SAM2**，取遮罩最低點 → homography → base 座標，經 rosbridge 發 `/trash_target/detection`。**在 Windows 開發機執行**，不佔 Jetson RAM。需自備 `sam2.1_b.pt` 與 `rear_ground_homography.json`（皆不在 repo）|
 | `models/best.pt` | ★正式 YOLOv11 模型。**2026-08-01 起為單類別 `sugarbox`（藍色盒子，高 6.5cm）**，sha256 `ca42c3f4…`。前兩代備份於同目錄：`best_eraser_detect_train11.pt.bak`（`eraser-detect`）、`best_trash_identify_train5.pt.bak`（`bottle-cap`/`paper-ball`）|
 | `models/data.yaml` / `yolo11n.pt` | 類別定義 / 基底模型 |
 | `calibration/` | 相機/底盤校正腳本與量測資料（含 `calibrate_arm_camera_theta.py`） |

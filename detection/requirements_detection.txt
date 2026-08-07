@@ -3,3 +3,10 @@
 ultralytics>=8.3
 opencv-python
 numpy
+
+# 只有 rear_cam_sam2_publisher.py 需要（在 Windows 開發機上跑，不裝在 Jetson）：
+#   torch      SAM2 推論；依你的 CUDA 版本從 pytorch.org 裝對應 wheel
+#   roslibpy   經 rosbridge 發 /trash_target/detection
+# Jetson 端不需要這兩個，故不列為硬相依。
+# torch
+# roslibpy
