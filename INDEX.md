@@ -133,7 +133,7 @@ python3 integration/verify_x3plus_deploy.py
 # TCP bridge one detection
 python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
 
-# Pre-flight before any --real run: 119/37/641, dry-run offset, safety gate
+# Pre-flight before any --real run: 119/37/641/29, dry-run offset, safety gate
 ./grasp/v21/jetson_verify.sh
 
 # Grasp with a calibrated external XYZ sender (v21). --width-grip and

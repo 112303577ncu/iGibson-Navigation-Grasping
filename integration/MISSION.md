@@ -129,8 +129,14 @@ roslaunch amcl.launch
 roslaunch rosbridge_server rosbridge_websocket.launch   # 需含 rosapi
 ```
 
-RViz 用 **2D Pose Estimate 設緊初始化**（std 0.15 m / yaw 7°）。寬初始化實測在重複走廊
-跳 1.573 m，不會收斂。
+> ⚠️ **這一步還不要設 2D Pose Estimate。** `odom → base_footprint` 的唯一發布者是本
+> pipeline（`OdomPublisher`，20 Hz），而 `FeedbackOdom` 每次程序啟動都從 (0, 0, 0)
+> 重新積分。主程式一開，odom 原點就跳回車子當下的位置，AMCL 手上的 `map→odom`
+> 立刻過期 —— 先設好的定位會在啟動主程式的那一刻失效，`variance` 從收斂值彈到
+> 0.3～60 m²，self-check 卡在
+> `FAIL: AMCL not usable (AMCL position variance … > 0.0625 m^2)`，連 Enter 都沒得按。
+> **順序是「先跑主程式（步驟 4），再設 2D Pose Estimate（步驟 5）」**，
+> 見 `SETMOTOR_ODOM_INTEGRATION.md` §4.3 與 §10.2。
 
 > **AMCL 只在「有動」的時候更新並發佈 `/amcl_pose`。** 夾取一次會讓底盤靜止 2 分鐘以上，
 > 出來就進 DELIVER，而 DELIVER 把過期的 fix 當成阻斷性故障 —— 每夾成功一次就會停在
@@ -166,6 +172,25 @@ python3 integration/mission_pipeline.py --real --show \
   --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
   --i-confirm-arm-cam-pose
 ```
+
+它會先印 `FAIL: AMCL not usable`，這是預期的 —— 現在才輪到定位。**不要關掉它**，
+它已經在發新的 `odom → base_footprint` 了，關掉再開就是把 odom 又歸零一次。
+
+**5. 主程式維持運行，回 RViz 設定位**
+
+RViz 用 **2D Pose Estimate 設緊初始化**（std 0.15 m / yaw 7°）：點在車子真實位置、
+箭頭朝真實車頭、放開後確認 `/scan` 貼合牆線、粒子雲收斂。寬初始化實測在重複走廊
+跳 1.573 m，不會收斂。
+
+```bash
+rosservice call /request_nomotion_update     # 靜止時逼 AMCL 重跑一次 filter
+rostopic echo -n 1 /amcl_pose                # covariance[0] 與 [7] 都要 < 0.0625
+```
+
+門檻 0.0625 m²（= 0.25 m std）定義在 `ros_io.DEFAULT_MAX_POS_VAR`，另有 20° 的 yaw
+門檻。**不要為了開跑去調低門檻**：超標數十倍是定位真的丟了，不是誤判。self-check 每
+個 tick 都會重跑，所以定位一收斂它自己就會轉成
+`AMCL ok at (...)` → `Self-check passed`，這時才按 Enter。
 
 分段驗證見下方測試計畫。`--detection-streak 999` 讓它永遠不離開路線（只驗巡航）；
 `--no-deliver` 讓它夾到就停（不送桶）。

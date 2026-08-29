@@ -144,6 +144,15 @@ echo "$rd" | grep -q "all 37 checks passed" \
     && ok "37 項全過" || bad "伺服機讀取測試未通過（完整輸出見上）"
 
 echo
+echo "=== 7.6 一鍵 launcher 接線（需 all 29 checks passed）==="
+# 2026-08-14：launcher 還在傳 nav-home 外參、也沒傳 --homography，而 bridge 早就把 C3
+# 改成只收實測 homography。兩邊各自都對，是介面對不上——而且要等手臂走到 C3 才會發現。
+lch=$(python3 test_one_command_launcher.py 2>&1)
+echo "$lch" | grep -E "checks passed|FAIL|Traceback" || echo "$lch" | tail -5
+echo "$lch" | grep -q "all 29 checks passed" \
+    && ok "29 項全過" || bad "一鍵 launcher 接線測試未通過（完整輸出見上）"
+
+echo
 echo "=== 8. dry-run（不驅動伺服機；需 wrist_z_offset = 0.0564）==="
 python3 x3plus_real_grasp.py \
   --model models/candidate_v21_seed816_ckpt550000.zip \
@@ -161,7 +170,7 @@ tail -3 /tmp/v21_guard.log
 echo
 echo "═══════════════════════════════════════════════════════════════"
 echo "Gate 判準："
-echo "  · 119 / 37 / 641 一字不差"
+echo "  · 119 / 37 / 641 / 29 一字不差"
 echo "  · wrist_z_offset 必須 0.0564（純幾何，跨平台不該變）"
 echo "  · Stage 序列 0→1 → jaw close → ABORT → retreat home，exit 0"
 echo "  · 策略步數容許 ±3 浮點漂移；超過就停下來回報"

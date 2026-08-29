@@ -48,8 +48,9 @@
 | `v21/models/candidate_v21_seed816_ckpt550000.zip` + `_vec.pkl` | ★現行 PPO 權重 + VecNormalize（**不可與 v17 混搭**，見下） |
 | `v21/deploy_contract.py` / `action_execution_v21.py` | 觀測/動作契約定義；`obs_28_incremental` |
 | `v21/manifest.json` | 權重 sha256、契約、硬體 gate、變更紀錄（單一事實來源） |
-| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` | 回歸測試，須 **119 / 37 / 641** 全過 |
-| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（119/37/641、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
+| `v21/jetson_one_command_grasp.py` | ★**一鍵辨識＋夾取**（C3 home → 相機辨識一次 → PPO 夾取）。自己開相機；`--calibrate` 產生 C3 homography 校正檔 |
+| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` / `test_one_command_launcher.py` | 回歸測試，須 **119 / 37 / 641 / 29** 全過 |
+| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（119/37/641/29、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
 | `v21/bus_probe.py` / `pose_check.py` | 唯讀診斷：半雙工伺服匯流排讀取、姿態/FK 核對 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
 | `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |
@@ -160,7 +161,7 @@ pip install -r ~/Documents/deploy_jetson2/detection/requirements_detection.txt
 ```bash
 cd grasp/v21
 
-# 0) 上機前置檢查：119/37/641 全過、wrist_z_offset=0.0564、安全閘 exit 3
+# 0) 上機前置檢查：119/37/641/29 全過、wrist_z_offset=0.0564、安全閘 exit 3
 ./jetson_verify.sh
 
 # 1) 空跑測試（不驅動伺服機，確認角度輸出合理）
@@ -195,6 +196,39 @@ python3 x3plus_real_grasp.py --real --obj-x 0.30 --obj-y 0.05 --obj-z 0.02
 ```
 權重固定用 `trained_6d_models_v17/`，**不可**指到 `v21/models/`。
 </details>
+
+### ★ 一鍵：辨識＋夾取（定點，Jetson 本機跑完）
+
+`grasp/v21/jetson_one_command_grasp.py` 把「移到 C3 home → 開相機辨識一次 →
+放掉 YOLO 記憶體 → PPO 夾取」串成單一指令。**相機由它自己開，不用另外開串流終端機**
+（有別的程序佔著 `/dev/video*`，preflight 會把 pid 和指令列印出來）。底盤不在範圍內。
+
+```bash
+source ~/grasp_venv/bin/activate     # 系統 python3 是 3.6.9，跑不動
+cd grasp/v21
+python3 jetson_one_command_grasp.py --check    # 檔案/相依/相機/序列埠/校正檔，不碰硬體
+python3 jetson_one_command_grasp.py            # 正式夾取，人要在旁邊、手放電源
+```
+
+⚠️ **C3 姿勢的視覺一定要有實測 homography。** bridge 在 C3 只吃
+`--homography` 的 pixel→base 校正檔，舊的 nav-home `H/θ/cam_x/cam_y/sign_y` 一律拒收，
+`--i-accept-predicted-extrinsics` 也繞不過去。檔案預設放
+`integration/grasp_home_homography.json`，launcher 在**開硬體之前**就用 bridge 同一道閘
+（≥6 點、最大誤差 <2cm）驗它。
+
+還沒有校正檔就先量：
+
+```bash
+python3 jetson_one_command_grasp.py --calibrate
+```
+
+手臂會停在 C3 home 不動。每擺一個位置就等它印一行
+`[bridge][calibration] {...}`，把裡面的 `u,v` 跟你尺量的 base `x,y` 記成一組；
+至少 6 組不共線、另外留 2 組當驗證點，Ctrl+C 後照畫面提示用
+`integration/grasp_home_homography.py` 解出 JSON。詳見
+`docs/calibration/CALIBRATION_PLAN.md`「grasp-home homography」。
+
+回歸測試 `grasp/v21/test_one_command_launcher.py` 須 **29** 全過（純邏輯，免硬體）。
 
 ### 模式 A：自走全流程（推薦，單一程式控車+手臂）
 
