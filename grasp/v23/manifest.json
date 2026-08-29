@@ -209,18 +209,69 @@
     "fov_vs_envelope": "E1 sees 44% more ground than C3 while the trained band is NARROWER than v21's. The camera can therefore see well outside where the policy has been trained, and a perfectly working detector can hand over a target that is finite, in frame, geometrically sound and completely unevaluated. That is exactly what _check_target_envelope is for -- do not widen it to match the FOV."
   },
   "hardware_gates": {
-    "note": "Only e1_homography_measured is true. On 2026-08-29, seven E1/sugarbox fit points produced RMSE 0.388 cm and max fit error 0.680 cm; two interior holdouts had maximum absolute axis error 0.448 cm and maximum Euclidean error 0.603 cm. Source: docs/calibration/e1_grasp_home_points_20260829.json; runtime file: integration/grasp_home_homography_e1.json. Measurement 1 was excluded because its reported left/right label contradicts every other sample. No motion, reach, dry-run or real-grasp gate is implied by this calibration.",
+    "note": "e1_homography_measured, e1_gripper_center_height_ruler_check and e1_minimum_object_height_measured are true. Motion envelope, dry-run and first-real-grasp gates remain open.",
     "e1_homography_measured": true,
     "e1_fov_ruler_check": false,
-    "e1_gripper_center_height_ruler_check": false,
+    "e1_gripper_center_height_ruler_check": true,
     "e1_real_reach_envelope": false,
-    "jetson_sb3_load_ok": false,
+    "jetson_sb3_load_ok": true,
     "jetson_self_tests": false,
     "jetson_dry_run_ok": false,
     "object_heights_measured": false,
     "guard_margin_8mm_validated_on_hardware": false,
     "first_real_grasp_logged": false,
-    "inherited_from_v21_do_not_assume": "v21's true gates -- c3_gripper_center_height_ruler_check and the 2026-07-31 first real grasp -- were measured AT C3. The arm pose is the one thing v23 changes, so neither carries over. What DOES carry over is what they validated that is pose-independent: the five-joint FK chain, the URDF_TO_TRAINING_FRAME correction and the gripper_center TCP definition."
+    "inherited_from_v21_do_not_assume": "v21's true gates -- c3_gripper_center_height_ruler_check and the 2026-07-31 first real grasp -- were measured AT C3. The arm pose is the one thing v23 changes, so neither carries over. What DOES carry over is what they validated that is pose-independent: the five-joint FK chain, the URDF_TO_TRAINING_FRAME correction and the gripper_center TCP definition.",
+    "e1_minimum_object_height_measured": true,
+    "e1_ruler_measurement_2026_08_29": {
+      "method": "pose_check.py --real at E1; arm held by x3plus_real_grasp.py --max-steps 0. Only S6 was driven.",
+      "gripper_center_above_ground_cm": {
+        "open_s6_30": {
+          "measured": 15.2,
+          "fk_predicted": 15.58,
+          "delta": -0.38
+        },
+        "closed_s6_180": {
+          "measured": 12.0,
+          "fk_predicted": 12.72,
+          "delta": -0.72
+        }
+      },
+      "finger_bottom_above_ground_cm": {
+        "open_s6_30": {
+          "measured": 13.5,
+          "fk_predicted": 12.31,
+          "delta": 1.19
+        },
+        "closed_s6_180": {
+          "measured": 11.0,
+          "fk_predicted": 9.46,
+          "delta": 1.54
+        }
+      },
+      "close_drop_cm": {
+        "measured_gripper_center": 3.2,
+        "fk_predicted": 2.86,
+        "contract_constant": 2.67,
+        "verdict": "the contract UNDERSTATES the real drop by 5.3 mm. It helps rather than hurts here (the pads end lower than modelled), but dc.GRASP_CLOSE_DROP is not the measured value."
+      },
+      "urdf_finger_error_at_e1_mm": {
+        "open": 11.9,
+        "closed": 15.4,
+        "note": "C3 measured 17 mm at the open angle on 2026-07-31. The three readings do not agree to better than ~5 mm, which is about what a ruler on a curved blade-shaped finger tip gives."
+      },
+      "unexplained": "gripper_center came out 4-7 mm BELOW the FK prediction at E1. At C3 the same check was exact (14.4 measured vs 14.39 predicted), so this is new. Candidates: ruler error, the arm not actually reaching E1 (+-2 deg pose repeatability), or S2 falling short of 74.2. It matters beyond this table: if the arm is not at E1, the homography measured there is offset too. Check the controller's '[Start] home: reached=True (residual X deg)' line on the next run."
+    },
+    "e1_minimum_object_height_2026_08_29": {
+      "graspable_min_cm": 3.0,
+      "fails_at_cm": 2.0,
+      "placement": "base (0.2587, -0.0035), i.e. 3 cm forward of the E1 ground mark",
+      "failure_mode": "ABORT at the fully-closed stop -- the jaw closes on air, NOT a floor collision. At 2 cm the gate read pad_after_close=16.9 mm against object_top=20.0 mm and passed, while the real pads sat ~15 mm higher and never reached the object.",
+      "why_the_floor_guard_is_not_the_limit": "At 3.6 cm the modelled pad sits at ~18.5 mm against an 8 mm guard line, so the guard has ~10 mm of slack and never fires. --floor-finger-error-mm therefore does nothing for this limit: it relaxes the guard, and the guard is not what is binding. The binding term is that _grasp_geometry computes pad_after_close from fk.pad_bottom_z() with NO finger-error correction, so the readiness gate fires ~1.5 cm too early.",
+      "predicted_vs_measured": "A model built from the ruler readings put the boundary at 3.6 cm; the robot grasps at 3.0. The mechanism was right and the threshold was 0.6 cm pessimistic -- consistent with the ~5 mm spread in the finger readings themselves.",
+      "workaround_if_lower_is_needed": "Understate --object-height. The stage-0 target is hover_gripper_center_z = 0.0597 + 0.45*height, so declaring height Δ short lowers the pads by 0.45Δ, and it lowers object_top in the readiness gate as well, which pushes the same way. --obj-z is NOT a knob: episode_wrist_z_offset subtracts it right back out, so the target height is unchanged."
+    },
+    "jetson_sb3_load_note": "2026-08-29: the v23 pair loads under the Jetson's grasp_venv and the release gate passes ('[UNLOCKED] status=candidate ... Integrity and contract verified'). Rosmaster opened on /dev/myserial, the arm reached E1 in one step, and the run completed with '[Bus] servo reads: no failures'.",
+    "first_real_grasp_logged_note": "Still false. A 3 cm object is reported grasped at E1 on 2026-08-29, but only the 2 cm FAILURE log has been captured. This gate wants the successful run's full stdout, the way v21's 2026-07-31 grasp is recorded."
   },
   "known_gaps": [
     "The URDF fingers are 16.7 mm longer than the real ones (measured at C3, 2026-07-31, pose_check.py). Unfixed, and not re-measured at E1. Short objects (paper balls, bottle caps) remain out of reach; --floor-finger-error-mm is a partial compensation only, and it raises the pads, so it does not help when a non-pad link is the lowest part.",
