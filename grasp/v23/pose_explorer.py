@@ -120,8 +120,24 @@ CANDIDATES = [
     ("F3", 83.00, 7.50, ""),
     ("F4", 85.00, 7.00, ""),
     ("F5", 86.00, 6.50, "near the sweep's peak predicted usable area"),
-    ("F6", 87.50, 6.00, "top of the sweep; check the arm is not folded awkwardly"),
+    ("F6", 87.50, 6.00, "top of the first sweep; check the arm is not folded awkwardly"),
+    ("G1", 86.50, 5.00, "best found once every joint is kept 5 deg inside its "
+                        "URDF limit. Beats F6 mostly at the NEAR edge."),
+    ("G2", 90.00, 6.00, "S2 straight up (sim 0). Answers 'what about 90?' -- it "
+                        "works, S2=90 is not special; all-90 is (see below)."),
 ]
+
+# ⚠ "S2=S3=S4=90" -- API 90 is sim ZERO for every joint, so all-90 stands the arm
+# straight up: camera at 43 cm, gripper_center at 51 cm, and the optical axis
+# pointing at the CEILING (theta -90). It sees no ground at all. S2=90 on its own
+# is fine and is included above as G2; it is S3/S4 at 90 that unfolds the arm.
+#
+# Sweeping S2 65-115 and S3=S4 0-25 for a 3 cm object, the best USABLE area
+# (window intersected with the arm's evaluated reach) is ~135 cm2 near S2=99 with
+# S3=S4=0 -- but S3=S4=0 IS the URDF joint limit, with nothing left to move
+# against, which is not somewhere to start an episode. Requiring every joint to
+# stay 5 deg inside its limit, the best is G1 at ~117 cm2, and F6 already reaches
+# ~104. The last stretch is bought entirely by pushing S3/S4 into their stop.
 
 # The widest region this arm has ever been shown to grasp in (v21's formal
 # evaluation, 97/100 on a held-out seed). Used only to score how much of a
