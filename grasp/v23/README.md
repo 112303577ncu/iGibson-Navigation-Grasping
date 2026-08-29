@@ -111,8 +111,8 @@ python3 x3plus_real_grasp.py \
 同上加 `--real --unlock-candidate-real`。人在旁邊、手放電源開關 ——
 **網頁上的停止鈕不是急停，電源開關才是。**
 
-manifest `status` 是 `candidate`，而且 v23 的硬體 gate **一項都沒過**
-（v21 過的那兩項是在 C3 量的，姿勢正是 v23 唯一改掉的東西，不能繼承）。
+manifest `status` 是 `candidate`。目前只有 E1 homography gate 已完成；動作、可達範圍、
+dry-run 與實抓 gate 都還沒過（v21 的實機結果是在 C3，不能繼承）。
 
 ### 4. 一鍵：辨識＋夾取
 
@@ -123,12 +123,43 @@ python3 jetson_one_command_grasp.py            # 正式
 
 ---
 
+## 姿勢還沒定案 — `pose_explorer.py`
+
+E1 的實測結果是：6.5 cm 的 sugarbox 只能擺在**前 2.0–5.5、左 2.0–右 5.5 cm**
+（約 26 cm²），而策略的訓練 band 是 101 cm²。視覺最多只能餵給它三分之一。
+
+這不是校正沒做好，是姿勢的幾何。盒子 6.5 cm 高、相機 23 cm 高幾乎垂直往下看，
+盒子**頂面**的投影比底面遠 1.4 倍，所以 `bbox_touches_border` 會在接地點還離
+地面視野邊界很遠時就先拒收。**物體高度是這裡最大的變數**，不是相機解析度。
+
+```bash
+python3 pose_explorer.py --list                    # 只印候選表，不碰硬體
+python3 pose_explorer.py --check                   # 檢查相機/序列埠/借用契約
+python3 pose_explorer.py --i-am-beside-the-robot   # 實際走一遍
+```
+
+相機**整場只開一次**，手臂在候選姿勢之間移動，每個姿勢存一張標註過的快照到
+`~/pose_explorer/`（`--show` 可另開即時視窗，需要顯示器）。快照上疊的是
+**預測**的地面格線（2 cm 一格）與光軸十字 —— 光軸在 u=212 而不是 320，這就是
+為什麼往右的可用範圍是往左的兩倍。
+
+`k` 記下你看上的姿勢，`q` 離開時會回 E1 並把清單寫進 `~/pose_explorer/session.json`。
+把那份清單給訓練端當新的 grasp home。
+
+⚠ **表格裡的面積是預測值，會高估。** E1 預測遠端到 x=0.305，實測前 6.0（x=0.2887）
+就撞上緣了，差 2 cm。用眼睛看，不要看數字。
+
+⚠ **換姿勢＝重訓。** 這支只幫你選，選完的姿勢不能直接部署 —— 策略是從特定
+home 訓練出來的。
+
+---
+
 ## 合併回 main 的條件
 
 這個分支要合併，下面每一項都要成立（也就是 `manifest.json` 的
-`hardware_gates` 從全 false 變成有實測值）：
+`hardware_gates` 必須逐項有實測證據）：
 
-- [ ] `e1_homography_measured` — ≥6 點、RMSE ≤1 cm、2 個保留點誤差 ≤1 cm
+- [x] `e1_homography_measured` — 2026-08-29：7 點 RMSE 0.388 cm；2 個保留點最大軸誤差 0.448 cm
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
 - [ ] `e1_gripper_center_height_ruler_check` — FK 說 15.58 cm（張爪），量出來對得上
 - [ ] `jetson_dry_run_ok` — 119/37/641/42 + `wrist_z_offset = 0.0564`

@@ -1,5 +1,22 @@
 # X3Plus 專題進度記錄
 
+## 2026-08-29 — v23/E1 grasp-home homography 實測完成
+
+- 使用 `sugarbox`、每點 20 幀中位數，在 v23 的 E1 grasp home 收到 10 筆有效
+  undistorted `(u,v)`；另有 3 筆因 bbox 碰到上／下／左影像邊界而依安全規則捨棄。
+- base 座標以 E1 張爪 `gripper_center` 地面投影 `(0.2287, -0.0035)` 為量尺基準：
+  `x = 0.2287 + forward`、`y = -0.0035 + left`。
+- 第 1 筆回報為「左 4 cm」，但其 `u=400.311` 與所有其他左右樣本相反；照原標註擬合
+  RMSE 會升到 **5.206 cm**，視為疑似左右抄反並排除，沒有把推測寫進正式外參。
+- 正式檔用 7 點擬合：RMSE **0.388 cm**、最大擬合誤差 **0.680 cm**。另保留第 4、10
+  兩個凸包內點驗證，最大單軸誤差 **0.448 cm**、最大歐氏誤差 **0.603 cm**，均通過
+  1 cm gate。
+- 原始整理與排除理由在 `docs/calibration/e1_grasp_home_points_20260829.json`；runtime
+  校正檔為 `integration/grasp_home_homography_e1.json`。`e1_homography_measured` 已改為
+  true；這只解除視覺映射 gate，不代表 dry-run、可達範圍或實抓已通過。
+
+---
+
 ## 2026-08-03 — v21 Jetson 單機辨識＋夾取實機成功
 
 ### 啟動姿態小幅回差恢復

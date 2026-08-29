@@ -326,6 +326,29 @@ V21_C3_GRASP_HOME = ArmCamPose(
 #
 # STILL A PREDICTION, and less of the workspace was ever checked here than at C3:
 # nothing in this row has been on the hardware.
+# sign_y is the ONE component here that has been measured, 2026-08-29, from the
+# E1 calibration pass:
+#
+#     base y +0.0165 (2 cm left)  -> u ~ 105     y -0.0035 (centre) -> u ~ 223
+#     base y -0.0235 (2 cm right) -> u ~ 342     y -0.0535 (5 cm right) -> u ~ 510
+#
+# Base +y lands on image-LEFT, so image-right is base -y, so sign_y = -1. The
+# same pass confirms the consequence independently: a box 3 cm to the LEFT runs
+# off the left edge while one 5 cm to the RIGHT is still comfortably inside,
+# which is what CX=212.23 in a 640-wide frame predicts (the ground reaches 2.0x
+# further to image-right than image-left) -- but only with this sign.
+#
+# ⚠ V21_C3_GRASP_HOME above still carries sign_y=+1.0 and has never been checked
+# on hardware either. It is the same camera on the same link, so it is probably
+# also -1; it is left alone here because changing it would change v21's live
+# behaviour on the strength of a measurement taken at a different pose. Measure
+# it at C3 before touching it.
+#
+# This does not affect the runtime grasp path. At a grasp home the bridge maps
+# through the measured homography and uses this row only for the pose stamp
+# (stamp_payload reads name and arm_deg). sign_y feeds the trigonometric model
+# and usable_placement_window, and with the wrong sign the latter reports the
+# reachable window MIRRORED -- which is how this was caught.
 V23_E1_GRASP_HOME = ArmCamPose(
     name="v23_e1_grasp_home",
     arm_deg=(90.0, 74.2, 8.6, 8.6, 90.0, 30.0),
@@ -333,13 +356,14 @@ V23_E1_GRASP_HOME = ArmCamPose(
     h_m=0.2306,
     cam_x_m=0.2723,
     cam_y_m=-0.0056,
-    sign_y=1.0,
+    sign_y=-1.0,
     distance_model_measured=False,
     base_offset_measured=False,
     source="deployment FK (policy frame) + nav-home mounting error "
            "(theta -3.600 deg, camera 0.1014 m lower than at nav home); "
-           "NOT measured at this pose. Nearly vertical (1.4 deg): use the "
-           "measured homography, not this distance model.",
+           "theta/H/cam_x/cam_y NOT measured at this pose. sign_y=-1 IS "
+           "measured (E1 calibration pass 2026-08-29). Nearly vertical "
+           "(1.4 deg): use the measured homography, not this distance model.",
 )
 
 POSES: Dict[str, ArmCamPose] = {

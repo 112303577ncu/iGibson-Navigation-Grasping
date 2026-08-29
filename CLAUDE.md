@@ -36,8 +36,9 @@
 
 > **★ 分支 `v23-grasp-test` 上另有 `grasp/v23/`（E1 高姿態），尚未合併。**
 > main 上不存在。v23 只改了 grasp home（C3 → E1）與權重；契約、`deploy_contract.py`、
-> `action_execution_v21.py`、URDF 都與 v21 逐位元組相同。硬體 gate **一項都沒過**，
-> 也還沒有 E1 的實測 homography。細節見該分支的 `grasp/v23/README.md`。
+> `action_execution_v21.py`、URDF 都與 v21 逐位元組相同。2026-08-29 已完成 E1 實測
+> homography；其餘動作、可達範圍、dry-run 與實抓硬體 gate 都還沒過。細節見該分支的
+> `grasp/v23/README.md`。
 > 模式 A / B / C 在兩個分支上都還是接 v21。
 
 > **★ 2026-08-01 起，正式夾取流程是 `grasp/v21/`，不是根目錄那支。**

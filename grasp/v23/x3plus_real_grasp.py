@@ -2977,7 +2977,8 @@ def _release_gate_ok(cfg: DeployConfig, unlock: bool) -> bool:
 
     Every failure this package can suffer on hardware is silent: a model paired with
     the wrong VecNormalize, the incremental weights decoded as absolute, a stack whose
-    hardware_gates are all false driven as though it were certified. None of them raise.
+    hardware motion/grasp gates are still false, so the candidate must not be driven
+    as though it were certified. A measured homography alone does not approve motion.
     So the gate is checked here, before the serial port is opened and before anything
     is loaded, and it is checked against manifest.json rather than against belief.
 

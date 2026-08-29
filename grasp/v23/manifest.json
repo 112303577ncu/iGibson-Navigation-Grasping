@@ -1,7 +1,7 @@
 {
   "package": "grasp-v23-candidate",
   "status": "candidate",
-  "status_note": "NOT sim-approved and NOT hardware-approved, and on weaker evidence than v21 carried at the same label. This is a 250k checkpoint with no formal held-out evaluation at all, one training grid cell (0.28, -0.070) still at 73.3% against an 80% per-cell gate, and nothing whatsoever measured on hardware at the E1 pose -- including the pixel->base homography the vision path cannot run without. --real therefore requires --unlock-candidate-real and a person beside the robot. Never relabel this without the gates below turning true.",
+  "status_note": "NOT sim-approved and NOT hardware-approved, and on weaker evidence than v21 carried at the same label. This is a 250k checkpoint with no formal held-out evaluation at all, and one training grid cell (0.28, -0.070) is still at 73.3% against an 80% per-cell gate. The E1 pixel->base homography was measured on hardware on 2026-08-29, but every motion/grasp hardware gate remains open. --real therefore requires --unlock-candidate-real and a person beside the robot. Never relabel this without the gates below turning true.",
   "created": "2026-08-29",
   "staged_from": "grasp/deploy_v23/ handoff package. Its model/, deploy_contract.py, action_execution_v21.py and x3plus/ were taken; its x3plus_real_grasp.py was NOT -- see deployment_base below.",
   "deployment_base": {
@@ -209,8 +209,8 @@
     "fov_vs_envelope": "E1 sees 44% more ground than C3 while the trained band is NARROWER than v21's. The camera can therefore see well outside where the policy has been trained, and a perfectly working detector can hand over a target that is finite, in frame, geometrically sound and completely unevaluated. That is exactly what _check_target_envelope is for -- do not widen it to match the FOV."
   },
   "hardware_gates": {
-    "note": "Every gate below is false. Nothing in this package has been on the robot at the E1 pose.",
-    "e1_homography_measured": false,
+    "note": "Only e1_homography_measured is true. On 2026-08-29, seven E1/sugarbox fit points produced RMSE 0.388 cm and max fit error 0.680 cm; two interior holdouts had maximum absolute axis error 0.448 cm and maximum Euclidean error 0.603 cm. Source: docs/calibration/e1_grasp_home_points_20260829.json; runtime file: integration/grasp_home_homography_e1.json. Measurement 1 was excluded because its reported left/right label contradicts every other sample. No motion, reach, dry-run or real-grasp gate is implied by this calibration.",
+    "e1_homography_measured": true,
     "e1_fov_ruler_check": false,
     "e1_gripper_center_height_ruler_check": false,
     "e1_real_reach_envelope": false,
@@ -223,7 +223,6 @@
     "inherited_from_v21_do_not_assume": "v21's true gates -- c3_gripper_center_height_ruler_check and the 2026-07-31 first real grasp -- were measured AT C3. The arm pose is the one thing v23 changes, so neither carries over. What DOES carry over is what they validated that is pose-independent: the five-joint FK chain, the URDF_TO_TRAINING_FRAME correction and the gripper_center TCP definition."
   },
   "known_gaps": [
-    "No measured E1 pixel->base homography exists yet. The vision path (mode B and jetson_one_command_grasp.py) cannot run at all until one is produced. integration/grasp_home_homography.json is C3's and is wrong here by construction -- the camera moved 1.6 cm up and the optical axis crossed vertical. Produce the E1 file with jetson_one_command_grasp.py --calibrate.",
     "The URDF fingers are 16.7 mm longer than the real ones (measured at C3, 2026-07-31, pose_check.py). Unfixed, and not re-measured at E1. Short objects (paper balls, bottle caps) remain out of reach; --floor-finger-error-mm is a partial compensation only, and it raises the pads, so it does not help when a non-pad link is the lowest part.",
     "Grid cell (0.28, -0.070) sits at 73.3% against an 80% per-cell gate, awaiting an RL re-run.",
     "Pose repeatability of +-2 deg gives roughly 1.6 cm of clip-free depth variation. It is mitigated only if the detector reprojects from joint angles; a fixed homography cannot adapt, which is one more reason the arm pose is re-verified on every detection (detection_pose_tol_deg).",
