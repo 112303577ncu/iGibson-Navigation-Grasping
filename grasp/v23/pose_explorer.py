@@ -28,6 +28,23 @@ So: this script drives the arm to each candidate, keeps ONE camera handle open
 across all of them, and lets you look. The numbers it prints are the same
 predictions, labelled as such. Your eyes are the measurement.
 
+CHASSIS DRIFT
+-------------
+The 2026-08-29 session lost its data to this. Three consecutive poses came back
+showing a different patch of floor, with the object gone, while the operator had
+touched nothing; two poses later it was back. The base is on unbraked mecanum
+wheels and the arm is heavy enough to push the robot while it travels, so "the
+camera moved" and "the robot moved" are indistinguishable from one frame.
+
+They are not indistinguishable from two. Revisiting a pose and phase-correlating
+against the first visit measures the shift directly: identical pose, identical
+overlay, so anything that moved is the robot. Every capture is now numbered
+rather than overwritten, revisits report the shift, and a large one is called
+out rather than left for someone to notice in the pictures afterwards.
+
+Bracket a session with the same pose (the default start and the automatic return
+are both E1), and check the number before trusting anything measured in between.
+
 SAFETY
 ------
 No policy is loaded and no grasp is attempted. The jaw stays open at 30 deg for
@@ -496,6 +513,63 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
             time.sleep(0.05)
         return None
 
+    visits = {}          # pose name -> number of captures so far
+    first_gray = {}      # pose name -> RAW grayscale of the first capture
+    drifts = []
+
+    def px_per_cm(pose):
+        """Image scale near the ground mark, from the PREDICTED extrinsics.
+
+        Only used to put the measured pixel shift into familiar units. The shift
+        itself is measured, and is reported in pixels too.
+        """
+        a = geo.project(pose, MARK_X, MARK_Y)
+        b = geo.project(pose, MARK_X + 0.01, MARK_Y)
+        if a is None or b is None:
+            return None
+        d = math.hypot(b[0] - a[0], b[1] - a[1])
+        return d if d > 1e-6 else None
+
+    def check_drift(name, frame, pose):
+        """Compare a revisit against this pose's first capture.
+
+        Raw frames only. The overlay is a deterministic function of the pose, so
+        correlating annotated frames would lock onto the identical grid and
+        report zero however far the robot had rolled.
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if name not in first_gray:
+            first_gray[name] = gray
+            return None
+        try:
+            (dx, dy), response = cv2.phaseCorrelate(
+                np.float32(first_gray[name]), np.float32(gray))
+        except Exception as exc:
+            print(f"[explorer] 漂移比對失敗: {exc}")
+            return None
+        shift_px = math.hypot(dx, dy)
+        scale = px_per_cm(pose)
+        cm = shift_px / scale if scale else None
+        entry = {"pose": name, "shift_px": round(shift_px, 1),
+                 "dx_px": round(dx, 1), "dy_px": round(dy, 1),
+                 "confidence": round(float(response), 3),
+                 "approx_cm": None if cm is None else round(cm, 2)}
+        drifts.append(entry)
+        cm_txt = "" if cm is None else f" ≈ {cm:.2f} cm"
+        print(f"[explorer] 漂移檢查 {name}: 畫面位移 {shift_px:.1f} px"
+              f"{cm_txt}  (dx={dx:+.1f}, dy={dy:+.1f}, 相關度 {response:.2f})")
+        if response < 0.20:
+            print("[explorer] ⚠ 相關度很低 —— 兩張畫面幾乎沒有共同內容。"
+                  "車子移動很多，或場景被換掉了。")
+        elif cm is not None and cm >= 1.0:
+            print(f"[explorer] ⚠ 底盤移動了約 {cm:.1f} cm。"
+                  "這一輪之間量到的東西都不可信，把輪子固定好再重跑。")
+        elif cm is not None and cm >= 0.3:
+            print(f"[explorer] 注意：約 {cm:.1f} cm 的位移。小，但不是零。")
+        else:
+            print("[explorer] 底盤沒有明顯移動。")
+        return entry
+
     def goto(name, entry_lookup):
         nonlocal idx
         entry = entry_lookup[name]
@@ -514,8 +588,13 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
         if f is None:
             print("[explorer] 抓不到影格。")
             return res, info, None
+        check_drift(name, f, pose)
+        visits[name] = visits.get(name, 0) + 1
         img = annotate(f, geo, pose, info, acg, cv2)
-        path = snap_dir / f"pose_{name}.jpg"
+        # Numbered, not overwritten. The previous version wrote pose_E1.jpg on
+        # every visit, so the start-of-session frame -- the one a drift check
+        # compares against -- was destroyed by the return at the end.
+        path = snap_dir / f"pose_{name}_{visits[name]:02d}.jpg"
         cv2.imwrite(str(path), img)
         print(f"[explorer] 快照 → {path}")
         if args.show:
@@ -591,7 +670,9 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
             if f is not None:
                 pose, mi = geo.describe(name, tuple(vals))
                 img = annotate(f, geo, pose, mi, acg, cv2)
-                p = snap_dir / f"pose_{name}.jpg"
+                check_drift(name, f, pose)
+                visits[name] = visits.get(name, 0) + 1
+                p = snap_dir / f"pose_{name}_{visits[name]:02d}.jpg"
                 cv2.imwrite(str(p), img)
                 by_name[name] = mi
                 print(format_row(mi))
@@ -602,8 +683,8 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
         else:
             print("[explorer] 不認得。n / p / r / k / q / 姿勢名稱 / m a,b,c,d,e,f")
 
-    print("\n[explorer] 回 E1 …")
-    mover.move_to(X, api_deg(lookup["E1"]), tol_deg=2.0)
+    print("\n[explorer] 回 E1，並和開場那張比對底盤有沒有移動 …")
+    goto("E1", lookup)
     cap.release()
     if args.show:
         try:
@@ -612,11 +693,20 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
             pass
 
     out = snap_dir / "session.json"
+    worst = max((d["approx_cm"] or 0.0) for d in drifts) if drifts else 0.0
     out.write_text(json.dumps(
         {"object_height_m": OBJECT_HEIGHT_M, "mark_base_xy": [MARK_X, MARK_Y],
-         "visited": log, "keepers": keepers},
+         "visited": log, "keepers": keepers, "drift_checks": drifts,
+         "worst_drift_cm": round(worst, 2)},
         indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[explorer] 紀錄 → {out}")
+    if drifts:
+        print(f"[explorer] 底盤漂移：最大 {worst:.2f} cm（{len(drifts)} 次比對）")
+        if worst >= 1.0:
+            print("[explorer] ⚠ 這一輪的姿勢比較不可信 —— 車子在過程中移動了。")
+    else:
+        print("[explorer] 沒有重複造訪任何姿勢，所以沒有量到底盤漂移。"
+              "下次至少回同一個姿勢一次。")
     if keepers:
         print("\n你標記的姿勢：")
         for k in keepers:
