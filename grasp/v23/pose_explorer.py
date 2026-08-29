@@ -86,6 +86,14 @@ import numpy as np                                    # noqa: E402
 ARM_CAMERA = ("/dev/v4l/by-id/"
               "usb-Sonix_Technology_Co.__Ltd._USB_2.0_Camera-video-index0")
 
+# Frames discarded before each capture, and how long to wait first. The arm has
+# just stopped, the driver has a queue of frames from where it used to be, and
+# the auto-exposure is still chasing the new scene. Both numbers are deliberately
+# generous: a capture happens once per pose, so a second of latency costs
+# nothing, and a stale frame costs the whole session.
+CAMERA_FLUSH_FRAMES = 10
+CAMERA_SETTLE_S = 0.7
+
 # The object the window is judged against. Taller object -> smaller window, and
 # height dominates: the same sweep gives 54 cm2 at 6.5 cm and 90 cm2 at 3.0 cm.
 # Keep this at whatever you will actually grasp.
@@ -486,6 +494,12 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
         return 2
     fh, fw = frame.shape[:2]
     print(f"[explorer] 相機 OK {fw}x{fh}")
+    # Belt and braces. Several V4L2 backends ignore this, which is why grab()
+    # flushes explicitly rather than relying on it.
+    try:
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    except Exception:
+        pass
 
     servo = X.ServoController(cfg, dry_run=False)
     rd = servo.read_degrees()
@@ -505,7 +519,24 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
     keepers = []
     log = []
 
-    def grab():
+    def grab(flush=CAMERA_FLUSH_FRAMES, settle_s=CAMERA_SETTLE_S):
+        """A frame of the scene as it is NOW, not whatever the driver has queued.
+
+        cap.read() returns the OLDEST buffered frame. Between poses this process
+        spends seconds on a guarded move and then blocks on input(), so the V4L2
+        queue fills and the next read hands back a picture of the PREVIOUS pose.
+        The 2026-08-29 sessions were captured this way: every snapshot was
+        labelled with the pose the arm had just arrived at and showed the one
+        before it. Revisiting a pose then compared two frames of two different
+        scenes and returned a near-zero correlation, which the drift check
+        reported as the chassis having moved. It had not.
+
+        So: sleep for the scene and the auto-exposure to settle, discard the
+        queue, and only then keep a frame.
+        """
+        time.sleep(max(0.0, settle_s))
+        for _ in range(max(0, flush)):
+            cap.read()
         for _ in range(5):
             ok, f = cap.read()
             if ok and f is not None and getattr(f, "size", 0) > 0:
@@ -558,15 +589,30 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
         cm_txt = "" if cm is None else f" ≈ {cm:.2f} cm"
         print(f"[explorer] 漂移檢查 {name}: 畫面位移 {shift_px:.1f} px"
               f"{cm_txt}  (dx={dx:+.1f}, dy={dy:+.1f}, 相關度 {response:.2f})")
-        if response < 0.20:
-            print("[explorer] ⚠ 相關度很低 —— 兩張畫面幾乎沒有共同內容。"
-                  "車子移動很多，或場景被換掉了。")
+        # Low confidence and a SMALL shift is not motion. Phase correlation
+        # returns a small meaningless offset for two unrelated images, so a
+        # rolled chassis shows up as a large shift held CONFIDENTLY. Reading the
+        # two cases as one is what produced the wrong "the chassis moved"
+        # conclusion on 2026-08-29; the giveaway was that the same four poses
+        # failed every round, which no amount of rolling can do.
+        if response < 0.20 and (cm is None or cm < 1.0):
+            entry["verdict"] = "uncorrelated_small_shift"
+            print("[explorer] ⚠ 兩張畫面幾乎不相關，但位移很小 —— 這通常是"
+                  "抓到了舊影格，不是車子移動。若同一批姿勢每輪都這樣，"
+                  "就是相機緩衝，不是底盤。")
+        elif response < 0.20:
+            entry["verdict"] = "uncorrelated_large_shift"
+            print("[explorer] ⚠ 幾乎不相關且位移很大 —— 場景真的換了。"
+                  "檢查車子、物體、以及畫面是不是抓錯姿勢。")
         elif cm is not None and cm >= 1.0:
-            print(f"[explorer] ⚠ 底盤移動了約 {cm:.1f} cm。"
+            entry["verdict"] = "chassis_moved"
+            print(f"[explorer] ⚠ 底盤移動了約 {cm:.1f} cm（相關度夠高，這是真的）。"
                   "這一輪之間量到的東西都不可信，把輪子固定好再重跑。")
         elif cm is not None and cm >= 0.3:
+            entry["verdict"] = "small_movement"
             print(f"[explorer] 注意：約 {cm:.1f} cm 的位移。小，但不是零。")
         else:
+            entry["verdict"] = "stable"
             print("[explorer] 底盤沒有明顯移動。")
         return entry
 
@@ -693,18 +739,28 @@ def run_interactive(args, X, acg, cfg, mapper, fk, geo, infos):
             pass
 
     out = snap_dir / "session.json"
-    worst = max((d["approx_cm"] or 0.0) for d in drifts) if drifts else 0.0
+    real = [d for d in drifts if d.get("verdict") in ("stable", "small_movement",
+                                                      "chassis_moved")]
+    stale = [d for d in drifts if d.get("verdict", "").startswith("uncorrelated")]
+    worst = max((d["approx_cm"] or 0.0) for d in real) if real else 0.0
     out.write_text(json.dumps(
         {"object_height_m": OBJECT_HEIGHT_M, "mark_base_xy": [MARK_X, MARK_Y],
          "visited": log, "keepers": keepers, "drift_checks": drifts,
          "worst_drift_cm": round(worst, 2)},
         indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[explorer] 紀錄 → {out}")
-    if drifts:
-        print(f"[explorer] 底盤漂移：最大 {worst:.2f} cm（{len(drifts)} 次比對）")
+    if real:
+        print(f"[explorer] 底盤漂移：最大 {worst:.2f} cm"
+              f"（{len(real)} 次可信比對）")
         if worst >= 1.0:
             print("[explorer] ⚠ 這一輪的姿勢比較不可信 —— 車子在過程中移動了。")
-    else:
+    if stale:
+        print(f"[explorer] ⚠ {len(stale)} 次比對相關度過低，已排除在漂移統計外。"
+              f"影響到的姿勢：{sorted(set(d['pose'] for d in stale))}")
+        print("[explorer]   若同一批姿勢每輪都這樣，那是抓到舊影格，不是底盤。"
+              f"目前 flush={CAMERA_FLUSH_FRAMES}、settle={CAMERA_SETTLE_S}s，"
+              "可以再調高。")
+    if not drifts:
         print("[explorer] 沒有重複造訪任何姿勢，所以沒有量到底盤漂移。"
               "下次至少回同一個姿勢一次。")
     if keepers:
