@@ -34,6 +34,12 @@
 
 ### `grasp/`（夾取）
 
+> **★ 分支 `v23-grasp-test` 上另有 `grasp/v23/`（E1 高姿態），尚未合併。**
+> main 上不存在。v23 只改了 grasp home（C3 → E1）與權重；契約、`deploy_contract.py`、
+> `action_execution_v21.py`、URDF 都與 v21 逐位元組相同。硬體 gate **一項都沒過**，
+> 也還沒有 E1 的實測 homography。細節見該分支的 `grasp/v23/README.md`。
+> 模式 A / B / C 在兩個分支上都還是接 v21。
+
 > **★ 2026-08-01 起，正式夾取流程是 `grasp/v21/`，不是根目錄那支。**
 > 唯一在實機上夾取成功過的是 v21（2026-07-31，3cm 物體，完整 log 見
 > `grasp/v21/manifest.json` 的 `hardware_gates.first_real_grasp_2026_07_31`）。

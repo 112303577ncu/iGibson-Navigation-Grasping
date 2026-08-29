@@ -76,4 +76,5 @@ build/
 !grasp/trained_6d_models_v17/*.zip
 !grasp/trained_6d_models_v18/*.zip
 !grasp/v21/models/*.zip
+!grasp/v23/models/*.zip
 !integration/nav_best_model/*.zip

@@ -297,12 +297,68 @@ V21_C3_GRASP_HOME = ArmCamPose(
            "NOT measured at this pose",
 )
 
+# v23 E1 grasp home — the pose the v23 policy starts from (grasp/v23/).
+#
+# Derived exactly the same way as C3 above, from the same deployment FK and the
+# same two hardware-anchored differences. Running that derivation on C3
+# reproduces its stored numbers to four decimals, which is why the E1 row is
+# trusted to the same degree as the C3 one — and no further.
+#
+#     mono_link, policy frame, E1 : (+0.272307, -0.005559, +0.234046)
+#     optical axis at E1          : (+0.024432, 0, -0.999701) -> 88.600 deg
+#     theta : 88.600 - 3.600 (nav-home mounting error) = 85.000 deg
+#     H     : 0.332 - 0.1014 (FK drop from nav home)   = 0.2306 m
+#
+# The one thing that is genuinely different in kind, not just in value: the
+# optical axis CROSSES VERTICAL between C3 and E1. At C3 the axis leans back
+# over the robot (x component -0.0583, theta > 90); at E1 it leans forward
+# (+0.0244, theta < 90). The trigonometric ground-distance model in this module
+# divides by the tangent of the angle between the ray and the ground, so as the
+# camera approaches vertical the recovered lateral offset collapses toward zero
+# and the depth becomes arbitrarily sensitive to a theta error. C3 was already
+# in that regime (the module's own docstring says the offsets "collapse to ~0");
+# E1, at 1.4 deg off vertical against C3's 3.3, is further into it.
+#
+# So these numbers exist to STAMP a detection with the pose it was taken at, and
+# to let ground_hit()'s callers reason about the frame. They are not a licence to
+# map pixels trigonometrically at E1. vision_grasp_bridge refuses to, and
+# require_measured() below refuses a real run off them regardless.
+#
+# STILL A PREDICTION, and less of the workspace was ever checked here than at C3:
+# nothing in this row has been on the hardware.
+V23_E1_GRASP_HOME = ArmCamPose(
+    name="v23_e1_grasp_home",
+    arm_deg=(90.0, 74.2, 8.6, 8.6, 90.0, 30.0),
+    theta_deg=85.000,
+    h_m=0.2306,
+    cam_x_m=0.2723,
+    cam_y_m=-0.0056,
+    sign_y=1.0,
+    distance_model_measured=False,
+    base_offset_measured=False,
+    source="deployment FK (policy frame) + nav-home mounting error "
+           "(theta -3.600 deg, camera 0.1014 m lower than at nav home); "
+           "NOT measured at this pose. Nearly vertical (1.4 deg): use the "
+           "measured homography, not this distance model.",
+)
+
 POSES: Dict[str, ArmCamPose] = {
     V17_NAV_HOME.name: V17_NAV_HOME,
     V21_C3_GRASP_HOME.name: V21_C3_GRASP_HOME,
+    V23_E1_GRASP_HOME.name: V23_E1_GRASP_HOME,
 }
 
-# What the v21 stack detects from unless told otherwise.
+# Poses that count as "grasp-home" — an arm pose the policy starts its episode
+# from, where the camera looks almost straight down and pixel->base must go
+# through a measured homography. One entry per deployed policy generation.
+GRASP_HOME_POSES: Tuple[ArmCamPose, ...] = (V21_C3_GRASP_HOME, V23_E1_GRASP_HOME)
+GRASP_HOME_POSE_NAMES = frozenset(pose.name for pose in GRASP_HOME_POSES)
+
+# What the v21 stack detects from unless told otherwise. v23 callers pass
+# --pose v23_e1_grasp_home explicitly; the default is NOT switched, because
+# every existing mode A/B/C path still runs the C3 policy and a silently
+# changed default would stamp their detections with the wrong pose. The grasp
+# side compares that stamp against its encoders and would refuse every frame.
 DEFAULT_POSE = V21_C3_GRASP_HOME
 
 

@@ -308,6 +308,16 @@ MAX_GRASP_WIDTH_M = 0.06
 # those here means the operator sees it while looking at the camera window,
 # rather than after the arm has driven to its home pose and refused.
 # Kept in sync with DeployConfig.trained_x_range / trained_y_range.
+#
+# These are v21's numbers and stay the DEFAULT, because every existing caller is
+# a v21 caller. v23 is trained on a different, narrower band -- x(0.205, 0.280)
+# y(-0.070, +0.065) -- from a pose that sees 44% MORE ground, so at E1 the
+# overhang is worse in both directions. A v23 caller passes --policy-x-range /
+# --policy-y-range; grasp/v23/jetson_one_command_grasp.py does exactly that.
+#
+# Getting this wrong is not dangerous, only confusing: the grasp side runs the
+# same envelope check itself (DeployConfig.trained_*_range) and refuses. The
+# point of the copy here is WHERE the operator finds out.
 TRAINED_X_RANGE = (0.20, 0.33)
 TRAINED_Y_RANGE = (-0.10, 0.10)
 
@@ -589,6 +599,17 @@ def build_payload(box_xyxy: Tuple[float, float, float, float],
     return payload, note
 
 
+def policy_ranges(args) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """The (x, y) band this run will accept, per --policy-x-range/--policy-y-range.
+
+    Falls back to the module constants, so a caller that does not pass them keeps
+    exactly the v21 behaviour this file has always had.
+    """
+    x_range = tuple(getattr(args, "policy_x_range", None) or TRAINED_X_RANGE)
+    y_range = tuple(getattr(args, "policy_y_range", None) or TRAINED_Y_RANGE)
+    return x_range, y_range
+
+
 def build_homography_payload(args,
                              box_xyxy: Tuple[float, float, float, float],
                              class_name: str, pose: acg.ArmCamPose,
@@ -621,10 +642,13 @@ def build_homography_payload(args,
     if width_m > max_width_m:
         return None, (f"object is {width_m*100:.1f} cm wide, past the "
                       f"{max_width_m*100:.1f} cm the jaw can open — ungraspable")
-    if not TRAINED_X_RANGE[0] <= obj_x <= TRAINED_X_RANGE[1]:
-        return None, f"x={obj_x:.3f} is outside the policy's evaluated range"
-    if not TRAINED_Y_RANGE[0] <= obj_y <= TRAINED_Y_RANGE[1]:
-        return None, f"y={obj_y:+.3f} is outside the policy's evaluated range"
+    x_range, y_range = policy_ranges(args)
+    if not x_range[0] <= obj_x <= x_range[1]:
+        return None, (f"x={obj_x:.3f} is outside the policy's evaluated range "
+                      f"{x_range[0]}-{x_range[1]} m")
+    if not y_range[0] <= obj_y <= y_range[1]:
+        return None, (f"y={obj_y:+.3f} is outside the policy's evaluated range "
+                      f"{y_range[0]}..{y_range[1]} m")
 
     payload = {
         "x": round(obj_x, 4), "y": round(obj_y, 4),
@@ -664,6 +688,16 @@ def parse_args():
                    help="advanced: explicit arm-camera pose registry name")
     p.add_argument("--homography", default=None,
                    help="verified grasp-home pixel-to-base calibration JSON")
+    p.add_argument("--policy-x-range", type=float, nargs=2, default=None,
+                   metavar=("LO", "HI"),
+                   help="base-frame x band the receiving policy was trained on "
+                        f"(default {TRAINED_X_RANGE[0]} {TRAINED_X_RANGE[1]}, which "
+                        "is v21's). v23 is 0.205 0.280.")
+    p.add_argument("--policy-y-range", type=float, nargs=2, default=None,
+                   metavar=("LO", "HI"),
+                   help="base-frame y band the receiving policy was trained on "
+                        f"(default {TRAINED_Y_RANGE[0]} {TRAINED_Y_RANGE[1]}, which "
+                        "is v21's). v23 is -0.070 0.065.")
     p.add_argument("--calibration-only", action="store_true",
                    help="print median undistorted bbox pixels; never connect to TCP")
     p.add_argument("--calibration-samples", type=int, default=10,
@@ -709,15 +743,27 @@ def parse_args():
 
 
 def resolve_pose(args) -> acg.ArmCamPose:
-    """Select the extrinsic set and apply any measured overrides."""
-    expected_name = (acg.V17_NAV_HOME.name if args.camera_pose == "nav-home"
-                     else acg.V21_C3_GRASP_HOME.name)
-    if args.pose is not None and args.pose != expected_name:
+    """Select the extrinsic set and apply any measured overrides.
+
+    ``--camera-pose`` names a KIND of pose; ``--pose`` names one row in the
+    registry. nav-home has exactly one row, so the two are interchangeable there.
+    grasp-home now has one row per deployed policy generation (C3 for v21, E1 for
+    v23), so --pose is how a caller says which. The default stays C3: switching
+    it would silently restamp every existing mode A/B/C detection with a pose the
+    grasp side would then refuse against its encoders.
+    """
+    if args.camera_pose == "nav-home":
+        allowed = {acg.V17_NAV_HOME.name}
+        default_name = acg.V17_NAV_HOME.name
+    else:
+        allowed = set(acg.GRASP_HOME_POSE_NAMES)
+        default_name = acg.DEFAULT_POSE.name
+    if args.pose is not None and args.pose not in allowed:
         raise SystemExit(
             f"--camera-pose {args.camera_pose} conflicts with --pose {args.pose}; "
-            f"expected --pose {expected_name}"
+            f"expected one of {sorted(allowed)}"
         )
-    pose_name = args.pose or expected_name
+    pose_name = args.pose or default_name
     pose = acg.get_pose(pose_name)
     pose = pose.replace(theta_deg=args.camera_theta, h_m=args.camera_height,
                         cam_x_m=args.cam_x, cam_y_m=args.cam_y,

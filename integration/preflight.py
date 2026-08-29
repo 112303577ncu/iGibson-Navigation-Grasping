@@ -132,6 +132,16 @@ SUITES = [
     # until someone is already standing next to the robot.
     ("grasp/v21/test_servo_read.py", []),
     ("grasp/v21/test_deploy_floor_guard.py", []),
+    # The launcher-to-bridge wiring, for both stacks. Neither of these failures
+    # is detectable at runtime from one side: the flags parse, the processes
+    # start, and the mismatch appears after the arm has already moved. v23 adds
+    # the pose stamp, the policy band and the weight pair to the same category.
+    ("grasp/v21/test_one_command_launcher.py", []),
+    ("grasp/v23/test_one_command_launcher.py", []),
+    # grasp/v23's 119 / 37 / 641 are deliberately NOT here. They are the same
+    # suites against the same code, and running the 641 twice roughly doubles
+    # the offline pass for no new coverage. ./grasp/v23/jetson_verify.sh runs
+    # them, and that is the gate before a v23 hardware run anyway.
 ]
 
 
