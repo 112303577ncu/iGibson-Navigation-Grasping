@@ -245,6 +245,36 @@ class DeployConfig:
     jaw_contact_lag_deg: float = 5.0     # command ahead of encoder by more = blocked
     jaw_contact_streak: int = 2          # consecutive blocked iterations before declaring
     jaw_hold_bias_deg: float = 8.0       # grip-force knob: hold this far past contact
+
+    # The absolute progress test above has a blind spot, heard on hardware as a
+    # repeated clicking during the close: an object that SLIPS a little under the
+    # jaw lets the encoder move more than jaw_contact_min_progress_deg, so
+    # `tracking` reads true, the contact streak resets, and the command keeps
+    # advancing into an object it has already reached. The jaw is moving, so
+    # nothing looks stalled; it is just moving slower than it was told to.
+    #
+    # Comparing the encoder's step against the COMMANDED step catches that,
+    # because it asks the scale-free question -- is the jaw keeping up? A free
+    # jaw returns about 1.0, a blocked one about 0.0, and one squeezing a
+    # slipping object lands in between.
+    #
+    # 0.0 disables it, which is the shipped default: the 2026-07-31 grasp that
+    # worked used the absolute test alone, and this only ever makes contact fire
+    # EARLIER. 0.5 is the value to try for the slipping case.
+    jaw_contact_track_fraction: float = 0.0
+    # Ratio test is skipped below this commanded step, where the quotient is
+    # dominated by encoder quantisation rather than by the object.
+    jaw_contact_min_cmd_step_deg: float = 1.0
+
+    # Hard ceiling on how far the jaw command may run past the encoder during a
+    # close. This is a bound on FORCE, not a detector: the servo makes grip force
+    # out of position error, so capping the error caps the torque by construction
+    # and the gearbox can no longer be driven to the stop-to-stop error that
+    # grinds -- even if every detector above misses, which is exactly what
+    # happened when the object slipped. Sized above jaw_hold_bias_deg so a normal
+    # close and the deliberate hold are never throttled; it binds only on the
+    # runaway.
+    jaw_max_lag_deg: float = 15.0
     # Opt-in hardware shortcut: while Stage 0's policy is already closing the jaw,
     # treat a measured S6 that remains unchanged for N consecutive policy steps as
     # contact and lift with only the explicitly configured small hold bias. Zero
@@ -1955,6 +1985,7 @@ class GraspController:
         guard_actions = []
         last_err = None
         prev_jaw = None
+        prev_jaw_cmd = None
         contact_streak = 0
 
         for it in range(max_iters):
@@ -1998,6 +2029,19 @@ class GraspController:
 
             hw = self.mapper.sim_arm_to_hw_deg(safe_arm)
             hw.append(self.mapper.sim_grip_to_hw_deg(safe_grip))
+            if stop_on_jaw_contact and prev_jaw is not None:
+                # Force ceiling. Never ask the jaw to be more than
+                # jaw_max_lag_deg past where it actually is; torque is that error.
+                limit = float(self.cfg.jaw_max_lag_deg)
+                if limit > 0.0:
+                    open_ = float(self.cfg.gripper_hw_open)
+                    closed = float(self.cfg.gripper_hw_closed)
+                    sign = 1.0 if closed >= open_ else -1.0
+                    ceiling = prev_jaw + sign * limit
+                    if sign > 0.0 and hw[5] > ceiling:
+                        hw[5] = ceiling
+                    elif sign < 0.0 and hw[5] < ceiling:
+                        hw[5] = ceiling
             if not self.servo.send_degrees(hw, run_time_ms=run_time_ms):
                 return {"reached": False, "reason": "servo write failed",
                         "iters": it, "guard": guard_actions}
@@ -2031,19 +2075,35 @@ class GraspController:
                 # layer tracks, not the far-off `want_hw` target.
                 jaw_cmd = float(self.servo._last_deg[5])
                 if prev_jaw is not None and ginfo["action"] == "pass":
-                    tracking = abs(jaw_rd - prev_jaw) >= self.cfg.jaw_contact_min_progress_deg
+                    enc_step = abs(jaw_rd - prev_jaw)
+                    tracking = enc_step >= self.cfg.jaw_contact_min_progress_deg
                     lagging = abs(jaw_cmd - jaw_rd) >= self.cfg.jaw_contact_lag_deg
-                    contact_streak = contact_streak + 1 if (lagging and not tracking) else 0
+                    # Slipping: the jaw IS moving, but far slower than commanded.
+                    # Only meaningful once the command asked for a real step.
+                    fraction = float(self.cfg.jaw_contact_track_fraction)
+                    cmd_step = (abs(jaw_cmd - prev_jaw_cmd)
+                                if prev_jaw_cmd is not None else 0.0)
+                    slipping = (
+                        fraction > 0.0
+                        and cmd_step >= self.cfg.jaw_contact_min_cmd_step_deg
+                        and enc_step < fraction * cmd_step)
+                    blocked = lagging and (not tracking or slipping)
+                    contact_streak = contact_streak + 1 if blocked else 0
                     if contact_streak >= max(1, int(self.cfg.jaw_contact_streak)):
                         hold = self._park_jaw_hold(jaw_rd, grip_target_rad, run_time_ms)
                         return {"reached": False, "jaw_contact": True,
                                 "jaw_contact_deg": jaw_rd, "jaw_hold_deg": hold,
-                                "reason": (f"no progress — jaw contact at {jaw_rd:.1f} deg, "
-                                           f"holding at {hold:.1f} deg"),
+                                "jaw_contact_mode": ("slipping" if slipping
+                                                     else "stalled"),
+                                "reason": (
+                                    f"{'slower than commanded' if slipping else 'no progress'}"
+                                    f" — jaw contact at {jaw_rd:.1f} deg, "
+                                    f"holding at {hold:.1f} deg"),
                                 "iters": it + 1, "guard": guard_actions}
                 else:
                     contact_streak = 0
                 prev_jaw = jaw_rd
+                prev_jaw_cmd = jaw_cmd
 
             # If the guard is clamping, the arm is being deliberately held short of the
             # request — that is not a stall, so only treat lack of progress as failure
@@ -2059,6 +2119,11 @@ class GraspController:
                     hold = self._park_jaw_hold(jaw_rd, grip_target_rad, run_time_ms)
                     return {"reached": False, "jaw_contact": True,
                             "jaw_contact_deg": jaw_rd, "jaw_hold_deg": hold,
+                            # This branch is reached only by a whole-arm stall, so
+                            # it is never the slip case -- but it must still say
+                            # so, or a caller reading jaw_contact_mode gets None
+                            # from the path that fires FIRST on a hard block.
+                            "jaw_contact_mode": "stalled",
                             "reason": (f"no progress — jaw contact at {jaw_rd:.1f} deg, "
                                        f"holding at {hold:.1f} deg"),
                             "iters": it + 1, "guard": guard_actions}
@@ -3162,6 +3227,19 @@ def parse_args():
                         "Read it off the model's manifest.json — it cannot be inferred.")
     p.add_argument("--max-steps", type=int, default=300)
     p.add_argument("--hz", type=float, default=10.0)
+    p.add_argument("--jaw-track-fraction", type=float, default=None,
+                   help="treat the jaw as having reached the object when the "
+                        "encoder advances less than this FRACTION of what the "
+                        "command asked for (0 disables, 0.5 is the value to try). "
+                        "The default absolute test only sees a jaw that has "
+                        "stopped, so an object that slips a little keeps the "
+                        "streak reset and the command keeps squeezing — the "
+                        "clicking heard during a close.")
+    p.add_argument("--jaw-max-lag-deg", type=float, default=None,
+                   help="hard ceiling on how far the jaw command may run past the "
+                        "encoder during a close (default 15). Grip force IS that "
+                        "position error, so this caps the torque by construction "
+                        "even when no detector fires. 0 disables the ceiling.")
     p.add_argument("--floor-finger-error-mm", type=float, default=0.0,
                    help="Raise the finger pads by this much EVERYWHERE this code "
                         "reasons about where the pads are: the floor guard AND the "
@@ -3247,6 +3325,24 @@ def main():
         cfg.jaw_hold_bias_deg = 1.0
         print(f"[Init] Stage-0 S6 stall: {cfg.stage0_s6_stall_steps} unchanged "
               f"steps confirms contact; hold bias {cfg.jaw_hold_bias_deg:.0f} deg.")
+    if args.jaw_track_fraction is not None:
+        value = float(args.jaw_track_fraction)
+        if not math.isfinite(value) or not 0.0 <= value < 1.0:
+            print(f"[FATAL] --jaw-track-fraction {value} is outside [0, 1). "
+                  "1.0 or more would call every close a contact immediately.")
+            return 2
+        cfg.jaw_contact_track_fraction = value
+    if args.jaw_max_lag_deg is not None:
+        value = float(args.jaw_max_lag_deg)
+        if not math.isfinite(value) or value < 0.0 or value > 90.0:
+            print(f"[FATAL] --jaw-max-lag-deg {value} is outside [0, 90].")
+            return 2
+        if 0.0 < value < cfg.jaw_hold_bias_deg:
+            print(f"[FATAL] --jaw-max-lag-deg {value} is below the "
+                  f"{cfg.jaw_hold_bias_deg} deg hold bias, so the ceiling would "
+                  "throttle the deliberate grip itself.")
+            return 2
+        cfg.jaw_max_lag_deg = value
     if args.floor_finger_error_mm:
         # Bounded on purpose: this shifts the ONLY thing standing between the policy
         # and the floor, and a typo'd 167 would hand the guard 16.7 cm of imaginary

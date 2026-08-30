@@ -49,7 +49,7 @@ release 動作的做法把旗標搬過來，**不要**整支換回去。
 cd grasp/v23 && ./jetson_verify.sh
 ```
 
-要看到 **124 / 37 / 641 / 45 / 71** 一字不差，`wrist_z_offset = 0.0564`。
+要看到 **135 / 37 / 641 / 50 / 73** 一字不差，`wrist_z_offset = 0.0564`。
 
 > `wrist_z_offset` 錨在**地板**不是手臂（`dc.hover_gripper_center_z`），所以
 > C3→E1 這個值不變。它要是動了，代表變的不是姿勢。
@@ -120,6 +120,23 @@ manifest `status` 仍是 `candidate`；以 `manifest.json` 的 hardware gates �
 python3 jetson_one_command_grasp.py --check    # 不碰硬體
 python3 jetson_one_command_grasp.py            # 正式
 ```
+
+目前一鍵 launcher 會在 E1 homography 算完後，把最終目標沿 base `+X`（遠離機器人）
+平移 **5 mm**，修正實機穩定落在物體近側的偏差。這是可逆的 runtime correction，
+`integration/grasp_home_homography_e1.json` 仍保留原始實測值；物體寬度、Y、Z 都不變，
+平移後也仍須通過 v23 的 `x=0.205–0.280 m` policy envelope。
+
+```bash
+# 回到未補償的原始外參
+python3 jetson_one_command_grasp.py --grasp-forward-offset-mm 0
+
+# 若 +5 mm 實測仍偏近，只用小步幅增加；程式硬限制為 0–15 mm
+python3 jetson_one_command_grasp.py --grasp-forward-offset-mm 7
+```
+
+同一參數也會傳給 `--three-pose-scan`，但在 S1 旋轉成最終 base frame **之後**才加
+`+X`，所以三個視角使用一致的「遠離機器人」方向。所有 `--calibrate`／
+`--scan-calibrate-pose` 輸出刻意不套用此補償，避免把 runtime correction 混進量測資料。
 
 若 log 明確寫的是 **`bbox touches only the top frame edge`**，而左右與下緣都沒有碰框，
 可以用以下受限例外：
@@ -226,7 +243,7 @@ home 訓練出來的。
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
 - [x] `e1_gripper_center_height_ruler_check` — 張爪實測 15.2 cm，FK 15.58 cm
 - [x] `e1_minimum_object_height_measured` — 3 cm 可夾、2 cm 空夾
-- [ ] `jetson_dry_run_ok` — 124/37/641/45/71 + `wrist_z_offset = 0.0564`
+- [ ] `jetson_dry_run_ok` — 135/37/641/50/73 + `wrist_z_offset = 0.0564`
 - [ ] `first_real_grasp_logged` — E1 至少一次實機夾起來，留完整 log
 
 沒過就留在分支上。v21 完全沒被動到，`grasp/v21/` 仍是唯一有實機夾取紀錄的那一套

@@ -277,6 +277,12 @@ def main():
        "scanner motion carries an explicit supervised-hardware acknowledgement")
     ok("--config" in scan_cmd and "--policy-x-range" in scan_cmd,
        "scanner receives its config and the v23 policy envelope")
+    ok(float(scan_cmd[scan_cmd.index("--grasp-forward-offset-mm") + 1]) == 5.0,
+       "scanner receives the same +5 mm base-X correction as the single view")
+    calibration_cmd = launcher.build_scan_cmd(
+        launcher.parse_args_from(["--scan-calibrate-pose", "LEFT"]))
+    ok("--grasp-forward-offset-mm" not in calibration_cmd,
+       "scan calibration reports raw geometry without runtime correction")
     target = {
         "x": 0.251, "y": -0.020, "z": 0.0325, "height": 0.065,
         "pose_count": 2, "poses": ["E1", "F3"],

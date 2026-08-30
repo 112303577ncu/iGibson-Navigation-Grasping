@@ -422,6 +422,12 @@ def _scan_one_pose(args, config, pose_spec, model, cap, vgb, acg, cv2):
     class_height = {"sugarbox": args.class_height}
     class_z = {"_fallback": args.class_height / 2.0,
                "sugarbox": args.class_height / 2.0}
+    def target_transform(xy):
+        rotated = map_reference_xy_for_pose(
+            xy, pose_spec, config["mapping"])
+        return vgb.apply_grasp_forward_offset(
+            rotated, args.grasp_forward_offset_mm)
+
     samples = []
     deadline = time.monotonic() + config["per_pose_timeout_sec"]
     pending = _grab_after_motion(cap, cv2)
@@ -443,8 +449,7 @@ def _scan_one_pose(args, config, pose_spec, model, cap, vgb, acg, cv2):
         payload, reason = vgb.build_homography_payload(
             geometry, (x1, y1, x2, y2), class_name, pose,
             class_z, class_height,
-            base_xy_transform=lambda xy: map_reference_xy_for_pose(
-                xy, pose_spec, config["mapping"]))
+            base_xy_transform=target_transform)
         if payload is None:
             last_reason = reason
             continue
@@ -528,6 +533,9 @@ def parse_args_from(argv):
                         default=(0.205, 0.280), metavar=("LO", "HI"))
     parser.add_argument("--policy-y-range", type=float, nargs=2,
                         default=(-0.070, 0.065), metavar=("LO", "HI"))
+    parser.add_argument("--grasp-forward-offset-mm", type=float, default=0.0,
+                        help="translate the final base-frame target in +X after "
+                             "the S1 view rotation (runtime only, 0..15 mm)")
     parser.add_argument("--allow-top-clipped", action="store_true")
     parser.add_argument("--calibrate-pose", default=None)
     parser.add_argument("--calibration-samples", type=int, default=20)
@@ -553,6 +561,7 @@ def parse_args():
 def main():
     args = parse_args()
     numeric = (args.class_height, args.conf, args.pose_tol_deg,
+               args.grasp_forward_offset_mm,
                args.policy_x_lo, args.policy_x_hi,
                args.policy_y_lo, args.policy_y_hi)
     if not all(math.isfinite(float(value)) for value in numeric):
@@ -560,6 +569,13 @@ def main():
         return 2
     if args.class_height <= 0.0 or not 0.0 <= args.conf <= 1.0:
         print("[FATAL] --class-height must be positive and --conf must be in [0,1].")
+        return 2
+    if not 0.0 <= args.grasp_forward_offset_mm <= 15.0:
+        print("[FATAL] --grasp-forward-offset-mm must be in [0, 15].")
+        return 2
+    if args.calibrate_pose is not None and args.grasp_forward_offset_mm != 0.0:
+        print("[FATAL] --grasp-forward-offset-mm is runtime-only; scan calibration "
+              "must report the uncorrected E1/S1 geometry.")
         return 2
     if not (args.policy_x_lo < args.policy_x_hi
             and args.policy_y_lo < args.policy_y_hi):

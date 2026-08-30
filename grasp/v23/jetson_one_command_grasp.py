@@ -94,6 +94,12 @@ CAMERA_POSE_NAME = "v23_e1_grasp_home"
 # of the operator, not after the arm has moved.
 POLICY_X_RANGE = ("0.205", "0.280")
 POLICY_Y_RANGE = ("-0.070", "0.065")
+# Operational correction for the repeatable real-world bias measured after the
+# E1 homography was fitted. Keep the calibration file as measured truth; this
+# offset is separate, visible on the command line, and reversible. +X is
+# forward / away from the robot.
+DEFAULT_GRASP_FORWARD_OFFSET_MM = 5.0
+MAX_GRASP_FORWARD_OFFSET_MM = 15.0
 ARM_CAMERA = ("/dev/v4l/by-id/"
               "usb-Sonix_Technology_Co.__Ltd._USB_2.0_Camera-video-index0")
 
@@ -206,7 +212,26 @@ def parse_args_from(argv) -> argparse.Namespace:
                         "pixels; Ctrl+C returns to E1 and no grasp is attempted")
     p.add_argument("--class-height", type=float, default=0.065,
                    help="sugarbox full height in metres (default 0.065)")
+    p.add_argument("--grasp-forward-offset-mm", type=float,
+                   default=DEFAULT_GRASP_FORWARD_OFFSET_MM,
+                   help="operational target correction in base +X (forward/away "
+                        "from the robot), applied after the measured homography "
+                        "and before the policy envelope check (default 5 mm; "
+                        "allowed 0..15; use 0 to disable). This does not alter "
+                        "the calibration file.")
     p.add_argument("--entry-xy-mm", type=float, default=10.0)
+    p.add_argument("--jaw-track-fraction", type=float, default=None,
+                   help="forwarded to the controller: call it contact when the "
+                        "jaw encoder advances less than this fraction of what "
+                        "was commanded. The default absolute test only sees a "
+                        "jaw that has STOPPED, so an object that slips keeps "
+                        "resetting it and the command squeezes on -- the "
+                        "clicking during a close. Try 0.5.")
+    p.add_argument("--jaw-max-lag-deg", type=float, default=None,
+                   help="forwarded to the controller: hard ceiling on how far "
+                        "the jaw command may run past the encoder (default 15). "
+                        "Grip force IS that error, so this caps torque even if "
+                        "no detector fires.")
     p.add_argument("--floor-finger-error-mm", type=float, default=0.0,
                    help="measured URDF finger error, forwarded to the controller. "
                         "It corrects BOTH the floor guard and the stage-1 "
@@ -300,6 +325,19 @@ def check_scan_config(args: argparse.Namespace) -> bool:
 
 def preflight(args: argparse.Namespace) -> bool:
     ok = True
+    offset_mm = float(args.grasp_forward_offset_mm)
+    if (not math.isfinite(offset_mm)
+            or not 0.0 <= offset_mm <= MAX_GRASP_FORWARD_OFFSET_MM):
+        print(f"[FATAL] --grasp-forward-offset-mm must be finite and in "
+              f"[0, {MAX_GRASP_FORWARD_OFFSET_MM:g}]; got {offset_mm!r}")
+        ok = False
+    else:
+        if args.calibrate or args.scan_calibrate_pose is not None:
+            print(f"[check] grasp target correction configured at {offset_mm:+.1f} mm "
+                  "but not applied while collecting calibration geometry")
+        else:
+            print(f"[check] grasp target correction: base +X {offset_mm:+.1f} mm "
+                  "(after homography; policy envelope still enforced)")
     for label, path in (
             ("controller", CONTROLLER), ("vision bridge", BRIDGE),
             ("PPO model", PPO_MODEL), ("VecNormalize", VECNORM),
@@ -469,6 +507,12 @@ def build_ctrl_cmd(args: argparse.Namespace, fixed_target=None):
         "--pose-tol-deg", str(args.pose_tol_deg),
         "--entry-xy-mm", str(args.entry_xy_mm),
         "--floor-finger-error-mm", str(args.floor_finger_error_mm),
+    ]
+    if args.jaw_track_fraction is not None:
+        cmd += ["--jaw-track-fraction", str(args.jaw_track_fraction)]
+    if args.jaw_max_lag_deg is not None:
+        cmd += ["--jaw-max-lag-deg", str(args.jaw_max_lag_deg)]
+    cmd += [
         "--s6-stall-grasp-steps", str(args.s6_stall_steps),
         "--latch-wait", str(latch_wait),
         "--stale-timeout", str(args.stale_timeout),
@@ -502,6 +546,9 @@ def build_scan_cmd(args: argparse.Namespace):
         "--calibration-samples", str(args.calibration_samples),
         "--i-am-beside-the-robot",
     ]
+    if args.scan_calibrate_pose is None:
+        cmd += ["--grasp-forward-offset-mm",
+                str(args.grasp_forward_offset_mm)]
     if args.allow_top_clipped:
         cmd.append("--allow-top-clipped")
     if args.scan_calibrate_pose is not None:
@@ -541,7 +588,9 @@ def build_bridge_cmd(args: argparse.Namespace):
         cmd += ["--dry-run", "--calibration-only",
                 "--calibration-samples", str(args.calibration_samples)]
     else:
-        cmd += ["--homography", str(args.homography), "--once"]
+        cmd += ["--homography", str(args.homography),
+                "--grasp-forward-offset-mm",
+                str(args.grasp_forward_offset_mm), "--once"]
         if args.allow_top_clipped:
             cmd.append("--allow-top-clipped-grasp-home")
     return cmd
@@ -667,6 +716,9 @@ def main() -> int:
               "只量這個姿態；Ctrl+C 後先回 E1，不會啟動 PPO。")
     else:
         print("[launcher] REAL supervised grasp: stay beside the robot, hand on power.")
+        print(f"[launcher] TARGET CORRECTION: base +X "
+              f"{args.grasp_forward_offset_mm:+.1f} mm (forward/away from robot; "
+              "set --grasp-forward-offset-mm 0 to disable).")
         if args.three_pose_scan:
             print("[launcher] THREE-POSE: scanner exclusively owns camera+serial, "
                   "returns to E1, exits, then PPO starts with a fixed target.")

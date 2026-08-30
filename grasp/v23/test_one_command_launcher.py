@@ -143,6 +143,10 @@ for dead in ("--cam-x", "--cam-y", "--sign-y", "--i-accept-predicted-extrinsics"
     # while changing nothing.
     check(dead not in cmd, f"{dead} is not passed at the E1 grasp pose")
 check("--calibration-only" not in cmd, "not in calibration mode")
+check("--grasp-forward-offset-mm" in cmd,
+      "the operational base +X correction reaches the bridge")
+check(float(cmd[cmd.index("--grasp-forward-offset-mm") + 1]) == 5.0,
+      "the conservative default correction is +5 mm")
 
 print("\n1b. every E1-specific wire, because none of them fail loudly")
 sys.path.insert(0, str(L.INTEGRATION))
@@ -209,6 +213,8 @@ check("--dry-run" in cmd, "--dry-run: the TCP socket is never opened")
 check(cmd[cmd.index("--calibration-samples") + 1] == "25", "sample count forwarded")
 check("--homography" not in cmd, "no homography required to produce one")
 check("--once" not in cmd, "keeps running so several positions can be measured")
+check("--grasp-forward-offset-mm" not in cmd,
+      "calibration records measured geometry without an operational correction")
 check("--allow-top-clipped-grasp-home" not in L.build_bridge_cmd(
     make_args(calibrate=True, allow_top_clipped=True)),
       "calibration never relaxes the clipped-bbox gate")
@@ -216,6 +222,14 @@ check("--allow-top-clipped-grasp-home" not in L.build_bridge_cmd(
 print("\n3. --show is opt-in (a headless SSH session has no display)")
 check("--show" not in L.build_bridge_cmd(make_args()), "off by default")
 check("--show" in L.build_bridge_cmd(make_args(show=True)), "on when asked")
+
+print("\n3b. target correction is reversible and bounded")
+zero_cmd = L.build_bridge_cmd(make_args(grasp_forward_offset_mm=0.0))
+check(float(zero_cmd[zero_cmd.index("--grasp-forward-offset-mm") + 1]) == 0.0,
+      "--grasp-forward-offset-mm 0 disables the correction")
+check(L.DEFAULT_GRASP_FORWARD_OFFSET_MM == 5.0
+      and L.MAX_GRASP_FORWARD_OFFSET_MM == 15.0,
+      "default and hard upper bound stay explicit")
 
 print("\n4. the controller holds C3 long enough to measure from")
 ctrl = L.build_ctrl_cmd(make_args(calibrate=True, latch_wait=120.0))
