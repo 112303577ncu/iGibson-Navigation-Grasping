@@ -4,6 +4,8 @@
 import json
 import inspect
 from pathlib import Path
+import signal
+import subprocess
 import sys
 import tempfile
 
@@ -304,9 +306,97 @@ def main():
     scanner_source = inspect.getsource(launcher.run_scanner)
     ok("start_new_session=SCAN_START_NEW_SESSION" in scanner_source,
        "terminal Ctrl+C cannot hit launcher and scanner simultaneously")
-    ok("grace_seconds=SCAN_INTERRUPT_GRACE_SEC" in scanner_source
-       and launcher.SCAN_INTERRUPT_GRACE_SEC >= 30.0,
-       "the scanner gets a guarded E1-return window before termination")
+    ok("grace_seconds=scan_interrupt_grace_sec(" in scanner_source,
+       "the E1-return window is derived per run, not a flat constant")
+    ok(scanner_source.count("stop_process(") == 1,
+       "the scanner is signalled from exactly ONE place, so it gets one SIGINT")
+
+    # The window must outlast what actually happens inside that finally: the
+    # guarded return, then the confirming reference detection.
+    cfg_path = HERE / "three_pose_scan.json"
+    document = json.loads(cfg_path.read_text(encoding="utf-8"))
+    per_pose = float(document["per_pose_timeout_sec"])
+    grace = launcher.scan_interrupt_grace_sec(str(cfg_path))
+    ok(grace >= launcher.SCAN_RETURN_BUDGET_SEC + per_pose,
+       "grace {:.0f}s covers the worst-case return {:.0f}s plus the {:.0f}s "
+       "confirming detection".format(
+           grace, launcher.SCAN_RETURN_BUDGET_SEC, per_pose))
+    ok(launcher.SCAN_RETURN_BUDGET_SEC >= 40 * 0.35,
+       "the return budget is built from max_iters x settle, not guessed")
+    ok(launcher.scan_interrupt_grace_sec("does-not-exist.json")
+       == launcher.SCAN_RETURN_BUDGET_SEC + launcher.SCAN_TEARDOWN_BUDGET_S,
+       "an unreadable config shortens the window rather than inventing one")
+    ok(launcher.scan_interrupt_grace_sec(str(cfg_path)) > 
+       launcher.scan_interrupt_grace_sec(None),
+       "reading the config lengthens the window by the confirmation cost")
+
+    # Behavioural, not a grep. The guarantee is "one SIGINT per process", and
+    # the only honest way to test it is to count the signals a fake child
+    # receives across the two calls the interrupt path makes.
+    class FakeProc(object):
+        """A child that stays alive until it has been signalled once."""
+
+        _next_pid = 91000
+
+        def __init__(self, exits_after_signal=True):
+            FakeProc._next_pid += 1
+            self.pid = FakeProc._next_pid
+            self.signals = []
+            self.terminated = 0
+            self.killed = 0
+            self._alive = True
+            self._exits = exits_after_signal
+
+        def poll(self):
+            return None if self._alive else 0
+
+        def send_signal(self, sig):
+            self.signals.append(sig)
+
+        def wait(self, timeout=None):
+            if not self._alive:
+                return 0
+            if self._exits and self.signals:
+                self._alive = False
+                return 0
+            raise subprocess.TimeoutExpired("scanner", timeout)
+
+        def terminate(self):
+            self.terminated += 1
+            self._alive = False
+
+        def kill(self):
+            self.killed += 1
+            self._alive = False
+
+    launcher._SIGNALLED_PIDS.clear()
+    proc = FakeProc()
+    launcher.stop_process(proc, "fake", grace_seconds=0.01)
+    launcher.stop_process(proc, "fake", grace_seconds=0.01)
+    ok(proc.signals == [signal.SIGINT],
+       "two stop_process calls send exactly ONE SIGINT ({})".format(proc.signals))
+
+    # The case that actually bit: a child STILL RUNNING its guarded return when
+    # a second call arrives. stop_process's own escalation always ends in kill,
+    # so a first call can never leave the child in that state -- the pid record
+    # is seeded directly, which is exactly the situation a future second caller
+    # would create.
+    launcher._SIGNALLED_PIDS.clear()
+    slow = FakeProc(exits_after_signal=False)
+    launcher._SIGNALLED_PIDS.add(slow.pid)
+    launcher.stop_process(slow, "slow", grace_seconds=0.01)
+    ok(slow.signals == [],
+       "an already-signalled, still-running child is NOT signalled again")
+    ok(slow.terminated >= 1,
+       "...it is waited for, then escalated once its window expires")
+
+    launcher._SIGNALLED_PIDS.clear()
+    done = FakeProc()
+    done._alive = False
+    launcher.stop_process(done, "already exited", grace_seconds=0.01)
+    ok(done.signals == [],
+       "an already-exited child is never signalled at all")
+    launcher._SIGNALLED_PIDS.clear()
 
     print("\n11. a lone ROTATED view is confirmed at the reference, or refused")
     # The cross-pose 1 cm gate is the only runtime test of the S1 rotation. One

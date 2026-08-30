@@ -108,7 +108,51 @@ HOMOGRAPHY_MAX_ERROR_M = 0.02
 # E1. The scanner gets one deliberate SIGINT below and a long guarded-return
 # window before termination is considered.
 SCAN_START_NEW_SESSION = os.name == "posix"
-SCAN_INTERRUPT_GRACE_SEC = 45.0
+
+# How long the scanner may take to finish its guarded, encoder-confirmed return
+# to E1 after one SIGINT. This used to be a flat 45 s, which is a number with no
+# derivation behind it: exceed it and stop_process escalates to terminate and
+# then kill, aborting the return mid-move and leaving the arm at an arbitrary
+# pose. The next run re-homes first so it recovers, but the interrupt stops
+# being clean at exactly the moment cleanliness matters.
+#
+# So it is computed from what the return actually costs.
+# move_guarded_and_verified iterates up to max_iters, and each iteration is one
+# servo write, a settle sleep, and one guarded read -- the read being the slow
+# and variable part on a half-duplex bus that retries.
+SCAN_MOVE_MAX_ITERS = 40            # move_guarded_and_verified default
+SCAN_MOVE_SETTLE_S = 0.35           # pose_explorer.Mover.move_to
+SCAN_MOVE_IO_BUDGET_S = 0.35        # one write + one read, worst case, per iter
+SCAN_TEARDOWN_BUDGET_S = 6.0        # camera release, PyBullet close, flush
+SCAN_RETURN_BUDGET_SEC = SCAN_MOVE_MAX_ITERS * (
+    SCAN_MOVE_SETTLE_S + SCAN_MOVE_IO_BUDGET_S)
+
+
+def scan_interrupt_grace_sec(config_path=None) -> float:
+    """Seconds to allow the scanner after its single SIGINT.
+
+    The confirming reference detection runs inside that same finally block, and
+    its cost is per_pose_timeout_sec -- READ from the scan config rather than
+    assumed, so raising that timeout cannot silently outgrow the grace and start
+    killing returns again. A missing or unreadable config falls back to the
+    return budget alone, which is the conservative direction: it only shortens
+    the window, and the caller is about to fail on that config anyway.
+    """
+    confirm = 0.0
+    if config_path:
+        try:
+            with open(str(config_path), "r", encoding="utf-8") as handle:
+                raw = json.load(handle)
+            confirm = float(raw.get("per_pose_timeout_sec", 0.0) or 0.0)
+            if not (0.0 <= confirm <= 120.0):
+                confirm = 0.0
+        except Exception:
+            confirm = 0.0
+    return SCAN_RETURN_BUDGET_SEC + confirm + SCAN_TEARDOWN_BUDGET_S
+
+
+# Fallback for callers with no config in hand (and the value the tests pin).
+SCAN_INTERRUPT_GRACE_SEC = scan_interrupt_grace_sec()
 
 
 def parse_args_from(argv) -> argparse.Namespace:
@@ -349,15 +393,49 @@ def parse_scan_result_line(line: str):
     return payload
 
 
+# Processes that have already been sent their one SIGINT. Keyed by pid, because
+# the guarantee has to survive being called twice with the same handle.
+_SIGNALLED_PIDS = set()
+
+
 def stop_process(proc: Optional[subprocess.Popen], label: str,
                  grace_seconds: float = 8.0) -> None:
+    """Send ONE SIGINT, then escalate only if the grace expires.
+
+    The once-only part is load-bearing for the scanner. Its SIGINT handler runs
+    a guarded, encoder-confirmed return to E1 inside a finally block; a second
+    SIGINT arriving mid-return raises KeyboardInterrupt inside that handler and
+    abandons the arm wherever it happens to be. Relying on poll() to make the
+    second call a no-op works only when the first call has already reaped the
+    child, which is a timing property, not a guarantee -- so the pid is recorded
+    instead.
+    """
     if proc is None or proc.poll() is not None:
         return
+    if proc.pid in _SIGNALLED_PIDS:
+        # Already asked once, and it has not exited yet. Waiting is the correct
+        # action here; signalling again is the thing being prevented.
+        try:
+            proc.wait(timeout=grace_seconds)
+        except subprocess.TimeoutExpired:
+            print(f"[launcher] {label} did not exit within its grace window; "
+                  f"terminating.")
+            proc.terminate()
+            try:
+                proc.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3.0)
+        return
+    _SIGNALLED_PIDS.add(proc.pid)
     print(f"[launcher] stopping {label} (SIGINT)")
     try:
         proc.send_signal(signal.SIGINT)
         proc.wait(timeout=grace_seconds)
     except subprocess.TimeoutExpired:
+        print(f"[launcher] {label} did not finish its guarded return within "
+              f"{grace_seconds:.0f}s; terminating. The arm may be off E1 -- the "
+              f"next run re-homes before it does anything else.")
         proc.terminate()
         try:
             proc.wait(timeout=3.0)
@@ -528,14 +606,14 @@ def run_scanner(args: argparse.Namespace, env, log_path: Path):
             code = proc.wait()
         except KeyboardInterrupt:
             # The child is in its own POSIX session, so it did not receive the
-            # terminal's Ctrl+C. Send exactly one SIGINT and allow its finally
-            # block to complete the guarded, encoder-confirmed E1 return.
-            stop_process(proc, "three-pose scanner",
-                         grace_seconds=SCAN_INTERRUPT_GRACE_SEC)
+            # terminal's Ctrl+C. It gets exactly one SIGINT -- from the finally
+            # below, which runs on this path too. Signalling here as well was
+            # the bug: two calls, and the second one only stayed harmless while
+            # the first happened to have reaped the child already.
             raise
         finally:
             stop_process(proc, "three-pose scanner",
-                         grace_seconds=SCAN_INTERRUPT_GRACE_SEC)
+                         grace_seconds=scan_interrupt_grace_sec(args.scan_config))
     if code != 0:
         raise RuntimeError(f"three-pose scanner exited with {code}")
     if args.scan_calibrate_pose is not None:
