@@ -143,8 +143,14 @@ for dead in ("--cam-x", "--cam-y", "--sign-y", "--i-accept-predicted-extrinsics"
     # while changing nothing.
     check(dead not in cmd, f"{dead} is not passed at the E1 grasp pose")
 check("--calibration-only" not in cmd, "not in calibration mode")
-check("--grasp-forward-offset-mm" in cmd,
-      "the operational base +X correction reaches the bridge")
+bridge_source = Path(L.BRIDGE).read_text(encoding="utf-8")
+controller_source = Path(L.CONTROLLER).read_text(encoding="utf-8")
+check("--grasp-forward-offset-mm" in cmd
+      and '"--grasp-forward-offset-mm"' in bridge_source
+      and "def apply_grasp_forward_offset(" in bridge_source
+      and '"--tcp-forward-error-mm"' in controller_source
+      and "def control_tcp_position(" in controller_source,
+      "the two X corrections reach compatible bridge/controller files")
 check(float(cmd[cmd.index("--grasp-forward-offset-mm") + 1]) == 5.0,
       "the conservative default correction is +5 mm")
 
@@ -228,8 +234,12 @@ zero_cmd = L.build_bridge_cmd(make_args(grasp_forward_offset_mm=0.0))
 check(float(zero_cmd[zero_cmd.index("--grasp-forward-offset-mm") + 1]) == 0.0,
       "--grasp-forward-offset-mm 0 disables the correction")
 check(L.DEFAULT_GRASP_FORWARD_OFFSET_MM == 5.0
-      and L.MAX_GRASP_FORWARD_OFFSET_MM == 15.0,
-      "default and hard upper bound stay explicit")
+      and L.MAX_GRASP_FORWARD_OFFSET_MM == 15.0
+      and L.DEFAULT_FLOOR_FINGER_ERROR_MM == 15.0
+      and L.DEFAULT_JAW_TRACK_FRACTION == 0.5
+      and L.DEFAULT_TCP_FORWARD_ERROR_MM == 20.0
+      and L.MAX_TCP_FORWARD_ERROR_MM == 20.0,
+      "the 3/3 hardware defaults and hard upper bounds stay explicit")
 
 print("\n4. the controller holds C3 long enough to measure from")
 ctrl = L.build_ctrl_cmd(make_args(calibrate=True, latch_wait=120.0))
@@ -238,7 +248,11 @@ check(wait >= 1800.0, f"calibrate stretches --latch-wait to {wait:.0f}s")
 ctrl = L.build_ctrl_cmd(make_args(latch_wait=120.0))
 check(float(ctrl[ctrl.index("--latch-wait") + 1]) == 120.0,
       "grasp mode keeps the operator's value")
-check("--s6-stall-grasp-steps" in ctrl, "S6 stall shortcut (sets the 1 deg hold bias)")
+check("--s6-stall-grasp-steps" in ctrl
+      and float(ctrl[ctrl.index("--floor-finger-error-mm") + 1]) == 15.0
+      and float(ctrl[ctrl.index("--jaw-track-fraction") + 1]) == 0.5
+      and float(ctrl[ctrl.index("--tcp-forward-error-mm") + 1]) == 20.0,
+      "the complete 3/3 hardware tuple reaches the controller")
 check("--unlock-candidate-real" in ctrl, "manifest is still candidate")
 
 print("\n5. the calibration gate matches the bridge's runtime gate")

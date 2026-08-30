@@ -290,6 +290,53 @@ def test_finger_error_delays_the_pads_ready_gate():
           "the default is still 0.0, so nothing changes without an explicit opt-in")
 
 
+def test_tcp_forward_error_moves_control_forward_without_moving_the_object():
+    print("\n[1c2] TCP landing correction asks for another 10 mm forward")
+    with contextlib.redirect_stdout(io.StringIO()):
+        import x3plus_real_grasp as _X
+
+    raw = np.array([0.250, -0.010, 0.080], dtype=np.float64)
+    corrected = _X.control_tcp_position(raw, 0.010)
+    check(abs(corrected[0] - 0.240) < 1e-12,
+          "a +10mm FK forward error subtracts 10mm from control TCP X")
+    check(np.allclose(corrected[1:], raw[1:]) and np.allclose(raw, [0.25, -0.01, 0.08]),
+          "Y/Z and the caller's raw FK position stay unchanged")
+    try:
+        _X.control_tcp_position(raw, 0.021)
+    except ValueError:
+        check(True, "TCP correction is hard-bounded at 20mm")
+    else:
+        check(False, "TCP correction is hard-bounded at 20mm")
+
+    class StubFK:
+        @staticmethod
+        def compute(_arm, _grip):
+            return raw.copy(), np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+
+    builder = _X.ObsBuilder(
+        StubFK(), None, None, dc.OBS_28_INCREMENTAL,
+        tcp_forward_error_m=0.010)
+    obj = np.array([0.270, -0.010, 0.0325], dtype=np.float32)
+    obs = builder.build(
+        np.zeros(5, dtype=np.float32), -1.5, obj, 0,
+        np.zeros(6, dtype=np.float32))
+    check(abs(float(obs[6]) - 0.240) < 1e-6,
+          "policy tcp_pos receives the corrected X")
+    check(abs(float(obs[13]) - 0.270) < 1e-6,
+          "policy object_pos remains the measured camera coordinate")
+    check(abs(float(obs[16]) - 0.030) < 1e-6,
+          "policy rel_pos asks for 10mm more forward travel")
+
+    plant = FakeServoPlant(list(_X.DeployConfig().home_deg))
+    ctrl, cfg = build(plant)
+    cfg.tcp_forward_error_m = 0.010
+    ctrl._wrist_z_offset = dc.episode_wrist_z_offset(0.065, 0.0325)
+    raw_tcp, _ = ctrl.fk.compute(ctrl._current_arm_rads, ctrl._current_grip_rad)
+    gate = ctrl._grasp_geometry(obj, 0.065)
+    check(abs(float(gate["tcp"][0]) - (float(raw_tcp[0]) - 0.010)) < 1e-9,
+          "close gate uses the same corrected TCP as the policy")
+
+
 def test_a_slipping_object_is_contact_not_a_reason_to_squeeze():
     print("")
     print("[1d] a jaw that moves SLOWER than commanded is contact too")
@@ -341,6 +388,62 @@ def test_a_slipping_object_is_contact_not_a_reason_to_squeeze():
             run_time_ms=1, settle_s=0.0, tol_deg=2.0, stop_on_jaw_contact=True)
     check(bool(out.get("jaw_contact")) and out.get("jaw_contact_mode") == "stalled",
           "a hard block is still reported as a stall, not a slip")
+
+
+def test_stage0_policy_close_uses_the_slow_tracking_detector():
+    print("")
+    print("[1dd] Stage-0 policy close catches slip, not just a frozen encoder")
+    with contextlib.redirect_stdout(io.StringIO()):
+        import x3plus_real_grasp as _X
+    home = list(_X.DeployConfig().home_deg)
+    ctrl, cfg = build(
+        FakeServoPlant(home),
+        stage0_s6_stall_steps=2,
+        jaw_contact_track_fraction=0.5)
+
+    def reset():
+        ctrl._stage0_s6_prev_deg = None
+        ctrl._stage0_s6_prev_cmd_deg = None
+        ctrl._stage0_s6_stall_count = 0
+
+    # The previous command still had 8 degrees to travel. Advancing by only 3
+    # degrees consumes 37.5% of it, twice in succession: this is exactly the
+    # loaded/slipping pattern from the hardware log that the old unchanged-only
+    # Stage-0 shortcut missed.
+    reset()
+    ctrl._observe_stage0_jaw(140.0, 148.0, True)
+    one = ctrl._observe_stage0_jaw(143.0, 151.0, True)
+    two = ctrl._observe_stage0_jaw(146.0, 154.0, True)
+    check(one["mode"] == "slipping" and one["count"] == 1,
+          "one slow sample starts, but does not yet confirm, contact")
+    check(two["mode"] == "slipping" and two["count"] == 2,
+          "two consecutive slow samples confirm the Stage-0 contact")
+    check(abs(two["encoder_progress_deg"] - 3.0) < 1e-9
+          and abs(two["requested_progress_deg"] - 8.0) < 1e-9,
+          "the evidence reports 3 degrees moved out of 8 requested")
+
+    # A free jaw consumes the request and must not be mistaken for an object.
+    reset()
+    ctrl._observe_stage0_jaw(140.0, 148.0, True)
+    free = ctrl._observe_stage0_jaw(148.0, 156.0, True)
+    check(not free["blocked"] and free["count"] == 0,
+          "a normally tracking free jaw does not trigger")
+
+    # The feature remains an explicit opt-in, and losing eligibility breaks a
+    # streak so evidence cannot leak across unrelated policy motion.
+    cfg.jaw_contact_track_fraction = 0.0
+    reset()
+    ctrl._observe_stage0_jaw(140.0, 148.0, True)
+    disabled = ctrl._observe_stage0_jaw(143.0, 151.0, True)
+    check(not disabled["blocked"], "fraction 0 preserves unchanged-only behaviour")
+    cfg.jaw_contact_track_fraction = 0.5
+    reset()
+    ctrl._observe_stage0_jaw(140.0, 148.0, True)
+    ctrl._observe_stage0_jaw(143.0, 151.0, True)
+    ctrl._observe_stage0_jaw(146.0, 154.0, False)
+    after_reset = ctrl._observe_stage0_jaw(149.0, 157.0, True)
+    check(after_reset["count"] == 0,
+          "an ineligible sample clears the contact streak")
 
 
 def test_the_jaw_command_can_never_outrun_the_encoder():
@@ -1241,7 +1344,9 @@ def main() -> int:
         test_long_move_needs_many_steps,
         test_small_home_residual_has_a_bounded_recovery_window,
         test_finger_error_delays_the_pads_ready_gate,
+        test_tcp_forward_error_moves_control_forward_without_moving_the_object,
         test_a_slipping_object_is_contact_not_a_reason_to_squeeze,
+        test_stage0_policy_close_uses_the_slow_tracking_detector,
         test_the_jaw_command_can_never_outrun_the_encoder,
         test_write_failure_stops_and_does_not_advance,
         test_read_failure_stops_and_does_not_advance,

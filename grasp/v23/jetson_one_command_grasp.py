@@ -100,6 +100,13 @@ POLICY_Y_RANGE = ("-0.070", "0.065")
 # forward / away from the robot.
 DEFAULT_GRASP_FORWARD_OFFSET_MM = 5.0
 MAX_GRASP_FORWARD_OFFSET_MM = 15.0
+# Three consecutive supervised E1 grasps succeeded on hardware on 2026-08-30
+# with this complete runtime tuple. Keep the neutral/training-identical defaults
+# in x3plus_real_grasp.py; this measured one-command launcher is the opt-in layer.
+DEFAULT_FLOOR_FINGER_ERROR_MM = 15.0
+DEFAULT_JAW_TRACK_FRACTION = 0.5
+DEFAULT_TCP_FORWARD_ERROR_MM = 20.0
+MAX_TCP_FORWARD_ERROR_MM = 20.0
 ARM_CAMERA = ("/dev/v4l/by-id/"
               "usb-Sonix_Technology_Co.__Ltd._USB_2.0_Camera-video-index0")
 
@@ -194,6 +201,14 @@ def parse_args_from(argv) -> argparse.Namespace:
                         "The measured E1 homography still requires its bottom-centre "
                         "inside the calibration hull; side edges are width-only and "
                         "jaw-bounded. This never allows left/right/bottom clipping.")
+    p.add_argument("--unlock-unvalidated-scan", action="store_true",
+                   help="run LEFT/RIGHT before their hardware_validated and "
+                        "yaw_mapping_validated flags are true, as a supervised "
+                        "experiment. The evidence is still missing and the "
+                        "config still records that; every other gate -- S1-only, "
+                        "pivot, yaw sign, the reference homography and its hull, "
+                        "cross-pose agreement, the encoder-confirmed E1 return -- "
+                        "stays enforced. Hand on the power switch.")
     p.add_argument("--accept-single-rotated-view", action="store_true",
                    help="let the scan release a target that only ONE rotated "
                         "(LEFT/RIGHT) view saw and that E1 could not confirm "
@@ -219,28 +234,38 @@ def parse_args_from(argv) -> argparse.Namespace:
                         "and before the policy envelope check (default 5 mm; "
                         "allowed 0..15; use 0 to disable). This does not alter "
                         "the calibration file.")
+    p.add_argument("--tcp-forward-error-mm", type=float,
+                   default=DEFAULT_TCP_FORWARD_ERROR_MM,
+                   help="additional real-gripper landing correction: treat FK TCP "
+                        "as this many mm too far forward so the controller travels "
+                        "farther in base +X (default 20 mm; allowed 0..20; use 0 "
+                        "to disable). The camera/object coordinate is unchanged.")
     p.add_argument("--entry-xy-mm", type=float, default=10.0)
-    p.add_argument("--jaw-track-fraction", type=float, default=None,
+    p.add_argument("--jaw-track-fraction", type=float,
+                   default=DEFAULT_JAW_TRACK_FRACTION,
                    help="forwarded to the controller: call it contact when the "
                         "jaw encoder advances less than this fraction of what "
-                        "was commanded. The default absolute test only sees a "
-                        "jaw that has STOPPED, so an object that slips keeps "
-                        "resetting it and the command squeezes on -- the "
-                        "clicking during a close. Try 0.5.")
+                        "was commanded. Applies to both the Stage-0 policy close "
+                        "and the Stage-1 scripted close. The absolute test only "
+                        "sees a jaw that has STOPPED, so an object that slips "
+                        "keeps resetting it and the command squeezes on -- the "
+                        "clicking during a close. Default 0.5, validated 3/3 on "
+                        "supervised E1 hardware grasps; use 0 to disable.")
     p.add_argument("--jaw-max-lag-deg", type=float, default=None,
                    help="forwarded to the controller: hard ceiling on how far "
                         "the jaw command may run past the encoder (default 15). "
                         "Grip force IS that error, so this caps torque even if "
                         "no detector fires.")
-    p.add_argument("--floor-finger-error-mm", type=float, default=0.0,
+    p.add_argument("--floor-finger-error-mm", type=float,
+                   default=DEFAULT_FLOOR_FINGER_ERROR_MM,
                    help="measured URDF finger error, forwarded to the controller. "
                         "It corrects BOTH the floor guard and the stage-1 "
-                        "pads_ready gate. At 0 (default) pads_ready fires while "
+                        "pads_ready gate. At 0, pads_ready fires while "
                         "the real pads are still above the object and the jaw "
                         "shuts on the approach; E1 measured 11.9mm open / 15.4mm "
-                        "closed on 2026-08-29, so 15 is the value that pass "
-                        "measured. Confirm with pose_check.py --real before "
-                        "raising it further.")
+                        "closed on 2026-08-29. Default 15 mm was validated 3/3 "
+                        "with the E1 one-command grasp. Confirm with "
+                        "pose_check.py --real before changing it.")
     p.add_argument("--s6-stall-steps", type=int, default=2)
     p.add_argument("--pose-tol-deg", type=float, default=3.0,
                    help="maximum E1 arm-pose residual accepted by both startup and "
@@ -308,7 +333,9 @@ def check_scan_config(args: argparse.Namespace) -> bool:
         config = load_scan_config(
             args.scan_config,
             require_homographies=args.scan_calibrate_pose is None,
-            calibration_pose=args.scan_calibrate_pose)
+            calibration_pose=args.scan_calibrate_pose,
+            unlock_unvalidated=getattr(
+                args, "unlock_unvalidated_scan", False))
     except (ImportError, ScanConfigError) as exc:
         print(f"[FATAL] three-pose scan config rejected: {exc}")
         return False
@@ -338,6 +365,15 @@ def preflight(args: argparse.Namespace) -> bool:
         else:
             print(f"[check] grasp target correction: base +X {offset_mm:+.1f} mm "
                   "(after homography; policy envelope still enforced)")
+    tcp_error_mm = float(args.tcp_forward_error_mm)
+    if (not math.isfinite(tcp_error_mm)
+            or not 0.0 <= tcp_error_mm <= MAX_TCP_FORWARD_ERROR_MM):
+        print(f"[FATAL] --tcp-forward-error-mm must be finite and in "
+              f"[0, {MAX_TCP_FORWARD_ERROR_MM:g}]; got {tcp_error_mm!r}")
+        ok = False
+    else:
+        print(f"[check] TCP landing correction: +{tcp_error_mm:.1f} mm additional "
+              "base-X travel (object coordinate unchanged)")
     for label, path in (
             ("controller", CONTROLLER), ("vision bridge", BRIDGE),
             ("PPO model", PPO_MODEL), ("VecNormalize", VECNORM),
@@ -347,6 +383,41 @@ def preflight(args: argparse.Namespace) -> bool:
         else:
             print(f"[FATAL] missing {label}: {path}")
             ok = False
+
+    # This launcher and the shared integration bridge are often copied to the
+    # Jetson separately. Catch a partial upload during --check instead of after
+    # E1 motion, when argparse would reject the new flag (or the scanner would
+    # call a helper an older bridge does not have).
+    if BRIDGE.is_file():
+        try:
+            bridge_source = BRIDGE.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"[FATAL] cannot read vision bridge contract: {exc}")
+            ok = False
+        else:
+            required = ('"--grasp-forward-offset-mm"',
+                        "def apply_grasp_forward_offset(")
+            if not all(token in bridge_source for token in required):
+                print("[FATAL] vision bridge is older than this v23 launcher; "
+                      "re-copy integration/vision_grasp_bridge.py to the Jetson")
+                ok = False
+            else:
+                print("[check] vision bridge target-correction contract: OK")
+    if CONTROLLER.is_file():
+        try:
+            controller_source = CONTROLLER.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"[FATAL] cannot read controller TCP-correction contract: {exc}")
+            ok = False
+        else:
+            required = ('"--tcp-forward-error-mm"',
+                        "def control_tcp_position(")
+            if not all(token in controller_source for token in required):
+                print("[FATAL] controller is older than this v23 launcher; re-copy "
+                      "the complete grasp/v23 directory to the Jetson")
+                ok = False
+            else:
+                print("[check] controller TCP-correction contract: OK")
 
     if args.three_pose_scan or args.scan_calibrate_pose is not None:
         for label, path in (("three-pose scanner", SCANNER),
@@ -507,6 +578,7 @@ def build_ctrl_cmd(args: argparse.Namespace, fixed_target=None):
         "--pose-tol-deg", str(args.pose_tol_deg),
         "--entry-xy-mm", str(args.entry_xy_mm),
         "--floor-finger-error-mm", str(args.floor_finger_error_mm),
+        "--tcp-forward-error-mm", str(args.tcp_forward_error_mm),
     ]
     if args.jaw_track_fraction is not None:
         cmd += ["--jaw-track-fraction", str(args.jaw_track_fraction)]
@@ -555,6 +627,8 @@ def build_scan_cmd(args: argparse.Namespace):
         cmd += ["--calibrate-pose", str(args.scan_calibrate_pose)]
     if getattr(args, "accept_single_rotated_view", False):
         cmd.append("--accept-single-rotated-view")
+    if getattr(args, "unlock_unvalidated_scan", False):
+        cmd.append("--unlock-unvalidated-scan")
     return cmd
 
 
@@ -719,6 +793,9 @@ def main() -> int:
         print(f"[launcher] TARGET CORRECTION: base +X "
               f"{args.grasp_forward_offset_mm:+.1f} mm (forward/away from robot; "
               "set --grasp-forward-offset-mm 0 to disable).")
+        print(f"[launcher] TCP CORRECTION: another "
+              f"{args.tcp_forward_error_mm:+.1f} mm of base +X travel "
+              "without changing the detected object coordinate.")
         if args.three_pose_scan:
             print("[launcher] THREE-POSE: scanner exclusively owns camera+serial, "
                   "returns to E1, exits, then PPO starts with a fixed target.")

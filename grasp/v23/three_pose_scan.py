@@ -81,9 +81,49 @@ def _validate_arm_deg(raw, label):
     return values
 
 
+
+
+def announce_unvalidated(config):
+    """Say exactly what evidence is missing, every run, before anything moves."""
+    missing = [pose for pose in config["poses"]
+               if not (pose["hardware_validated"] and pose["yaw_mapping_validated"])]
+    if not missing:
+        return
+    print("=" * 70)
+    print("[UNLOCKED] --unlock-unvalidated-scan: running poses whose hardware")
+    print("           evidence is INCOMPLETE. This is a supervised experiment.")
+    for pose in missing:
+        gaps = []
+        if not pose["hardware_validated"]:
+            gaps.append("motion not confirmed on hardware")
+        if not pose["yaw_mapping_validated"]:
+            gaps.append("yaw mapping not confirmed against a ruler")
+        print("           {:6s} — {}".format(pose["name"], "; ".join(gaps)))
+    print("           Every other gate still applies: the S1-only check, the")
+    print("           pivot and yaw sign, the reference homography and its hull,")
+    print("           sample spread, cross-pose agreement, and the")
+    print("           encoder-confirmed E1 return before any target is released.")
+    print("           Stay beside the robot with a hand on the power switch.")
+    print("=" * 70)
+
+
+
 def load_scan_config(path_str, require_homographies=True,
-                     calibration_pose=None):
-    """Load and validate exactly three distinct, hardware-visited poses."""
+                     calibration_pose=None, unlock_unvalidated=False):
+    """Load and validate exactly three distinct, hardware-visited poses.
+
+    ``unlock_unvalidated`` waives ONLY the two per-pose evidence flags,
+    hardware_validated and yaw_mapping_validated, for a supervised experiment.
+    It is the same shape as --unlock-candidate-real on the controller: the
+    evidence is still missing, the config still records that it is missing, and
+    the operator is standing next to the robot having decided to try anyway.
+
+    Everything else stays enforced -- three poses, S1-only, the pivot, the yaw
+    sign, the +-25 degree limit, the reference homography and its >=6 point /
+    2 cm gate, the sample spread, the cross-pose agreement, and the
+    encoder-confirmed E1 return. Those are what stop a wrong number reaching the
+    policy; these two flags only record whether a person has checked the pose on
+    hardware yet."""
     path = Path(path_str).resolve()
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -140,17 +180,20 @@ def load_scan_config(path_str, require_homographies=True,
         rounded = tuple(round(value, 4) for value in arm_deg)
         if rounded in arm_rows:
             raise ScanConfigError("scan poses must use three distinct arm positions")
-        if raw.get("hardware_validated") is not True and calibration_pose is None:
+        if (raw.get("hardware_validated") is not True
+                and calibration_pose is None and not unlock_unvalidated):
             raise ScanConfigError(
                 "pose {} is not hardware_validated; run --scan-calibrate-pose {} "
-                "beside the robot first"
+                "beside the robot first, or pass --unlock-unvalidated-scan to try "
+                "it as a supervised experiment"
                 .format(name, name))
         if (name != reference_pose
                 and raw.get("yaw_mapping_validated") is not True
-                and calibration_pose is None):
+                and calibration_pose is None and not unlock_unvalidated):
             raise ScanConfigError(
                 "pose {} yaw mapping is not hardware-validated; collect held-out "
-                "points before runtime".format(name))
+                "points before runtime, or pass --unlock-unvalidated-scan to try "
+                "it as a supervised experiment".format(name))
         parsed.append({
             "name": name,
             "arm_deg": arm_deg,
@@ -541,6 +584,13 @@ def parse_args_from(argv):
     parser.add_argument("--calibration-samples", type=int, default=20)
     parser.add_argument("--pose-tol-deg", type=float, default=2.0)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--unlock-unvalidated-scan", action="store_true",
+                        help="run poses whose hardware_validated / "
+                             "yaw_mapping_validated flags are still false, as a "
+                             "supervised experiment. Same shape as "
+                             "--unlock-candidate-real: the evidence is still "
+                             "missing and the config still says so. Every other "
+                             "gate stays enforced.")
     parser.add_argument("--accept-single-rotated-view", action="store_true",
                         help="release a target seen by exactly one rotated "
                              "(LEFT/RIGHT) view even when the reference pose "
@@ -587,7 +637,10 @@ def main():
     try:
         config = load_scan_config(
             args.config, require_homographies=args.calibrate_pose is None,
-            calibration_pose=args.calibrate_pose)
+            calibration_pose=args.calibrate_pose,
+            unlock_unvalidated=args.unlock_unvalidated_scan)
+        if args.unlock_unvalidated_scan and args.calibrate_pose is None:
+            announce_unvalidated(config)
     except ScanConfigError as exc:
         print("[FATAL] {}".format(exc))
         return 2

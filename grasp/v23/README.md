@@ -49,7 +49,7 @@ release 動作的做法把旗標搬過來，**不要**整支換回去。
 cd grasp/v23 && ./jetson_verify.sh
 ```
 
-要看到 **135 / 37 / 641 / 50 / 73** 一字不差，`wrist_z_offset = 0.0564`。
+要看到 **148 / 37 / 641 / 50 / 82** 一字不差，`wrist_z_offset = 0.0564`。
 
 > `wrist_z_offset` 錨在**地板**不是手臂（`dc.hover_gripper_center_z`），所以
 > C3→E1 這個值不變。它要是動了，代表變的不是姿勢。
@@ -112,7 +112,8 @@ python3 x3plus_real_grasp.py \
 **網頁上的停止鈕不是急停，電源開關才是。**
 
 manifest `status` 仍是 `candidate`；以 `manifest.json` 的 hardware gates 為準。
-目前 motion envelope、Jetson dry-run 與成功實抓完整 log 仍未通過。
+成功實抓完整 log 已於 2026-08-30 通過，且操作者在可辨識範圍內重複 **3/3 成功**；
+motion envelope、Jetson dry-run 與左右掃描實測仍未通過，所以尚不能移除 candidate 閘。
 
 ### 4. 一鍵：辨識＋夾取
 
@@ -122,21 +123,56 @@ python3 jetson_one_command_grasp.py            # 正式
 ```
 
 目前一鍵 launcher 會在 E1 homography 算完後，把最終目標沿 base `+X`（遠離機器人）
-平移 **5 mm**，修正實機穩定落在物體近側的偏差。這是可逆的 runtime correction，
+平移 **5 mm**。2026-08-30 第二次實抓確認 bridge 已送出 `x=0.2728`，其未補償值
+`0.2678` 與前 4 cm 的尺量 `0.2687` 只差 0.9 mm，但真實夾爪仍落在近側；因此要求的
+「再往前」不再扭曲已準確的物體座標，而由 controller 額外套用 TCP landing
+correction。10 mm 與 15 mm 的實抓仍落在近側，最後提高到 **20 mm**；此設定搭配
+15 mm finger correction 與 0.5 jaw tracking，在可辨識範圍內實測 3/3 成功。
+policy 與 close gate 會把 FK TCP X 視為靠後 20 mm，要求手臂繼續往外；
+floor/collision FK 則維持原值。
+
+兩項都是可逆的 runtime correction，
 `integration/grasp_home_homography_e1.json` 仍保留原始實測值；物體寬度、Y、Z 都不變，
 平移後也仍須通過 v23 的 `x=0.205–0.280 m` policy envelope。
 
 ```bash
 # 回到未補償的原始外參
-python3 jetson_one_command_grasp.py --grasp-forward-offset-mm 0
+python3 jetson_one_command_grasp.py \
+  --grasp-forward-offset-mm 0 --tcp-forward-error-mm 0
 
 # 若 +5 mm 實測仍偏近，只用小步幅增加；程式硬限制為 0–15 mm
 python3 jetson_one_command_grasp.py --grasp-forward-offset-mm 7
 ```
 
+目前正式 launcher 預設是「物體座標 +5 mm、TCP 再走 +20 mm」，合計約 +25 mm；
+`floor-finger-error=15 mm` 與 `jaw-track-fraction=0.5` 也已成為正式一鍵預設。
+三者就是 2026-08-30 的 3/3 實機成功組合，因此一般執行不再需要逐一帶旗標。
+若要完全取消 TCP 修正可帶 0；TCP 修正硬限制仍為 0–20 mm。
+
 同一參數也會傳給 `--three-pose-scan`，但在 S1 旋轉成最終 base frame **之後**才加
 `+X`，所以三個視角使用一致的「遠離機器人」方向。所有 `--calibrate`／
 `--scan-calibrate-pose` 輸出刻意不套用此補償，避免把 runtime correction 混進量測資料。
+
+### 夾到後仍喀喀響：Stage 0 慢速接觸
+
+2026-08-30 實抓 log 顯示喀喀聲不是發生在 scripted Stage 1，而是 policy 還停在
+**Stage 0** 時已經開始關 S6：編碼器在 147–152° 間因物體滑動而抖動，舊的
+「連續不動」計數每次都被歸零，最後一路推到 179°。原本的
+`--jaw-track-fraction` 只接到 Stage 1，因此該次即使帶 `0.5` 也保護不到這條路徑。
+
+現在同一個比例判定也接到 Stage 0。它比較「上一筆 S6 命令尚未走完的角度」與下一筆
+編碼器實際前進量；連續兩筆低於指定比例才確認接觸，避免單筆 UART／量化抖動誤判。
+確認後會立即把 S6 停在**接觸讀值 +1° hold bias**，鎖定該 hold 並進入 scripted lift，
+policy 沒有下一拍重新夾緊的機會。正常跟得上命令的空夾仍繼續到 180°並判定失敗。
+
+```bash
+# 以下三項已是正式預設：floor=15 mm、jaw tracking=0.5、TCP=20 mm
+python3 jetson_one_command_grasp.py
+```
+
+成功觸發時 log 應出現 `Stage 0→2  S6 slipping`，並列出 encoder 實走角度與前一筆
+尚待走完的角度。`0` 可停用比例判定；0.5 已實測 3/3，若沒有新的硬體證據不要改動，
+數值越高會越早把正常但稍慢的伺服判成接觸。
 
 若 log 明確寫的是 **`bbox touches only the top frame edge`**，而左右與下緣都沒有碰框，
 可以用以下受限例外：
@@ -243,11 +279,11 @@ home 訓練出來的。
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
 - [x] `e1_gripper_center_height_ruler_check` — 張爪實測 15.2 cm，FK 15.58 cm
 - [x] `e1_minimum_object_height_measured` — 3 cm 可夾、2 cm 空夾
-- [ ] `jetson_dry_run_ok` — 135/37/641/50/73 + `wrist_z_offset = 0.0564`
-- [ ] `first_real_grasp_logged` — E1 至少一次實機夾起來，留完整 log
+- [ ] `jetson_dry_run_ok` — 148/37/641/50/82 + `wrist_z_offset = 0.0564`
+- [x] `first_real_grasp_logged` — 2026-08-30 完整 log 已核對；可辨識範圍內重複 3/3 成功
 
-沒過就留在分支上。v21 完全沒被動到，`grasp/v21/` 仍是唯一有實機夾取紀錄的那一套
-（2026-07-31），模式 A / B / C 也都還指著它。
+沒過就留在分支上。v23 現已有 E1 實機 3/3 紀錄，但其他 gate 尚未全過；v21 完全沒被
+動到，模式 A / B / C 也都還指著 v21。
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "package": "grasp-v23-candidate",
   "status": "candidate",
-  "status_note": "NOT sim-approved and NOT hardware-approved, and on weaker evidence than v21 carried at the same label. This is a 250k checkpoint with no formal held-out evaluation at all, and one training grid cell (0.28, -0.070) is still at 73.3% against an 80% per-cell gate. The E1 pixel->base homography was measured on hardware on 2026-08-29, but every motion/grasp hardware gate remains open. --real therefore requires --unlock-candidate-real and a person beside the robot. Never relabel this without the gates below turning true.",
+  "status_note": "NOT sim-approved and not ready to leave candidate status. This is a 250k checkpoint with no formal held-out evaluation, and one training grid cell (0.28, -0.070) is still at 73.3% against an 80% per-cell gate. E1 homography and one-command grasp are now hardware-backed: on 2026-08-30 the validated runtime tuple succeeded 3/3 within the recognisable single-view area, with one complete stdout reviewed. Motion-envelope, dry-run and LEFT/RIGHT scan gates remain open. --real therefore still requires --unlock-candidate-real and a person beside the robot.",
   "created": "2026-08-29",
   "staged_from": "grasp/deploy_v23/ handoff package. Its model/, deploy_contract.py, action_execution_v21.py and x3plus/ were taken; its x3plus_real_grasp.py was NOT -- see deployment_base below.",
   "deployment_base": {
@@ -209,7 +209,7 @@
     "fov_vs_envelope": "E1 sees 44% more ground than C3 while the trained band is NARROWER than v21's. The camera can therefore see well outside where the policy has been trained, and a perfectly working detector can hand over a target that is finite, in frame, geometrically sound and completely unevaluated. That is exactly what _check_target_envelope is for -- do not widen it to match the FOV."
   },
   "hardware_gates": {
-    "note": "E1 homography and height gates are true. LEFT/RIGHT S1 scan motion and held-out yaw-mapping validation, motion envelope, dry-run and first-real-grasp gates remain open.",
+    "note": "E1 homography, height and first-real-grasp gates are true. LEFT/RIGHT S1 scan motion and held-out yaw-mapping validation, motion envelope and dry-run gates remain open.",
     "e1_homography_measured": true,
     "left_scan_motion_validated": false,
     "right_scan_motion_validated": false,
@@ -223,7 +223,7 @@
     "jetson_dry_run_ok": false,
     "object_heights_measured": false,
     "guard_margin_8mm_validated_on_hardware": false,
-    "first_real_grasp_logged": false,
+    "first_real_grasp_logged": true,
     "inherited_from_v21_do_not_assume": "v21's true gates -- c3_gripper_center_height_ruler_check and the 2026-07-31 first real grasp -- were measured AT C3. The arm pose is the one thing v23 changes, so neither carries over. What DOES carry over is what they validated that is pose-independent: the five-joint FK chain, the URDF_TO_TRAINING_FRAME correction and the gripper_center TCP definition.",
     "e1_minimum_object_height_measured": true,
     "e1_ruler_measurement_2026_08_29": {
@@ -274,8 +274,22 @@
       "predicted_vs_measured": "A model built from the ruler readings put the boundary at 3.6 cm; the robot grasps at 3.0. The mechanism was right and the threshold was 0.6 cm pessimistic -- consistent with the ~5 mm spread in the finger readings themselves.",
       "workaround_if_lower_is_needed": "Understate --object-height. The stage-0 target is hover_gripper_center_z = 0.0597 + 0.45*height, so declaring height Δ short lowers the pads by 0.45Δ, and it lowers object_top in the readiness gate as well, which pushes the same way. --obj-z is NOT a knob: episode_wrist_z_offset subtracts it right back out, so the target height is unchanged."
     },
+    "validated_runtime_defaults_2026_08_30": {
+      "result": "3/3 successful supervised grasps within the E1 single-view recognisable area; operator confirmation. One complete integrated stdout was separately reviewed.",
+      "launcher_defaults": {
+        "grasp_forward_offset_mm": 5.0,
+        "floor_finger_error_mm": 15.0,
+        "jaw_track_fraction": 0.5,
+        "tcp_forward_error_mm": 20.0,
+        "stage0_s6_contact_steps": 2,
+        "jaw_hold_bias_deg": 1.0
+      },
+      "reviewed_run_controller_log": "/home/jetson/mode_b_integrated_20260830_204657_controller.log",
+      "reviewed_run_evidence": "Stage 0 slow tracking fired at S6=152 deg after encoder progress 2/8 deg for two consecutive samples; command parked at 153 deg. Stage-2 grasp CONFIRMED, all 6 lift steps passed, return home passed, post-return grasp CONFIRMED at 150 deg, floor guard pass=45, servo bus reported no failures.",
+      "scope": "Validates the E1 one-command grasp inside the camera-recognisable area. It does not validate targets outside the current FOV, LEFT/RIGHT scan motion, yaw mapping, or the full trained motion envelope."
+    },
     "jetson_sb3_load_note": "2026-08-29: the v23 pair loads under the Jetson's grasp_venv and the release gate passes ('[UNLOCKED] status=candidate ... Integrity and contract verified'). Rosmaster opened on /dev/myserial, the arm reached E1 in one step, and the run completed with '[Bus] servo reads: no failures'.",
-    "first_real_grasp_logged_note": "Still false. A 3 cm object is reported grasped at E1 on 2026-08-29, but only the 2 cm FAILURE log has been captured. This gate wants the successful run's full stdout, the way v21's 2026-07-31 grasp is recorded."
+    "first_real_grasp_logged_note": "TRUE on 2026-08-30. Complete integrated stdout reviewed for mode_b_integrated_20260830_204657_controller.log; the operator then repeated the same validated tuple three times total and reported 3/3 successful grasps within the recognisable E1 area."
   },
   "known_gaps": [
     "The URDF fingers are 16.7 mm longer than the real ones (measured at C3, 2026-07-31, pose_check.py). Unfixed, and not re-measured at E1. Short objects (paper balls, bottle caps) remain out of reach; --floor-finger-error-mm is a partial compensation only, and it raises the pads, so it does not help when a non-pad link is the lowest part.",
@@ -299,7 +313,7 @@
   "isolation": {
     "warning": "This is a SELF-CONTAINED deployment stack, not a set of weights for the existing controller. Nothing else in this repo loads it and nothing else should.",
     "danger": "NEVER run these weights through grasp/x3plus_real_grasp.py (v17, absolute action decode), and never run them through grasp/v21/ either. v21 and v23 share the same 28D/6D contract AND the same incremental decode, so no shape check and no contract check anywhere can tell the two pairs apart. The only difference is the pose the episode starts from, and starting v23 weights from C3 -- or v21 weights from E1 -- is straightforwardly out of distribution. The manifest sha256 gate is what catches this, which is why --real reads manifest.json before anything is loaded.",
-    "coexistence": "grasp/v21/ is untouched and remains the only stack with a real grasp on the record (2026-07-31). Modes A, B and C still point at it."
+    "coexistence": "grasp/v21/ is untouched. v23 now has a 2026-08-30 E1 one-command real-grasp record (3/3 within the recognisable area), but Modes A, B and C still point at v21."
   },
   "rollback": {
     "to": "grasp/v21/",
@@ -310,6 +324,10 @@
     "pose_check.py": "Gripper geometry measurement, copied from v21. It reads cfg.home_deg, so here it refuses unless the arm is already within 3 deg of E1 -- but its printed text and its baked-in comparison figures (14.4 measured / 14.39 predicted gripper_center, 12.8 / 11.10 pad bottom) are C3's. At E1 FK predicts 15.58 and 12.31 cm. Read the FK table it prints, not the prose."
   },
   "change_log": [
+    {
+      "date": "2026-08-30",
+      "what": "Promoted the supervised E1 hardware tuple to one-command launcher defaults after 3/3 successful grasps in the recognisable single-view area: base-X target +5 mm, finger correction 15 mm, slow-jaw tracking fraction 0.5, TCP forward correction 20 mm, two blocked samples and 1 degree hold bias. One full run showed Stage-0 slipping contact at 152 degrees, 6/6 lift steps, confirmed return-home hold and no bus failures. first_real_grasp_logged is now true; candidate status remains because motion-envelope, dry-run and LEFT/RIGHT scan gates are still open."
+    },
     {
       "date": "2026-08-30",
       "what": "Replaced the near/middle/far E1/F3/F6 scan with lateral LEFT/E1/RIGHT S1-only views at 70/90/110 degrees. A single measured E1 homography maps pixels into the reference base plane, then a verified rigid rotation uses the training-frame S1 pivot (0.118146,-0.003359) and yaw sign -1. Config validation forbids any S2-S5 difference and keeps LEFT/RIGHT motion plus held-out <=1cm yaw-mapping gates false until measured on hardware. Guarded E1 return, five-sample medians and 1cm cross-view consensus remain fail-closed."

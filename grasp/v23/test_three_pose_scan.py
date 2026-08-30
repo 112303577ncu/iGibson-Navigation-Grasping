@@ -513,6 +513,62 @@ def main():
         ok(False, "ground_hit raised {} instead of GroundGeometryError".format(
             type(exc).__name__))
 
+    print("")
+    print("13. --unlock-unvalidated-scan waives the evidence flags and NOTHING else")
+    with tempfile.TemporaryDirectory() as tmp:
+        raw_doc = base_document(Path(tmp))
+        for pose in raw_doc["poses"]:
+            if pose["name"] != raw_doc["return_pose"]["name"]:
+                pose["hardware_validated"] = False
+                pose["yaw_mapping_validated"] = False
+        path = Path(tmp) / "unvalidated.json"
+        path.write_text(json.dumps(raw_doc), encoding="utf-8")
+
+        expect_config_error(lambda: scan.load_scan_config(str(path)),
+                            "not hardware_validated",
+                            "without the flag an unvalidated pose is refused")
+        cfg = scan.load_scan_config(str(path), unlock_unvalidated=True)
+        ok(len(cfg["poses"]) == 3, "with the flag the config loads")
+        ok(not any(p["hardware_validated"] for p in cfg["poses"]
+                   if p["name"] != cfg["return_pose"]["name"]),
+           "...and it still RECORDS that the evidence is missing, not fakes it")
+
+        # The waiver must be narrow. Every structural gate stays fatal.
+        for label, mutate, text in (
+            ("S1-only",
+             lambda d: d["poses"][0]["arm_deg"].__setitem__(1, 80.0),
+             "S2"),
+            ("the yaw sign",
+             lambda d: d["mapping"].__setitem__("yaw_sign", 1.0),
+             "yaw_sign"),
+            ("the pivot",
+             lambda d: d["mapping"].__setitem__("pivot_xy_m", [0.2, 0.0]),
+             "pivot"),
+            ("the return pose",
+             lambda d: d["return_pose"]["arm_deg"].__setitem__(0, 70.0),
+             "return_pose"),
+            ("the open jaw",
+             lambda d: d["poses"][0]["arm_deg"].__setitem__(5, 90.0),
+             "30"),
+        ):
+            doc2 = json.loads(path.read_text(encoding="utf-8"))
+            mutate(doc2)
+            bad = Path(tmp) / "bad.json"
+            bad.write_text(json.dumps(doc2), encoding="utf-8")
+            try:
+                scan.load_scan_config(str(bad), unlock_unvalidated=True)
+                ok(False, "the flag must NOT waive {}".format(label))
+            except scan.ScanConfigError:
+                ok(True, "the flag does not waive {}".format(label))
+
+    # The waiver must appear in exactly the two conditionals it is for. Any
+    # third `not unlock_unvalidated` would be a structural gate quietly opting
+    # itself out of the check the operator thinks it is still getting.
+    src = inspect.getsource(scan.load_scan_config)
+    ok(src.count("not unlock_unvalidated") == 2,
+       "the waiver appears in exactly 2 conditionals ({})".format(
+           src.count("not unlock_unvalidated")))
+
     print()
     if failures:
         print("{} of {} checks FAILED:".format(len(failures), checks))
