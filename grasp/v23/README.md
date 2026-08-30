@@ -49,7 +49,7 @@ release 動作的做法把旗標搬過來，**不要**整支換回去。
 cd grasp/v23 && ./jetson_verify.sh
 ```
 
-要看到 **119 / 37 / 641 / 42** 一字不差，`wrist_z_offset = 0.0564`。
+要看到 **119 / 37 / 641 / 45 / 71** 一字不差，`wrist_z_offset = 0.0564`。
 
 > `wrist_z_offset` 錨在**地板**不是手臂（`dc.hover_gripper_center_z`），所以
 > C3→E1 這個值不變。它要是動了，代表變的不是姿勢。
@@ -111,8 +111,8 @@ python3 x3plus_real_grasp.py \
 同上加 `--real --unlock-candidate-real`。人在旁邊、手放電源開關 ——
 **網頁上的停止鈕不是急停，電源開關才是。**
 
-manifest `status` 是 `candidate`。目前只有 E1 homography gate 已完成；動作、可達範圍、
-dry-run 與實抓 gate 都還沒過（v21 的實機結果是在 C3，不能繼承）。
+manifest `status` 仍是 `candidate`；以 `manifest.json` 的 hardware gates 為準。
+目前 motion envelope、Jetson dry-run 與成功實抓完整 log 仍未通過。
 
 ### 4. 一鍵：辨識＋夾取
 
@@ -120,6 +120,69 @@ dry-run 與實抓 gate 都還沒過（v21 的實機結果是在 C3，不能繼�
 python3 jetson_one_command_grasp.py --check    # 不碰硬體
 python3 jetson_one_command_grasp.py            # 正式
 ```
+
+若 log 明確寫的是 **`bbox touches only the top frame edge`**，而左右與下緣都沒有碰框，
+可以用以下受限例外：
+
+```bash
+python3 jetson_one_command_grasp.py --allow-top-clipped
+```
+
+這不是忽略所有 clipping。E1 homography 用的是 bbox **底邊中心**；只有上緣被裁掉時，
+底邊中心與左右邊仍可量，所以此旗標只放行 `top` 單一邊界。只要同時碰到 left/right/bottom、
+底邊中心落在校正凸包外，仍會 fail closed。校正凸包是用物體中心建立，因此 bbox 左右
+輪廓可在中心仍位於凸包內時稍微伸出；左右端點只用於寬度估算，且各自離中心與總寬都受
+6 cm 夾爪開口限制，不會成為手臂目標。校正模式永遠不接受 clipped bbox。
+
+不要在改變 S2–S5 後直接套 E1 homography：相機裝在 `arm_link4`，俯仰一變外參就變。
+但只改 S1 是可證明的例外：整支手臂與相機繞固定的垂直 `arm_joint1` 剛體旋轉，先用
+E1 homography 得到參考 XY，再繞 training-frame `(0.118146, -0.003359)` 旋轉即可。
+程式只允許這個 S1-only 特例；任何 S2–S5 差異都會在開硬體前被拒絕。
+
+---
+
+## 三姿態掃描 → 回 E1 夾取
+
+`three_pose_scan.py` 已把搜尋與 PPO 分成兩個**不重疊的硬體所有權階段**：
+
+1. 掃描器獨占相機與 `/dev/myserial`，先確認 E1，再走 LEFT／E1／RIGHT，S1 分別為
+   70°／90°／110°；結束後再次回 E1。
+2. 三姿態的 S2–S5 完全相同，共用一份實測 E1 homography；左右結果再繞 S1 軸旋轉。
+3. S1 軸心來自 URDF joint origin 加 training-frame offset；FK 在 S1=60–120° 的最大
+   平面殘差為 `1.3e-8 m`。這只證明模型，不代替真機背隙、軸垂直度與碰撞檢查。
+4. 每姿態收 5 個穩定樣本，單姿態散布須 ≤8 mm。
+5. 多個姿態看見時，base XY 須在 1 cm 內一致；只有一個姿態看見也可用。
+6. 全部看不到、座標不一致、姿態未到位，一律不夾。
+7. 掃描器 guarded move 回 E1 並由編碼器確認後才釋出唯一結果；PPO 永遠從 E1 開始。
+
+把目前 E1 的 7 點校正中心凸包旋轉 ±20° 後，三視角聯集約為
+`x=0.2248–0.2844 m、y=-0.1064–+0.0696 m`；runtime 仍裁回策略評估帶
+`x=0.205–0.280、y=-0.070–+0.065 m`。這表示橫向可覆蓋整個 policy y 帶，但不會藉掃描
+偷放寬策略沒驗證過的座標。
+
+E1 homography 已完成；左右不重做 homography，但真機驗證尚未完成。人在電源旁先各走一次，
+每個姿態至少放 2 個分散的尺量 base 點。輸出會包含旋轉後的 `predicted_x/y`：
+
+```bash
+python3 jetson_one_command_grasp.py --scan-calibrate-pose LEFT
+# 比較 predicted_x/y 與尺量 base x/y；每軸誤差都必須 <= 1 cm
+
+python3 jetson_one_command_grasp.py --scan-calibrate-pose RIGHT
+```
+
+Ctrl+C 只送掃描器一次 SIGINT，最多等 45 秒完成 guarded E1 回程。左右都確認動作無碰撞、
+編碼器到位，且各個驗證點每軸誤差 ≤1 cm 後，才把 `three_pose_scan.json` 中 LEFT／RIGHT
+的 `hardware_validated` 與 `yaw_mapping_validated` 改成 `true`。在此之前正式模式故意拒絕。
+
+```bash
+python3 three_pose_scan.py --check
+python3 jetson_one_command_grasp.py --three-pose-scan --check
+python3 jetson_one_command_grasp.py --three-pose-scan --allow-top-clipped
+```
+
+`--three-pose-scan` 不改變 PPO 的 grasp-home：策略仍從 E1 開始，因此不用重訓。
+若改動 S1 以外的關節，這個共用映射立即失效，必須另量 homography；不能把
+`yaw_mapping_validated` 留成 true。S1 超過配置允許的 ±25° 也會被拒絕。
 
 ---
 
@@ -161,8 +224,9 @@ home 訓練出來的。
 
 - [x] `e1_homography_measured` — 2026-08-29：7 點 RMSE 0.388 cm；2 個保留點最大軸誤差 0.448 cm
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
-- [ ] `e1_gripper_center_height_ruler_check` — FK 說 15.58 cm（張爪），量出來對得上
-- [ ] `jetson_dry_run_ok` — 119/37/641/42 + `wrist_z_offset = 0.0564`
+- [x] `e1_gripper_center_height_ruler_check` — 張爪實測 15.2 cm，FK 15.58 cm
+- [x] `e1_minimum_object_height_measured` — 3 cm 可夾、2 cm 空夾
+- [ ] `jetson_dry_run_ok` — 119/37/641/45/71 + `wrist_z_offset = 0.0564`
 - [ ] `first_real_grasp_logged` — E1 至少一次實機夾起來，留完整 log
 
 沒過就留在分支上。v21 完全沒被動到，`grasp/v21/` 仍是唯一有實機夾取紀錄的那一套

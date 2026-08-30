@@ -209,8 +209,12 @@
     "fov_vs_envelope": "E1 sees 44% more ground than C3 while the trained band is NARROWER than v21's. The camera can therefore see well outside where the policy has been trained, and a perfectly working detector can hand over a target that is finite, in frame, geometrically sound and completely unevaluated. That is exactly what _check_target_envelope is for -- do not widen it to match the FOV."
   },
   "hardware_gates": {
-    "note": "e1_homography_measured, e1_gripper_center_height_ruler_check and e1_minimum_object_height_measured are true. Motion envelope, dry-run and first-real-grasp gates remain open.",
+    "note": "E1 homography and height gates are true. LEFT/RIGHT S1 scan motion and held-out yaw-mapping validation, motion envelope, dry-run and first-real-grasp gates remain open.",
     "e1_homography_measured": true,
+    "left_scan_motion_validated": false,
+    "right_scan_motion_validated": false,
+    "left_yaw_mapping_validated": false,
+    "right_yaw_mapping_validated": false,
     "e1_fov_ruler_check": false,
     "e1_gripper_center_height_ruler_check": true,
     "e1_real_reach_envelope": false,
@@ -285,6 +289,9 @@
     "1_dry_run": "python3 x3plus_real_grasp.py --model models/candidate_v23_seed23401_ckpt250000.zip --vecnorm models/candidate_v23_seed23401_ckpt250000_vec.pkl --contract obs_28_incremental --object-height 0.065 --obj-x 0.24 --obj-y 0.00 --obj-z 0.0325",
     "2_park_at_e1_for_calibration": "python3 jetson_one_command_grasp.py --calibrate   # holds E1, prints pixels",
     "3_real_fixed_coordinate": "1_dry_run plus --real --unlock-candidate-real. A person stays beside the robot with a hand on the power switch; the power switch IS the stop button.",
+    "4_real_visual_top_clip_exception": "python3 jetson_one_command_grasp.py --allow-top-clipped. Explicitly accepts TOP-only bbox clipping under the measured E1 homography because bottom-centre and both side edges remain visible. Left/right/bottom clipping, target-centre homography-hull failures and calibration clipping remain fail-closed. Bbox sides are width-only and may leave the centre hull under the 6 cm jaw bound. Outside the dedicated S1-only scanner, never move away from E1 and reuse this homography.",
+    "5_validate_three_pose_scan": "python3 jetson_one_command_grasp.py --scan-calibrate-pose LEFT, then RIGHT. These poses differ from E1 only in S1 (70/90/110 deg), so they reuse E1's homography and rotate base XY about training-frame arm_joint1 at (0.118146,-0.003359), yaw sign -1. Do not fit extra homographies. Confirm each move is collision-free and compare predicted_x/y against at least two spread-out ruler points per side; every axis error must be <=1 cm before setting that side's hardware_validated and yaw_mapping_validated true.",
+    "6_real_three_pose_scan": "python3 jetson_one_command_grasp.py --three-pose-scan --allow-top-clipped. This remains preflight-blocked until LEFT/RIGHT motion and yaw mappings are hardware-validated. The scanner owns camera+serial, returns to verified E1 and exits before PPO starts with a fixed base target.",
     "valid_target_range": "x 0.205-0.280 m, y -0.070..+0.065 m, base/URDF frame",
     "object_height_required": "--object-height is mandatory under obs_28_incremental; without it there is no wrist_z_offset.",
     "wrist_z_offset_is_pose_independent": "hover_gripper_center_z is anchored to the FLOOR, not to the arm, so the 0.0564 dry-run figure for a 6.6 cm object resting at z 0.033 is unchanged from v21. If it moves, something other than the pose changed."
@@ -303,6 +310,18 @@
     "pose_check.py": "Gripper geometry measurement, copied from v21. It reads cfg.home_deg, so here it refuses unless the arm is already within 3 deg of E1 -- but its printed text and its baked-in comparison figures (14.4 measured / 14.39 predicted gripper_center, 12.8 / 11.10 pad bottom) are C3's. At E1 FK predicts 15.58 and 12.31 cm. Read the FK table it prints, not the prose."
   },
   "change_log": [
+    {
+      "date": "2026-08-30",
+      "what": "Replaced the near/middle/far E1/F3/F6 scan with lateral LEFT/E1/RIGHT S1-only views at 70/90/110 degrees. A single measured E1 homography maps pixels into the reference base plane, then a verified rigid rotation uses the training-frame S1 pivot (0.118146,-0.003359) and yaw sign -1. Config validation forbids any S2-S5 difference and keeps LEFT/RIGHT motion plus held-out <=1cm yaw-mapping gates false until measured on hardware. Guarded E1 return, five-sample medians and 1cm cross-view consensus remain fail-closed."
+    },
+    {
+      "date": "2026-08-29",
+      "what": "Separated the strict target-centre homography hull from width-only bbox side mappings after a forward-4cm/right-3cm sugarbox was rejected solely because its right silhouette extended outside a hull built from calibration centres. The target remains strict; each side and total width remain bounded by the 6 cm jaw opening."
+    },
+    {
+      "date": "2026-08-29",
+      "what": "Added an explicit --allow-top-clipped E1 runtime path after a forward-4cm centred sugarbox touched only the image top. It does not weaken left/right/bottom or homography-hull gates, is unavailable during calibration, and does not move the arm because leaving E1 invalidates the fixed homography."
+    },
     {
       "date": "2026-08-29",
       "what": "Package created on branch v23-grasp-test from grasp/deploy_v23/ weights plus grasp/v21/'s hardened controller. Not merged to main; the merge is conditional on a measured E1 homography and a real grasp."

@@ -377,10 +377,24 @@ def _geometry_args(homography, policy_x_range, policy_y_range, allow_top):
 
 
 def _dynamic_pose(acg, pose_spec):
+    """A pose carrying only what the grasp-home path reads: name and arm_deg.
+
+    ``stamp_payload`` is the sole consumer here -- at a grasp home the mapping
+    is the measured homography, and the trigonometric distance model in
+    arm_cam_geometry is never used. The extrinsics below used to be plausible
+    placeholders (theta 90, H 1.0 m, camera at the origin), which is the wrong
+    kind of wrong: if any future path did reach ground_hit() with this pose it
+    would get a confident, meaningless coordinate rather than an error.
+
+    NaN instead. Every consumer of the trig model already checks for finite
+    values and refuses, so a fabricated pose that leaks into it now fails
+    closed. Nothing on the current path reads these fields at all.
+    """
+    poison = float("nan")
     return acg.ArmCamPose(
         name="v23_scan_{}".format(pose_spec["name"].lower()),
         arm_deg=tuple(pose_spec["arm_deg"]),
-        theta_deg=90.0, h_m=1.0, cam_x_m=0.0, cam_y_m=0.0,
+        theta_deg=poison, h_m=poison, cam_x_m=poison, cam_y_m=poison,
         sign_y=-1.0, distance_model_measured=False,
         base_offset_measured=False,
         source="three-pose scan; geometry comes only from {}".format(

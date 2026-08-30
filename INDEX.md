@@ -136,12 +136,19 @@ python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
 # Pre-flight before any --real run: 119/37/641/29, dry-run offset, safety gate
 ./grasp/v21/jetson_verify.sh
 
-# Same, for the unmerged v23/E1 stack (branch v23-grasp-test): 119/37/641/42
+# Same, for the unmerged v23/E1 stack: 119/37/641/45 + three-pose 40
 ./grasp/v23/jetson_verify.sh
 
 # Measure the E1 pixel->base homography. The C3 one is wrong at E1 by
 # construction, and swapping them raises no error -- only the filename differs.
 python3 grasp/v23/jetson_one_command_grasp.py --calibrate
+
+# LEFT/E1/RIGHT S1-only search: one E1 homography plus rigid yaw about arm_joint1.
+# LEFT/RIGHT motion and >=2 held-out ruler points per side must be validated before
+# --three-pose-scan passes preflight; scanner returns to E1 before PPO starts.
+python3 grasp/v23/jetson_one_command_grasp.py --scan-calibrate-pose LEFT
+python3 grasp/v23/jetson_one_command_grasp.py --scan-calibrate-pose RIGHT
+python3 grasp/v23/jetson_one_command_grasp.py --three-pose-scan --allow-top-clipped
 
 # Grasp with a calibrated external XYZ sender (v21). --width-grip and
 # --latch-obj do not exist here: the jaw closes on contact rather than on a

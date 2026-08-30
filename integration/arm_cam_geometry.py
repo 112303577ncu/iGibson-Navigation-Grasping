@@ -428,9 +428,26 @@ def frame_size_mismatch(width: int, height: int) -> Optional[str]:
             f"rear one -- they swap /dev/video indices between boots.")
 
 
-# A bbox that runs into the frame edge is CLIPPED, and its bottom-centre pixel is
-# then the edge of the image rather than where the object meets the floor.
+# A bbox that runs into the frame edge is CLIPPED. Left/right/bottom clipping
+# invalidates the bottom-centre or width directly. Top-only clipping is different:
+# the bottom and side edges can remain observable, so a measured grasp-home
+# homography may opt in to using it while every other geometry path stays strict.
 BORDER_MARGIN_PX = 2.0
+
+
+def bbox_border_hits(x1: float, y1: float, x2: float, y2: float,
+                     margin_px: float = BORDER_MARGIN_PX) -> Tuple[str, ...]:
+    """Return frame edges touched by a bbox, in deterministic order."""
+    hits = []
+    if x1 <= margin_px:
+        hits.append("left")
+    if y1 <= margin_px:
+        hits.append("top")
+    if x2 >= IMG_W - 1 - margin_px:
+        hits.append("right")
+    if y2 >= IMG_H - 1 - margin_px:
+        hits.append("bottom")
+    return tuple(hits)
 
 
 def bbox_touches_border(x1: float, y1: float, x2: float, y2: float,
@@ -447,17 +464,14 @@ def bbox_touches_border(x1: float, y1: float, x2: float, y2: float,
     either. The only honest response is to refuse the detection and let the
     operator move the object into frame.
     """
-    hits = []
-    if x1 <= margin_px:
-        hits.append("left")
-    if y1 <= margin_px:
-        hits.append("top")
-    if x2 >= IMG_W - 1 - margin_px:
-        hits.append("right")
-    if y2 >= IMG_H - 1 - margin_px:
-        hits.append("bottom")
+    hits = bbox_border_hits(x1, y1, x2, y2, margin_px)
     if not hits:
         return None
+    if hits == ("top",):
+        return ("bbox touches only the top frame edge. The full silhouette is "
+                "clipped, but the bottom and both side edges remain visible. "
+                "Default is fail-closed; a measured grasp-home homography may "
+                "explicitly allow this case")
     return (f"bbox touches the {'/'.join(hits)} frame edge, so it is clipped and "
             f"its bottom-centre is the image border rather than where the object "
             f"meets the floor — move the object further into view")

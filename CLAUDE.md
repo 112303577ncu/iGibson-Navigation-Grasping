@@ -37,8 +37,12 @@
 > **★ 分支 `v23-grasp-test` 上另有 `grasp/v23/`（E1 高姿態），尚未合併。**
 > main 上不存在。v23 只改了 grasp home（C3 → E1）與權重；契約、`deploy_contract.py`、
 > `action_execution_v21.py`、URDF 都與 v21 逐位元組相同。2026-08-29 已完成 E1 實測
-> homography；其餘動作、可達範圍、dry-run 與實抓硬體 gate 都還沒過。細節見該分支的
-> `grasp/v23/README.md`。
+> homography、夾取中心高度與最小物體高度；motion envelope、dry-run 與成功實抓完整 log
+> 仍未過。E1 runtime 可用明確 opt-in `--allow-top-clipped` 放行「只碰上緣」的 bbox；
+> 左／右／下緣與目標中心 homography 凸包 gate 不可繞過。2026-08-30 已加入 LEFT/E1/RIGHT
+> S1-only 掃描框架（40 項純邏輯測試）：共用 E1 homography，再繞 S1 training-frame 軸心
+> 旋轉 base XY。左右真機動作與各至少 2 點的 ≤1 cm 映射驗證尚未完成，正式掃描會在
+> 開硬體前拒絕。細節見 `grasp/v23/README.md`。
 > 模式 A / B / C 在兩個分支上都還是接 v21。
 
 > **★ 2026-08-01 起，正式夾取流程是 `grasp/v21/`，不是根目錄那支。**

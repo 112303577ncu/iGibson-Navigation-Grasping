@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Pure-logic checks for the exclusive three-pose search handoff."""
 
-import json
 import inspect
+import json
+import math
 from pathlib import Path
 import signal
 import subprocess
@@ -482,6 +483,29 @@ def main():
        "the confirming grab happens while the camera is still open")
     ok("not interrupted and run_error is None and return_ok" in scan_source,
        "confirmation is skipped on runs that are already refused")
+
+    print("")
+    print("12. the fabricated scan pose poisons the trig model, not feeds it")
+    import arm_cam_geometry as acg_mod
+    fake = scan._dynamic_pose(acg_mod, {
+        "name": "LEFT", "arm_deg": [70.0, 74.2, 8.6, 8.6, 90.0, 30.0],
+        "homography": "../../integration/grasp_home_homography_e1.json"})
+    ok(not any(math.isfinite(v) for v in
+               (fake.theta_deg, fake.h_m, fake.cam_x_m, fake.cam_y_m)),
+       "its extrinsics are non-finite, not plausible placeholders")
+    ok(fake.arm_deg == (70.0, 74.2, 8.6, 8.6, 90.0, 30.0),
+       "the arm angles it DOES carry are real -- stamp_payload reads them")
+    stamped = acg_mod.stamp_payload({}, fake)
+    ok(stamped["cam_pose"] == [70.0, 74.2, 8.6, 8.6, 90.0, 30.0],
+       "stamping still works, which is this pose's only real job")
+    try:
+        acg_mod.ground_hit(300.0, 400.0, fake)
+        ok(False, "ground_hit on the fabricated pose must refuse")
+    except acg_mod.GroundGeometryError:
+        ok(True, "ground_hit REFUSES rather than returning a confident number")
+    except Exception as exc:
+        ok(False, "ground_hit raised {} instead of GroundGeometryError".format(
+            type(exc).__name__))
 
     print()
     if failures:

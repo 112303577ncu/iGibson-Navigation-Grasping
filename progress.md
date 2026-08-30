@@ -1,5 +1,31 @@
 # X3Plus 專題進度記錄
 
+## 2026-08-30 — v23 三姿態改為 LEFT/E1/RIGHT S1 剛體旋轉
+
+- 新增 `grasp/v23/three_pose_scan.py` + `three_pose_scan.json`；原先 E1／F3／F6 的
+  近中遠設計改為 LEFT／E1／RIGHT（S1=70°／90°／110°），因主要缺口在橫向。
+  掃描器不載 PPO、S6 永遠保持 30° 張開，所有
+  移動直接借用 controller 的 `move_guarded_and_verified`。
+- 三姿態 S2–S5 完全相同，只用 E1 homography；映射後繞 training-frame S1 軸心
+  `(0.118146,-0.003359)` 旋轉，yaw sign=-1。URDF/FK 在 S1=60–120° 最大平面殘差
+  `1.3e-8 m`，但這不取代真機驗證。5 筆有效偵測取中位數且散布 ≤8 mm，多姿態同時看見時
+  base XY 須在 1 cm 內一致。三個都看不到、不同姿態疑似選到不同物體、任一 move 未確認，
+  都不會產生夾取 target。
+- 掃描器只有在 guarded move 回 E1 且編碼器確認後才印 `[scan][result]`，隨即退出並釋放
+  相機與 `/dev/myserial`；launcher 之後才啟動原 v23 PPO，以固定 `--obj-x/y/z` 夾取，
+  不存在 scanner/controller 同時搶硬體或拿過去姿態的 pose stamp 冒充 E1。
+- 純邏輯 `test_three_pose_scan.py` **40/40** 通過，涵蓋 yaw 方向／半徑不變、軸心／方向
+  防竄改、角度上限、禁止
+  S2–S5 共用 homography、中斷、掃描錯誤與 E1
+  回程未確認時不得釋出目標，且 Ctrl+C 只送掃描器一次 SIGINT、保留 45 秒
+  guarded E1 回程窗口；既有 launcher **45/45** 不變。
+- **尚不能正式三姿態實抓**：LEFT/RIGHT 尚未實際走過，也還沒各用至少 2 個分散尺量點
+  確認 `predicted_x/y` 每軸誤差 ≤1 cm；兩個 `hardware_validated` 與
+  `yaw_mapping_validated` 目前故意是 false。下一步依序跑
+  `--scan-calibrate-pose LEFT`、`RIGHT`，不需要也不應重做兩份 homography。
+
+---
+
 ## 2026-08-29 — v23/E1 grasp-home homography 實測完成
 
 - 使用 `sugarbox`、每點 20 幀中位數，在 v23 的 E1 grasp home 收到 10 筆有效
@@ -14,6 +40,13 @@
 - 原始整理與排除理由在 `docs/calibration/e1_grasp_home_points_20260829.json`；runtime
   校正檔為 `integration/grasp_home_homography_e1.json`。`e1_homography_measured` 已改為
   true；這只解除視覺映射 gate，不代表 dry-run、可達範圍或實抓已通過。
+- 同日實抓 log 顯示前 4 cm／正中的 sugarbox 只碰影像**上緣**。新增 opt-in
+  `jetson_one_command_grasp.py --allow-top-clipped`：只在 E1 實測 homography 下接受 top-only
+  clipping，因底邊中心與左右邊仍可量；左／右／下緣、**目標中心**在凸包外與 calibration
+  mode 一律維持 fail closed。後續前 4 cm／右 3 cm 的實抓 log 又證實 bbox 右側輪廓會比
+  已校正的中心凸包多伸出約 3 mm base-space；左右端點已改成只做受 6 cm 夾爪開口約束的
+  寬度估算，絕不作為目標位置。沒有採用「先移手臂置中」，因為相機隨 `arm_link4` 移動，離開 E1 後同一份
+  homography 立即失效。
 
 ---
 

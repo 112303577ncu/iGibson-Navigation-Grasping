@@ -249,6 +249,40 @@ def apply_grasp_home_mapping(args, u: float, v: float):
     return base_xy
 
 
+def apply_grasp_home_width_endpoint(args, u: float, v: float,
+                                    center_xy: Tuple[float, float],
+                                    max_distance_m: float):
+    """Map one bbox side for width estimation, never as a target position.
+
+    The calibration hull is made from object centres.  A graspable object's
+    silhouette may extend a little outside that hull while its bottom-centre is
+    safely interpolated.  Keep the target centre on the strict path above and
+    bound this width-only extrapolation by the maximum jaw opening.
+    """
+    if args.homography_matrix is None:
+        raise ValueError("grasp-home width mapping requires a loaded homography")
+    pixel = (float(u), float(v))
+    try:
+        try:
+            from .grasp_home_homography import apply_homography
+        except ImportError:
+            from grasp_home_homography import apply_homography
+        mapped = apply_homography(args.homography_matrix, pixel)
+    except Exception as exc:
+        raise ValueError(f"homography width mapping failed: {exc}") from exc
+    endpoint_xy = (float(mapped[0]), float(mapped[1]))
+    if not all(math.isfinite(value) for value in endpoint_xy):
+        raise ValueError(f"non-finite mapped bbox endpoint {endpoint_xy}")
+    distance_m = math.hypot(endpoint_xy[0] - center_xy[0],
+                            endpoint_xy[1] - center_xy[1])
+    if distance_m > max_distance_m:
+        raise ValueError(
+            f"bbox side maps {distance_m*100:.1f} cm from its centre, past the "
+            f"{max_distance_m*100:.1f} cm jaw-width bound"
+        )
+    return endpoint_xy
+
+
 def median_calibration_record(records: List[dict]) -> dict:
     """Collapse one stable detection batch to median undistorted pixels."""
     if not records:
@@ -615,25 +649,67 @@ def build_homography_payload(args,
                              class_name: str, pose: acg.ArmCamPose,
                              class_z: Dict[str, float],
                              class_height: Dict[str, float],
-                             max_width_m: float = MAX_GRASP_WIDTH_M):
-    """Build a grasp-home payload using only the measured pixel-to-base map."""
+                             max_width_m: float = MAX_GRASP_WIDTH_M,
+                             base_xy_transform=None):
+    """Build a grasp-home payload from a measured pixel-to-base map.
+
+    ``base_xy_transform`` is reserved for a rigid base-frame transform applied
+    equally to the centre and both width endpoints after the strict reference
+    homography hull checks.  The v23 S1-only scanner uses it to rotate E1-mapped
+    points about arm_joint1; ordinary bridge callers leave it as ``None``.
+    """
     x1, y1, x2, y2 = box_xyxy
-    clipped = acg.bbox_touches_border(x1, y1, x2, y2)
-    if clipped:
-        return None, clipped
+    border_hits = acg.bbox_border_hits(x1, y1, x2, y2)
+    accepted_top_clip = (
+        border_hits == ("top",)
+        and bool(getattr(args, "allow_top_clipped_grasp_home", False))
+    )
+    if border_hits and not accepted_top_clip:
+        return None, acg.bbox_touches_border(x1, y1, x2, y2)
     raw_u = (x1 + x2) / 2.0
     try:
         u, v = acg.undistort_pixel(raw_u, y2)
         left_u, left_v = acg.undistort_pixel(x1, y2)
         right_u, right_v = acg.undistort_pixel(x2, y2)
+        # The target centre remains strictly inside both calibration hulls.
+        # Left/right are silhouette points used only to estimate width; the
+        # calibration hull itself contains object centres, not bbox sides.
         obj_x, obj_y = apply_grasp_home_mapping(args, u, v)
-        left_xy = apply_grasp_home_mapping(args, left_u, left_v)
-        right_xy = apply_grasp_home_mapping(args, right_u, right_v)
-    except ValueError as exc:
+        center_xy = (obj_x, obj_y)
+        left_xy = apply_grasp_home_width_endpoint(
+            args, left_u, left_v, center_xy, max_width_m)
+        right_xy = apply_grasp_home_width_endpoint(
+            args, right_u, right_v, center_xy, max_width_m)
+        pre_transform_width_m = math.hypot(right_xy[0] - left_xy[0],
+                                           right_xy[1] - left_xy[1])
+        if base_xy_transform is not None:
+            center_xy = tuple(float(value) for value in
+                              base_xy_transform(center_xy))
+            left_xy = tuple(float(value) for value in
+                            base_xy_transform(left_xy))
+            right_xy = tuple(float(value) for value in
+                             base_xy_transform(right_xy))
+            obj_x, obj_y = center_xy
+    except (TypeError, ValueError) as exc:
         return None, f"unusable homography geometry: {exc}"
 
     width_m = math.hypot(right_xy[0] - left_xy[0],
                          right_xy[1] - left_xy[1])
+    if base_xy_transform is not None:
+        # The transform is documented as rigid and the width is measured after
+        # it, so the two must agree. Checking rather than trusting: a scale
+        # factor slipping into the transform would rescale the width and the
+        # bracketing test together, silently, and both would still look
+        # perfectly reasonable. A pure rotation cannot change a distance.
+        if abs(width_m - pre_transform_width_m) > 1e-6:
+            return None, (
+                "base_xy_transform is not rigid: width changed from "
+                f"{pre_transform_width_m*100:.3f} cm to {width_m*100:.3f} cm. "
+                "Only rotations and translations may be applied here.")
+    left_delta = (left_xy[0] - obj_x, left_xy[1] - obj_y)
+    right_delta = (right_xy[0] - obj_x, right_xy[1] - obj_y)
+    if left_delta[0] * right_delta[0] + left_delta[1] * right_delta[1] > 1e-9:
+        return None, "mapped bbox sides do not bracket the target centre"
     obj_z = class_z.get(class_name, class_z["_fallback"])
     obj_h = class_height.get(class_name)
     values = (obj_x, obj_y, obj_z, width_m)
@@ -658,8 +734,21 @@ def build_homography_payload(args,
     if obj_h is not None:
         payload["height"] = round(obj_h, 4)
     acg.stamp_payload(payload, pose)
+    clip_note = ("; accepted top-only clip (bottom/left/right visible, "
+                 "measured-homography opt-in)" if accepted_top_clip else "")
+    width_note = (
+        "; bounded bbox-side width extrapolation"
+        if (not point_in_convex_hull((left_u, left_v),
+                                     args.homography_pixel_hull)
+            or not point_in_convex_hull((right_u, right_v),
+                                        args.homography_pixel_hull))
+        else ""
+    )
+    transform_note = ("; rigid base-XY transform" if base_xy_transform is not None
+                      else "")
     return payload, (f"[homography] uv=({u:.1f},{v:.1f}) "
-                     f"w={width_m*100:.1f}cm")
+                     f"w={width_m*100:.1f}cm{clip_note}{width_note}"
+                     f"{transform_note}")
 
 
 def parse_args():
@@ -688,6 +777,11 @@ def parse_args():
                    help="advanced: explicit arm-camera pose registry name")
     p.add_argument("--homography", default=None,
                    help="verified grasp-home pixel-to-base calibration JSON")
+    p.add_argument("--allow-top-clipped-grasp-home", action="store_true",
+                   help="with a measured grasp-home homography only, accept a bbox "
+                        "that touches the TOP edge alone. Its bottom-centre and "
+                        "left/right edges must remain visible and inside the "
+                        "calibration hull. Left/right/bottom clipping is never allowed.")
     p.add_argument("--policy-x-range", type=float, nargs=2, default=None,
                    metavar=("LO", "HI"),
                    help="base-frame x band the receiving policy was trained on "
@@ -789,6 +883,10 @@ def main():
         raise SystemExit("--max-width must be finite and positive")
     if args.calibration_samples <= 0:
         raise SystemExit("--calibration-samples must be > 0")
+    if (args.allow_top_clipped_grasp_home
+            and (args.camera_pose != "grasp-home" or args.calibration_only)):
+        raise SystemExit("--allow-top-clipped-grasp-home is runtime-only and requires "
+                         "--camera-pose grasp-home with a measured homography")
 
     pose = resolve_pose(args)
     # Predicted extrinsics are a fine starting point for --dry-run, but they must

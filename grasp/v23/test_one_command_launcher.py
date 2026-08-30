@@ -131,6 +131,12 @@ cmd = L.build_bridge_cmd(make_args(homography="/tmp/h.json"))
 check("--homography" in cmd, "--homography is passed")
 check(cmd[cmd.index("--homography") + 1] == "/tmp/h.json", "with the given path")
 check("--once" in cmd, "--once: one detection, then YOLO's RAM comes back")
+check("--allow-top-clipped-grasp-home" not in cmd,
+      "top-clipped detections stay fail-closed by default")
+opt_in_cmd = L.build_bridge_cmd(make_args(
+    homography="/tmp/h.json", allow_top_clipped=True))
+check("--allow-top-clipped-grasp-home" in opt_in_cmd,
+      "the explicit top-only clipping opt-in reaches the bridge")
 for dead in ("--cam-x", "--cam-y", "--sign-y", "--i-accept-predicted-extrinsics"):
     # Not merely unused: at a grasp home the mapping is the homography, so
     # forwarding these would print numbers that look like they steer the arm
@@ -203,6 +209,9 @@ check("--dry-run" in cmd, "--dry-run: the TCP socket is never opened")
 check(cmd[cmd.index("--calibration-samples") + 1] == "25", "sample count forwarded")
 check("--homography" not in cmd, "no homography required to produce one")
 check("--once" not in cmd, "keeps running so several positions can be measured")
+check("--allow-top-clipped-grasp-home" not in L.build_bridge_cmd(
+    make_args(calibrate=True, allow_top_clipped=True)),
+      "calibration never relaxes the clipped-bbox gate")
 
 print("\n3. --show is opt-in (a headless SSH session has no display)")
 check("--show" not in L.build_bridge_cmd(make_args()), "off by default")
