@@ -211,6 +211,54 @@ def test_small_home_residual_has_a_bounded_recovery_window():
           "the normal 2.0 deg gate still refuses the same stalled pose")
 
 
+def test_finger_error_delays_the_pads_ready_gate():
+    print("")
+    print("[1c] the measured finger error reaches pads_ready, not just the guard")
+    # Found on hardware 2026-08-30. With a 6.5 cm box the gate went true while the
+    # z error was still 23 mm: modelled pads at 53 mm against a 65 mm object top,
+    # real pads about 15 mm higher and therefore ABOVE the object. pads_ready
+    # forces the jaw to MIN_CLOSE_ACTION, so it shut during the approach and the
+    # closed jaw jammed the arm short of the target. Correcting only the floor
+    # guard leaves this untouched -- the two consumers fail in opposite
+    # directions and both need the same physical number.
+    with contextlib.redirect_stdout(io.StringIO()):
+        import x3plus_real_grasp as _X
+    home = list(_X.DeployConfig().home_deg)
+    obj = np.array([0.2666, -0.0158, 0.0325], dtype=np.float64)
+    height = 0.065
+
+    plain, _ = build(FakeServoPlant(home, max_delta_deg=0.0))
+    corrected, _ = build(FakeServoPlant(home, max_delta_deg=0.0),
+                         floor_finger_error_m=0.015)
+    wrist = dc.episode_wrist_z_offset(height, float(obj[2]))
+    plain._wrist_z_offset = wrist
+    corrected._wrist_z_offset = wrist
+    with contextlib.redirect_stdout(io.StringIO()):
+        a = plain._grasp_geometry(obj, height)
+        b = corrected._grasp_geometry(obj, height)
+
+    delta = b["pad_after_close_m"] - a["pad_after_close_m"]
+    check(abs(delta - 0.015) < 1e-9,
+          f"pad_after_close rises by exactly the finger error ({delta*1000:.2f} mm)")
+    check(a["finger_error_m"] == 0.0 and abs(b["finger_error_m"] - 0.015) < 1e-12,
+          "the geometry reports which correction it used")
+    check(b["object_top_m"] == a["object_top_m"],
+          "the object is unchanged -- only where the pads are believed to be")
+
+    # The gate must be strictly harder to satisfy, never easier.
+    check(b["pad_after_close_m"] > a["pad_after_close_m"],
+          "the corrected pads sit HIGHER, so the gate fires later, not sooner")
+    if a["pads_ready"]:
+        check(not b["pads_ready"] or b["pad_after_close_m"] <= b["object_top_m"] - dc.STAGE1_MIN_ENGAGE_DEPTH,
+              "a pose the model called ready is only still ready if the REAL pads "
+              "clear the engagement depth")
+
+    # Default must remain training-identical, or every existing run changes.
+    default_cfg = _X.DeployConfig()
+    check(default_cfg.floor_finger_error_m == 0.0,
+          "the default is still 0.0, so nothing changes without an explicit opt-in")
+
+
 def test_write_failure_stops_and_does_not_advance():
     print("\n[2] a write failure stops the move and leaves state untouched")
     plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 30])
@@ -1059,6 +1107,7 @@ def main() -> int:
     tests = (
         test_long_move_needs_many_steps,
         test_small_home_residual_has_a_bounded_recovery_window,
+        test_finger_error_delays_the_pads_ready_gate,
         test_write_failure_stops_and_does_not_advance,
         test_read_failure_stops_and_does_not_advance,
         test_empty_jaw_closes_fully_and_is_rejected,

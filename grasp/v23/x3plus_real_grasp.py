@@ -151,12 +151,31 @@ class DeployConfig:
     # path with FK before anything is sent, and shorten or refuse the motion. There is
     # no backstop here by design — if this layer fails, the gripper hits the floor.
     floor_guard_enable: bool = True
-    # Raises the two finger pads by this much in the GUARD's geometry only, to undo
-    # the measured URDF finger error (16.7 mm too long; pose_check.py, 2026-07-31).
-    # Default 0.0 = the training-identical, conservative metric: the guard believes
-    # the pads are 16.7 mm lower than they are and stops that much early, which is
-    # what deadlocked run 6. Opt in with --floor-finger-error-mm AFTER confirming the
-    # real clearance with a ruler; getting it wrong drives the fingers into the floor.
+    # Raises the two finger pads by this much wherever this code reasons about
+    # where the pads ARE, undoing the measured URDF finger error (16.7 mm too long
+    # at C3, 2026-07-31; 11.9 mm open / 15.4 mm closed at E1, 2026-08-29).
+    #
+    # TWO consumers, and they fail in opposite directions, which is why the error
+    # has to reach both:
+    #
+    #   FloorGuard          believes the pads are LOWER than they are, so it stops
+    #                       early. Conservative. This is what deadlocked run 6.
+    #   _grasp_geometry     believes the same thing, and there it means pads_ready
+    #                       fires while the real pads are still ABOVE the object.
+    #                       Not conservative at all.
+    #
+    # The second one was found on hardware on 2026-08-30. With a 6.5 cm box the
+    # gate went true at z-error 23 mm: modelled pads at 53 mm against a 65 mm
+    # object top, real pads at about 68 mm -- above the object. The jaw is forced
+    # to at least MIN_CLOSE_ACTION once pads_ready, so it shut 25 steps before the
+    # arm was in position, and the closed jaw then jammed the arm short of the
+    # target. The run looked like "it grasps too close to the robot"; it had not
+    # grasped at all.
+    #
+    # Default stays 0.0, the training-identical metric. Opt in with
+    # --floor-finger-error-mm AFTER measuring the real clearance with a ruler
+    # (pose_check.py --real prints both jaw angles); getting it wrong in the other
+    # direction drives the fingers into the floor.
     floor_finger_error_m: float = 0.0
     floor_safety_margin: float = 0.008   # m, deliberately looser than sim's 0.005:
                                          # real servos overshoot more than the model
@@ -2107,9 +2126,15 @@ class GraspController:
                    and radius < self.cfg.entry_radius)
 
         # Same quantity as training _pads_ready_to_close(): actual pad AABB bottom,
-        # minus only the close-drop that has not happened yet.
+        # minus only the close-drop that has not happened yet -- plus the measured
+        # URDF finger error, because this gate asks a question about the REAL pads
+        # and fk.pad_bottom_z answers about the modelled ones. Without the
+        # correction the gate says "ready" while the real pads are still above the
+        # object, and MIN_CLOSE_ACTION then shuts the jaw on the approach.
+        # cfg.floor_finger_error_m is 0.0 by default, so this is identical to
+        # training unless the operator has measured the finger and opted in.
         remaining_drop = max(0.0, dc.GRASP_CLOSE_DROP - close_drop)
-        pad_bottom = self.fk.pad_bottom_z(arm, grip)
+        pad_bottom = self.fk.pad_bottom_z(arm, grip) + self.cfg.floor_finger_error_m
         pad_after_close = pad_bottom - remaining_drop
         object_top = float(obj_pos[2]) + 0.5 * height
         pads_ready = bool(
@@ -2123,6 +2148,7 @@ class GraspController:
             "centred": bool(centred),
             "pads_ready": pads_ready,
             "pad_after_close_m": float(pad_after_close),
+            "finger_error_m": float(self.cfg.floor_finger_error_m),
             "object_top_m": float(object_top),
         }
 
@@ -3137,12 +3163,16 @@ def parse_args():
     p.add_argument("--max-steps", type=int, default=300)
     p.add_argument("--hz", type=float, default=10.0)
     p.add_argument("--floor-finger-error-mm", type=float, default=0.0,
-                   help="Raise the finger pads by this much in the FLOOR GUARD's "
-                        "geometry only, to undo the measured URDF finger error "
-                        "(16.7mm too long; pose_check.py 2026-07-31). Default 0 keeps "
-                        "the conservative training-identical metric, under which the "
-                        "guard stops ~1.7cm early and deadlocked run 6. Confirm the "
-                        "real clearance with a ruler before raising this — too large a "
+                   help="Raise the finger pads by this much EVERYWHERE this code "
+                        "reasons about where the pads are: the floor guard AND the "
+                        "stage-1 pads_ready gate. Undoes the measured URDF finger "
+                        "error (16.7mm at C3 2026-07-31; 11.9mm open / 15.4mm "
+                        "closed at E1 2026-08-29). Default 0 keeps the "
+                        "training-identical metric, under which the guard stops "
+                        "~1.5cm early (deadlocked run 6) AND pads_ready fires while "
+                        "the real pads are still above the object, shutting the jaw "
+                        "on the approach (jammed run, 2026-08-30). Measure the real "
+                        "clearance with pose_check.py --real first — too large a "
                         "value drives the fingers into the floor.")
     p.add_argument("--bus-quiet-ms", type=float, default=None,
                    help="Gap between a servo write and the next read, ms (default 20). "

@@ -207,6 +207,15 @@ def parse_args_from(argv) -> argparse.Namespace:
     p.add_argument("--class-height", type=float, default=0.065,
                    help="sugarbox full height in metres (default 0.065)")
     p.add_argument("--entry-xy-mm", type=float, default=10.0)
+    p.add_argument("--floor-finger-error-mm", type=float, default=0.0,
+                   help="measured URDF finger error, forwarded to the controller. "
+                        "It corrects BOTH the floor guard and the stage-1 "
+                        "pads_ready gate. At 0 (default) pads_ready fires while "
+                        "the real pads are still above the object and the jaw "
+                        "shuts on the approach; E1 measured 11.9mm open / 15.4mm "
+                        "closed on 2026-08-29, so 15 is the value that pass "
+                        "measured. Confirm with pose_check.py --real before "
+                        "raising it further.")
     p.add_argument("--s6-stall-steps", type=int, default=2)
     p.add_argument("--pose-tol-deg", type=float, default=3.0,
                    help="maximum E1 arm-pose residual accepted by both startup and "
@@ -459,6 +468,7 @@ def build_ctrl_cmd(args: argparse.Namespace, fixed_target=None):
         "--contract", "obs_28_incremental",
         "--pose-tol-deg", str(args.pose_tol_deg),
         "--entry-xy-mm", str(args.entry_xy_mm),
+        "--floor-finger-error-mm", str(args.floor_finger_error_mm),
         "--s6-stall-grasp-steps", str(args.s6_stall_steps),
         "--latch-wait", str(latch_wait),
         "--stale-timeout", str(args.stale_timeout),

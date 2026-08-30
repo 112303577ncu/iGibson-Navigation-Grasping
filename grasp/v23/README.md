@@ -49,7 +49,7 @@ release 動作的做法把旗標搬過來，**不要**整支換回去。
 cd grasp/v23 && ./jetson_verify.sh
 ```
 
-要看到 **119 / 37 / 641 / 45 / 71** 一字不差，`wrist_z_offset = 0.0564`。
+要看到 **124 / 37 / 641 / 45 / 71** 一字不差，`wrist_z_offset = 0.0564`。
 
 > `wrist_z_offset` 錨在**地板**不是手臂（`dc.hover_gripper_center_z`），所以
 > C3→E1 這個值不變。它要是動了，代表變的不是姿勢。
@@ -226,7 +226,7 @@ home 訓練出來的。
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
 - [x] `e1_gripper_center_height_ruler_check` — 張爪實測 15.2 cm，FK 15.58 cm
 - [x] `e1_minimum_object_height_measured` — 3 cm 可夾、2 cm 空夾
-- [ ] `jetson_dry_run_ok` — 119/37/641/45/71 + `wrist_z_offset = 0.0564`
+- [ ] `jetson_dry_run_ok` — 124/37/641/45/71 + `wrist_z_offset = 0.0564`
 - [ ] `first_real_grasp_logged` — E1 至少一次實機夾起來，留完整 log
 
 沒過就留在分支上。v21 完全沒被動到，`grasp/v21/` 仍是唯一有實機夾取紀錄的那一套
