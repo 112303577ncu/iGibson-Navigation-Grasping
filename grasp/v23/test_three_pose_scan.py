@@ -493,14 +493,39 @@ def main():
     print("")
     print("12. the fabricated scan pose poisons the trig model, not feeds it")
     import arm_cam_geometry as acg_mod
-    fake = scan._dynamic_pose(acg_mod, {
-        "name": "LEFT", "arm_deg": [70.0, 74.2, 8.6, 8.6, 90.0, 30.0],
-        "homography": "../../integration/grasp_home_homography_e1.json"})
+    # Built from a REAL parsed pose. The first version of this test passed a
+    # hand-written dict with a "homography" key that load_scan_config never
+    # emits; _dynamic_pose read that key, so the fixture satisfied it and the
+    # KeyError waited until the first hardware scan instead.
+    with tempfile.TemporaryDirectory() as _tmp:
+        _path = Path(_tmp) / "real.json"
+        _path.write_text(json.dumps(base_document(Path(_tmp))), encoding="utf-8")
+        _cfg = scan.load_scan_config(str(_path))
+    _left = next(p for p in _cfg["poses"] if p["name"] != _cfg["return_pose"]["name"])
+    ok("homography" not in _left,
+       "a parsed pose carries no homography key -- the shared one is in mapping")
+    # Guarded: a raw traceback out of a check is a worse signal than a named
+    # failure. Reintroducing the KeyError this pins used to kill the whole suite
+    # here, which reads like the tests are broken rather than the code.
+    try:
+        fake = scan._dynamic_pose(acg_mod, _left, _cfg["mapping"]["homography"])
+    except Exception as _exc:
+        ok(False, "_dynamic_pose raised {} on a real parsed pose: {}".format(
+            type(_exc).__name__, _exc))
+        fake = None
+    if fake is None:
+        fake = acg_mod.ArmCamPose(
+            name="unbuilt", arm_deg=tuple(_left["arm_deg"]),
+            theta_deg=float("nan"), h_m=float("nan"), cam_x_m=float("nan"),
+            cam_y_m=float("nan"), sign_y=-1.0, distance_model_measured=False,
+            base_offset_measured=False, source="stand-in after failure")
     ok(not any(math.isfinite(v) for v in
                (fake.theta_deg, fake.h_m, fake.cam_x_m, fake.cam_y_m)),
        "its extrinsics are non-finite, not plausible placeholders")
-    ok(fake.arm_deg == (70.0, 74.2, 8.6, 8.6, 90.0, 30.0),
+    ok(tuple(fake.arm_deg) == tuple(_left["arm_deg"]),
        "the arm angles it DOES carry are real -- stamp_payload reads them")
+    ok(scan._dynamic_pose(acg_mod, _left) is not None,
+       "...and it still builds when no homography path is supplied")
     stamped = acg_mod.stamp_payload({}, fake)
     ok(stamped["cam_pose"] == [70.0, 74.2, 8.6, 8.6, 90.0, 30.0],
        "stamping still works, which is this pose's only real job")
@@ -568,6 +593,41 @@ def main():
     ok(src.count("not unlock_unvalidated") == 2,
        "the waiver appears in exactly 2 conditionals ({})".format(
            src.count("not unlock_unvalidated")))
+
+    print("")
+    print("14. the runtime scan path builds its pose from a REAL parsed config")
+    # The calibration path does not call _dynamic_pose, so a scan-only fault
+    # survived every offline suite and only appeared once the arm had already
+    # travelled to LEFT and come back.
+    import inspect as _inspect
+    src = _inspect.getsource(scan._scan_one_pose)
+    ok('config["mapping"]["homography"]' in src,
+       "_scan_one_pose takes the homography from mapping, not from the pose")
+    # Parsed, not grepped: the comment explaining the bug mentions the
+    # subscript, and a text search cannot tell a comment from code.
+    import ast as _ast
+    import textwrap as _tw
+    _tree = _ast.parse(_tw.dedent(_inspect.getsource(scan._dynamic_pose)))
+    _subs = [n for n in _ast.walk(_tree)
+             if isinstance(n, _ast.Subscript)
+             and isinstance(n.value, _ast.Name) and n.value.id == "pose_spec"
+             and isinstance(n.slice, _ast.Constant) and n.slice.value == "homography"]
+    ok(not _subs,
+       "_dynamic_pose no longer SUBSCRIPTS a key the parser never emits")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "runtime.json"
+        path.write_text(json.dumps(base_document(Path(tmp))), encoding="utf-8")
+        cfg = scan.load_scan_config(str(path))
+    import arm_cam_geometry as _acg
+    for pose in cfg["poses"]:
+        try:
+            built = scan._dynamic_pose(_acg, pose, cfg["mapping"]["homography"])
+            ok(tuple(built.arm_deg) == tuple(pose["arm_deg"]),
+               "{} builds a stampable pose from the parsed config".format(
+                   pose["name"]))
+        except Exception as exc:
+            ok(False, "{} raised {}: {}".format(
+                pose["name"], type(exc).__name__, exc))
 
     print()
     if failures:

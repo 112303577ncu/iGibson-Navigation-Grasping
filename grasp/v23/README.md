@@ -49,7 +49,7 @@ release 動作的做法把旗標搬過來，**不要**整支換回去。
 cd grasp/v23 && ./jetson_verify.sh
 ```
 
-要看到 **148 / 37 / 641 / 50 / 82** 一字不差，`wrist_z_offset = 0.0564`。
+要看到 **148 / 37 / 641 / 50 / 89** 一字不差，`wrist_z_offset = 0.0564`。
 
 > `wrist_z_offset` 錨在**地板**不是手臂（`dc.hover_gripper_center_z`），所以
 > C3→E1 這個值不變。它要是動了，代表變的不是姿勢。
@@ -279,7 +279,7 @@ home 訓練出來的。
 - [ ] `e1_fov_ruler_check` — E1 放尺量，確認 x 約 13 cm、y 約 19 cm
 - [x] `e1_gripper_center_height_ruler_check` — 張爪實測 15.2 cm，FK 15.58 cm
 - [x] `e1_minimum_object_height_measured` — 3 cm 可夾、2 cm 空夾
-- [ ] `jetson_dry_run_ok` — 148/37/641/50/82 + `wrist_z_offset = 0.0564`
+- [ ] `jetson_dry_run_ok` — 148/37/641/50/89 + `wrist_z_offset = 0.0564`
 - [x] `first_real_grasp_logged` — 2026-08-30 完整 log 已核對；可辨識範圍內重複 3/3 成功
 
 沒過就留在分支上。v23 現已有 E1 實機 3/3 紀錄，但其他 gate 尚未全過；v21 完全沒被

@@ -156,14 +156,14 @@ echo "$lch" | grep -q "all 50 checks passed" \
     && ok "50 項全過" || bad "一鍵 launcher 接線測試未通過（完整輸出見上）"
 
 echo
-echo "=== 7.7 三姿態掃描交接（需 all 82 checks passed）==="
+echo "=== 7.7 三姿態掃描交接（需 all 89 checks passed）==="
 # 純邏輯：不開相機/序列埠、不載 PyBullet/YOLO/PPO。固定左中右三姿態、E1 單一
 # homography + S1 剛體旋轉、
 # 回 E1 後才釋出 target，以及 scanner/controller 不同時擁有硬體，都在這裡釘住。
 scn=$(python3 test_three_pose_scan.py 2>&1)
 echo "$scn" | grep -E "checks passed|FAIL|Traceback" || echo "$scn" | tail -5
-echo "$scn" | grep -q "all 82 checks passed" \
-    && ok "82 項全過" || bad "三姿態掃描測試未通過（完整輸出見上）"
+echo "$scn" | grep -q "all 89 checks passed" \
+    && ok "89 項全過" || bad "三姿態掃描測試未通過（完整輸出見上）"
 
 echo
 echo "=== 8. dry-run（不驅動伺服機；需 wrist_z_offset = 0.0564）==="
@@ -183,7 +183,7 @@ tail -3 /tmp/v23_guard.log
 echo
 echo "═══════════════════════════════════════════════════════════════"
 echo "Gate 判準："
-echo "  · 148 / 37 / 641 / 50 / 82 一字不差"
+echo "  · 148 / 37 / 641 / 50 / 89 一字不差"
 echo "  · wrist_z_offset 必須 0.0564（純幾何，跨平台不該變；也不隨姿態變——hover 高度錨在地板不是手臂，所以 C3→E1 這個值不動）"
 echo "  · Stage 序列 0→1 → jaw close → ABORT → retreat home，exit 0"
 echo "  · 策略步數容許 ±3 浮點漂移；超過就停下來回報"

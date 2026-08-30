@@ -419,7 +419,7 @@ def _geometry_args(homography, policy_x_range, policy_y_range, allow_top):
     )
 
 
-def _dynamic_pose(acg, pose_spec):
+def _dynamic_pose(acg, pose_spec, homography=None):
     """A pose carrying only what the grasp-home path reads: name and arm_deg.
 
     ``stamp_payload`` is the sole consumer here -- at a grasp home the mapping
@@ -440,8 +440,14 @@ def _dynamic_pose(acg, pose_spec):
         theta_deg=poison, h_m=poison, cam_x_m=poison, cam_y_m=poison,
         sign_y=-1.0, distance_model_measured=False,
         base_offset_measured=False,
+        # The parsed pose dicts carry name/arm_deg/flags/note and NOTHING else --
+        # all three views share the single E1 file under config["mapping"], so
+        # reading pose_spec["homography"] here raised KeyError on the first
+        # scanned pose and took the whole run down. The calibration path never
+        # calls this function, which is why only the runtime scan was broken.
         source="three-pose scan; geometry comes only from {}".format(
-            pose_spec["homography"]),
+            homography if homography is not None
+            else pose_spec.get("homography", "the shared reference homography")),
     )
 
 
@@ -461,7 +467,7 @@ def _scan_one_pose(args, config, pose_spec, model, cap, vgb, acg, cv2):
         (args.policy_x_lo, args.policy_x_hi),
         (args.policy_y_lo, args.policy_y_hi), args.allow_top_clipped)
     vgb.resolve_camera_geometry(geometry)
-    pose = _dynamic_pose(acg, pose_spec)
+    pose = _dynamic_pose(acg, pose_spec, config["mapping"]["homography"])
     class_height = {"sugarbox": args.class_height}
     class_z = {"_fallback": args.class_height / 2.0,
                "sugarbox": args.class_height / 2.0}
