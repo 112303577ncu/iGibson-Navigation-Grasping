@@ -1,0 +1,408 @@
+#!/usr/bin/env python3
+"""Pure-logic checks for the exclusive three-pose search handoff."""
+
+import json
+import inspect
+from pathlib import Path
+import sys
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+import jetson_one_command_grasp as launcher  # noqa: E402
+import three_pose_scan as scan               # noqa: E402
+
+
+checks = 0
+failures = []
+
+
+def ok(condition, label):
+    global checks
+    checks += 1
+    print("  [{}] {}".format("ok" if condition else "FAIL", label))
+    if not condition:
+        failures.append(label)
+
+
+def expect_config_error(fn, text, label):
+    try:
+        fn()
+    except scan.ScanConfigError as exc:
+        ok(text in str(exc), label)
+    else:
+        ok(False, label)
+
+
+def base_document(directory):
+    poses = []
+    rows = (
+        ("LEFT", [70, 74.2, 8.6, 8.6, 90, 30]),
+        ("E1", [90, 74.2, 8.6, 8.6, 90, 30]),
+        ("RIGHT", [110, 74.2, 8.6, 8.6, 90, 30]),
+    )
+    homography = directory / "e1.json"
+    homography.write_text("{}", encoding="utf-8")
+    for name, arm in rows:
+        poses.append({
+            "name": name, "arm_deg": list(arm),
+            "hardware_validated": True,
+            "yaw_mapping_validated": True,
+        })
+    return {
+        "schema": scan.SCHEMA, "version": 2,
+        "mapping": {
+            "type": "s1_yaw_from_reference",
+            "reference_pose": "E1", "reference_s1_deg": 90,
+            "homography": homography.name,
+            "pivot_xy_m": list(scan.S1_PIVOT_XY_M),
+            "yaw_sign": scan.S1_YAW_SIGN,
+        },
+        "return_pose": {"name": "E1", "arm_deg": list(rows[1][1])},
+        "poses": poses,
+        "samples_per_pose": 5,
+        "per_pose_timeout_sec": 8.0,
+        "within_pose_spread_m": 0.008,
+        "cross_pose_tolerance_m": 0.01,
+    }
+
+
+def write_document(directory, document):
+    path = directory / "scan.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return path
+
+
+def main():
+    print("three-pose scan tests (no camera, serial, PyBullet, YOLO, or PPO)\n")
+    with tempfile.TemporaryDirectory() as raw:
+        directory = Path(raw)
+        doc = base_document(directory)
+        path = write_document(directory, doc)
+        loaded = scan.load_scan_config(str(path))
+        ok([pose["name"] for pose in loaded["poses"]] == ["LEFT", "E1", "RIGHT"],
+           "exactly three ordered lateral poses load")
+        ok(loaded["return_pose"]["name"] == "E1",
+           "return pose is explicit")
+        ok(loaded["mapping"]["homography"].is_absolute(),
+           "the one reference homography resolves relative to the config")
+
+        missing = base_document(directory)
+        (directory / "e1.json").unlink()
+        missing_path = write_document(directory, missing)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(missing_path)),
+            "does not exist", "runtime refuses a missing reference homography")
+        calibrated = scan.load_scan_config(
+            str(missing_path), require_homographies=False, calibration_pose="LEFT")
+        ok(calibrated["poses"][0]["name"] == "LEFT",
+           "validation collection can run before the reference file is present")
+
+        duplicate = base_document(directory)
+        duplicate["poses"][2]["arm_deg"] = duplicate["poses"][0]["arm_deg"]
+        duplicate_path = write_document(directory, duplicate)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(duplicate_path),
+                                          require_homographies=False),
+            "distinct arm positions", "duplicate arm poses are rejected")
+
+        unvisited = base_document(directory)
+        unvisited["poses"][0]["hardware_validated"] = False
+        unvisited_path = write_document(directory, unvisited)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(unvisited_path),
+                                          require_homographies=False),
+            "not hardware_validated", "unvisited motion cannot enter the scanner")
+
+        unverified_yaw = base_document(directory)
+        unverified_yaw["poses"][2]["yaw_mapping_validated"] = False
+        unverified_yaw_path = write_document(directory, unverified_yaw)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(unverified_yaw_path),
+                                          require_homographies=False),
+            "yaw mapping", "an unmeasured side-view rotation cannot enter runtime")
+
+        changed_pitch = base_document(directory)
+        changed_pitch["poses"][0]["arm_deg"][1] = 75.0
+        changed_pitch_path = write_document(directory, changed_pitch)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(changed_pitch_path),
+                                          require_homographies=False),
+            "S2-S5", "single-homography reuse rejects every non-S1 pose change")
+
+        wrong_pivot = base_document(directory)
+        wrong_pivot["mapping"]["pivot_xy_m"][0] += 0.01
+        wrong_pivot_path = write_document(directory, wrong_pivot)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(wrong_pivot_path),
+                                          require_homographies=False),
+            "S1 pivot", "an edited yaw pivot is rejected")
+
+        wrong_sign = base_document(directory)
+        wrong_sign["mapping"]["yaw_sign"] = 1.0
+        wrong_sign_path = write_document(directory, wrong_sign)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(wrong_sign_path),
+                                          require_homographies=False),
+            "yaw_sign", "the opposite S1 rotation direction is rejected")
+
+        wide_yaw = base_document(directory)
+        wide_yaw["poses"][2]["arm_deg"][0] = 120.0
+        wide_yaw_path = write_document(directory, wide_yaw)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(wide_yaw_path),
+                                          require_homographies=False),
+            "between 5 and 25", "unreviewed yaw beyond 25 degrees is rejected")
+
+        collection = base_document(directory)
+        for side in (collection["poses"][0], collection["poses"][2]):
+            side["hardware_validated"] = False
+            side["yaw_mapping_validated"] = False
+        collection_path = write_document(directory, collection)
+        collected = scan.load_scan_config(
+            str(collection_path), require_homographies=False,
+            calibration_pose="LEFT")
+        ok(collected["poses"][0]["name"] == "LEFT",
+           "explicit validation collection may visit an unapproved side pose")
+
+        wrong_home = base_document(directory)
+        wrong_home["return_pose"]["arm_deg"][1] = 75.0
+        wrong_home_path = write_document(directory, wrong_home)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(wrong_home_path),
+                                          require_homographies=False),
+            "exactly match", "return E1 cannot drift from a configured pose")
+
+        wrong_name = base_document(directory)
+        wrong_name["return_pose"] = {
+            "name": "LEFT", "arm_deg": list(wrong_name["poses"][0]["arm_deg"])}
+        wrong_name_path = write_document(directory, wrong_name)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(wrong_name_path),
+                                          require_homographies=False),
+            "must be v23 E1", "a different configured pose cannot replace E1")
+
+        closed_jaw = base_document(directory)
+        closed_jaw["poses"][1]["arm_deg"][5] = 90.0
+        closed_path = write_document(directory, closed_jaw)
+        expect_config_error(
+            lambda: scan.load_scan_config(str(closed_path),
+                                          require_homographies=False),
+            "S6", "every search pose keeps the jaw fully open")
+
+        mapping = loaded["mapping"]
+        reference_xy = (0.25, 0.0)
+        left_xy = scan.map_reference_xy_for_pose(
+            reference_xy, loaded["poses"][0], mapping)
+        right_xy = scan.map_reference_xy_for_pose(
+            reference_xy, loaded["poses"][2], mapping)
+        ok(left_xy[1] > reference_xy[1] and right_xy[1] < reference_xy[1],
+           "S1=70 looks left and S1=110 looks right in base coordinates")
+        left_radius = ((left_xy[0] - mapping["pivot_xy_m"][0]) ** 2
+                       + (left_xy[1] - mapping["pivot_xy_m"][1]) ** 2) ** 0.5
+        reference_radius = ((reference_xy[0] - mapping["pivot_xy_m"][0]) ** 2
+                            + (reference_xy[1] - mapping["pivot_xy_m"][1]) ** 2) ** 0.5
+        ok(abs(left_radius - reference_radius) < 1e-12,
+           "S1 mapping is a width- and radius-preserving rigid rotation")
+
+    print("\n1. within-pose stability")
+    samples = [
+        {"x": 0.250, "y": -0.020, "z": 0.0325, "w": 0.025,
+         "height": 0.065, "class": "sugarbox"},
+        {"x": 0.252, "y": -0.019, "z": 0.0325, "w": 0.026,
+         "height": 0.065, "class": "sugarbox"},
+        {"x": 0.251, "y": -0.021, "z": 0.0325, "w": 0.024,
+         "height": 0.065, "class": "sugarbox"},
+    ]
+    aggregate = scan.aggregate_pose_samples(samples, 0.008)
+    ok(aggregate["x"] == 0.251 and aggregate["sample_count"] == 3,
+       "stable samples collapse to a median")
+    expect_config_error(
+        lambda: scan.aggregate_pose_samples(
+            samples + [dict(samples[0], x=0.280)], 0.008),
+        "spread", "a moving or flickering target is rejected")
+    expect_config_error(
+        lambda: scan.aggregate_pose_samples(
+            [samples[0], dict(samples[1], **{"class": "other"})], 0.008),
+        "class", "one pose cannot switch object class")
+
+    print("\n2. cross-pose consensus")
+    e1 = dict(aggregate, pose="E1")
+    f3 = dict(aggregate, pose="RIGHT", x=0.254, y=-0.018)
+    single = scan.fuse_pose_results([e1], 0.01)
+    ok(single["pose_count"] == 1 and single["poses"] == ["E1"],
+       "one exclusive view may supply the target")
+    fused = scan.fuse_pose_results([e1, f3], 0.01)
+    ok(fused["pose_count"] == 2 and fused["x"] == 0.2525,
+       "agreeing views fuse by median")
+    expect_config_error(
+        lambda: scan.fuse_pose_results(
+            [e1, dict(f3, x=0.275, y=0.010)], 0.01),
+        "disagree", "different objects or bad calibrations fail closed")
+    expect_config_error(
+        lambda: scan.fuse_pose_results([], 0.01),
+        "no valid target", "three misses never become a default grasp")
+
+    print("\n3. E1 release gate")
+    code, released, _ = scan.finalize_scan_result(
+        True, False, None, None, [e1, f3], 0.01)
+    ok(code == 0 and released is not None,
+       "an encoder-confirmed E1 return releases an agreeing target")
+    code, released, _ = scan.finalize_scan_result(
+        False, False, None, None, [e1], 0.01)
+    ok(code == 2 and released is None,
+       "an unconfirmed E1 return cannot release a target")
+    code, released, _ = scan.finalize_scan_result(
+        True, True, None, None, [e1], 0.01)
+    ok(code == 130 and released is None,
+       "an interrupted scan returns no target even after reaching E1")
+    code, released, _ = scan.finalize_scan_result(
+        True, False, "pose failed", None, [e1], 0.01)
+    ok(code == 2 and released is None,
+       "a scan error cannot release a stale partial target")
+    code, released, _ = scan.finalize_scan_result(
+        True, False, None, "F3", [], 0.01)
+    ok(code == 0 and released is None,
+       "calibration returns to E1 without starting a grasp")
+
+    print("\n4. launcher handoff")
+    args = launcher.parse_args_from(["--three-pose-scan"])
+    scan_cmd = launcher.build_scan_cmd(args)
+    ok("--i-am-beside-the-robot" in scan_cmd,
+       "scanner motion carries an explicit supervised-hardware acknowledgement")
+    ok("--config" in scan_cmd and "--policy-x-range" in scan_cmd,
+       "scanner receives its config and the v23 policy envelope")
+    target = {
+        "x": 0.251, "y": -0.020, "z": 0.0325, "height": 0.065,
+        "pose_count": 2, "poses": ["E1", "F3"],
+    }
+    fixed_cmd = launcher.build_ctrl_cmd(args, fixed_target=target)
+    ok("--socket" not in fixed_cmd and "--latch-obj" not in fixed_cmd,
+       "post-scan controller has no live camera/socket source")
+    ok("--obj-x" in fixed_cmd and "--object-height" in fixed_cmd,
+       "post-scan controller receives a frozen base target")
+    normal_cmd = launcher.build_ctrl_cmd(launcher.parse_args_from([]))
+    ok("--socket" in normal_cmd and "--latch-obj" in normal_cmd,
+       "legacy E1 single-view path remains unchanged")
+
+    line = scan.RESULT_PREFIX + json.dumps(target)
+    parsed = launcher.parse_scan_result_line(line)
+    ok(parsed["x"] == target["x"],
+       "launcher parses the one machine-readable result")
+    ok(launcher.parse_scan_result_line("[scan] ordinary log") is None,
+       "ordinary scanner logs cannot become a target")
+    try:
+        launcher.parse_scan_result_line(
+            scan.RESULT_PREFIX + '{"x": NaN, "y": 0, "z": 0, "height": 1, '
+            '"pose_count": 1, "poses": ["E1"]}')
+    except ValueError:
+        ok(True, "non-finite scan results are refused")
+    else:
+        ok(False, "non-finite scan results are refused")
+    scanner_source = inspect.getsource(launcher.run_scanner)
+    ok("start_new_session=SCAN_START_NEW_SESSION" in scanner_source,
+       "terminal Ctrl+C cannot hit launcher and scanner simultaneously")
+    ok("grace_seconds=SCAN_INTERRUPT_GRACE_SEC" in scanner_source
+       and launcher.SCAN_INTERRUPT_GRACE_SEC >= 30.0,
+       "the scanner gets a guarded E1-return window before termination")
+
+    print("\n11. a lone ROTATED view is confirmed at the reference, or refused")
+    # The cross-pose 1 cm gate is the only runtime test of the S1 rotation. One
+    # view removes it, so the reference pose -- where no rotation is applied --
+    # has to put it back.
+    POSES = [{"name": "LEFT", "arm_deg": [70.0, 74.2, 8.6, 8.6, 90.0, 30.0]},
+             {"name": "E1", "arm_deg": [90.0, 74.2, 8.6, 8.6, 90.0, 30.0]},
+             {"name": "RIGHT", "arm_deg": [110.0, 74.2, 8.6, 8.6, 90.0, 30.0]}]
+
+    def hit(pose, x, y, cls="sugarbox"):
+        return {"pose": pose, "x": x, "y": y, "z": 0.015, "w": 0.023,
+                "class": cls, "height": 0.03}
+
+    need = scan.needs_reference_confirmation
+    ok(need([hit("LEFT", 0.24, 0.02)], POSES, 90.0) is True,
+       "one LEFT view needs confirming")
+    ok(need([hit("RIGHT", 0.24, -0.02)], POSES, 90.0) is True,
+       "one RIGHT view needs confirming")
+    ok(need([hit("E1", 0.24, 0.0)], POSES, 90.0) is False,
+       "one E1 view does NOT -- at S1=90 no rotation is applied")
+    ok(need([hit("LEFT", 0.24, 0.02), hit("E1", 0.24, 0.02)], POSES, 90.0) is False,
+       "two views already cross-check each other")
+    ok(need([hit("MYSTERY", 0.24, 0.0)], POSES, 90.0) is True,
+       "an unrecognised pose name is treated as rotated, not assumed safe")
+
+    def final(results, **kw):
+        return scan.finalize_scan_result(
+            True, False, None, None, results, 0.01, **kw)
+
+    lone = [hit("LEFT", 0.2400, 0.0200)]
+    code, fused, reason = final(lone, confirmation_needed=True, confirmation=None)
+    ok(code == 2 and fused is None,
+       "unconfirmed lone rotated view is REFUSED by default")
+    ok("rest entirely on the S1 rotation" in reason,
+       "...and the refusal says why, not just that it failed")
+
+    code, fused, _ = final(lone, confirmation_needed=True, confirmation=None,
+                           accept_unconfirmed=True)
+    ok(code == 0 and fused is not None,
+       "--accept-single-rotated-view is the only way past it")
+
+    agree = hit("E1", 0.2405, 0.0203)
+    code, fused, _ = final(lone, confirmation_needed=True, confirmation=agree)
+    ok(code == 0 and fused is not None and fused["pose_count"] == 2,
+       "a confirming reference detection is fused in as a second view")
+    ok(fused is not None and set(fused["poses"]) == {"LEFT", "E1"},
+       "...and both poses are recorded in the released target")
+
+    disagree = hit("E1", 0.2400, -0.0800)     # 10 cm away: a flipped yaw sign
+    code, fused, reason = final(lone, confirmation_needed=True,
+                                confirmation=disagree)
+    ok(code == 2 and fused is None and "disagree" in reason,
+       "a reference detection that disagrees REFUSES, it does not average")
+
+    code, fused, reason = final(lone, confirmation_needed=True,
+                                confirmation=disagree, accept_unconfirmed=True)
+    ok(code == 2 and fused is None,
+       "--accept-single-rotated-view cannot override an actual disagreement")
+
+    wrong_class = hit("E1", 0.2405, 0.0203, cls="eraser")
+    code, fused, _ = final(lone, confirmation_needed=True,
+                           confirmation=wrong_class)
+    ok(code == 2 and fused is None,
+       "the confirmation has to be the same object class")
+
+    code, fused, _ = final(lone, confirmation_needed=False, confirmation=None)
+    ok(code == 0 and fused is not None and fused["pose_count"] == 1,
+       "when confirmation is not needed the lone view still releases")
+
+    code, _, _ = scan.finalize_scan_result(
+        True, True, None, None, lone, 0.01, confirmation_needed=True,
+        confirmation=agree)
+    ok(code == 130, "an interrupted scan still releases nothing, confirmed or not")
+    code, _, _ = scan.finalize_scan_result(
+        False, False, None, None, lone, 0.01, confirmation_needed=True,
+        confirmation=agree)
+    ok(code == 2, "an unconfirmed E1 RETURN still releases nothing")
+
+    scan_source = inspect.getsource(scan.main)
+    ok("cap.release()" in scan_source
+       and scan_source.index("needs_reference_confirmation")
+       < scan_source.index("cap.release()"),
+       "the confirming grab happens while the camera is still open")
+    ok("not interrupted and run_error is None and return_ok" in scan_source,
+       "confirmation is skipped on runs that are already refused")
+
+    print()
+    if failures:
+        print("{} of {} checks FAILED:".format(len(failures), checks))
+        for label in failures:
+            print("  - {}".format(label))
+        return 1
+    print("all {} checks passed — scan ownership, calibration, consensus, and "
+          "fixed-target handoff stay fail-closed".format(checks))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

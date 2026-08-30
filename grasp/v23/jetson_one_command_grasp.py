@@ -42,6 +42,8 @@ it launches runs under the 3.8 venv and may use all of them.
 
 import argparse
 import importlib.util
+import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -67,6 +69,8 @@ if "VIRTUAL_ENV" not in os.environ:
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
 BRIDGE = REPO_ROOT / "integration" / "vision_grasp_bridge.py"
+SCANNER = HERE / "three_pose_scan.py"
+SCAN_CONFIG = HERE / "three_pose_scan.json"
 CONTROLLER = HERE / "x3plus_real_grasp.py"
 PPO_MODEL = HERE / "models" / "candidate_v23_seed23401_ckpt250000.zip"
 VECNORM = HERE / "models" / "candidate_v23_seed23401_ckpt250000_vec.pkl"
@@ -98,6 +102,13 @@ ARM_CAMERA = ("/dev/v4l/by-id/"
 # looser check here would pass a file the bridge then rejects at E1.
 HOMOGRAPHY_MIN_POINTS = 6
 HOMOGRAPHY_MAX_ERROR_M = 0.02
+# Keep the scanner out of the launcher's foreground process group. Otherwise one
+# terminal Ctrl+C reaches both processes and the launcher immediately sends the
+# scanner a second SIGINT while its finally block is trying to return the arm to
+# E1. The scanner gets one deliberate SIGINT below and a long guarded-return
+# window before termination is considered.
+SCAN_START_NEW_SESSION = os.name == "posix"
+SCAN_INTERRUPT_GRACE_SEC = 45.0
 
 
 def parse_args_from(argv) -> argparse.Namespace:
@@ -128,6 +139,27 @@ def parse_args_from(argv) -> argparse.Namespace:
     p.add_argument("--show", action="store_true",
                    help="show the annotated camera window (needs a display; not "
                         "over a plain SSH session)")
+    p.add_argument("--allow-top-clipped", action="store_true",
+                   help="accept a sugarbox bbox that touches the TOP image edge only. "
+                        "The measured E1 homography still requires its bottom-centre "
+                        "inside the calibration hull; side edges are width-only and "
+                        "jaw-bounded. This never allows left/right/bottom clipping.")
+    p.add_argument("--accept-single-rotated-view", action="store_true",
+                   help="let the scan release a target that only ONE rotated "
+                        "(LEFT/RIGHT) view saw and that E1 could not confirm "
+                        "afterwards. Off by default: with one view nothing "
+                        "tests the S1 rotation at runtime, so a wrong pivot or "
+                        "yaw sign would hand the policy a confident wrong "
+                        "coordinate.")
+    p.add_argument("--three-pose-scan", action="store_true",
+                   help="before loading PPO, search from exactly three calibrated "
+                        "arm poses, return to E1, release camera/serial ownership, "
+                        "then grasp the fused fixed base-frame target")
+    p.add_argument("--scan-config", default=str(SCAN_CONFIG),
+                   help="three-pose scan JSON (default grasp/v23/three_pose_scan.json)")
+    p.add_argument("--scan-calibrate-pose", default=None, metavar="NAME",
+                   help="move to one configured scan pose and print calibration "
+                        "pixels; Ctrl+C returns to E1 and no grasp is attempted")
     p.add_argument("--class-height", type=float, default=0.065,
                    help="sugarbox full height in metres (default 0.065)")
     p.add_argument("--entry-xy-mm", type=float, default=10.0)
@@ -190,6 +222,29 @@ def check_homography(path_str: str) -> bool:
     return True
 
 
+def check_scan_config(args: argparse.Namespace) -> bool:
+    """Validate all scan poses before either camera or serial port is opened."""
+    try:
+        sys.path.insert(0, str(HERE))
+        from three_pose_scan import ScanConfigError, load_scan_config
+        config = load_scan_config(
+            args.scan_config,
+            require_homographies=args.scan_calibrate_pose is None,
+            calibration_pose=args.scan_calibrate_pose)
+    except (ImportError, ScanConfigError) as exc:
+        print(f"[FATAL] three-pose scan config rejected: {exc}")
+        return False
+    print(f"[check] scan config: {config['path']} "
+          f"({', '.join(pose['name'] for pose in config['poses'])} → "
+          f"{config['return_pose']['name']})")
+    if args.scan_calibrate_pose is not None:
+        pose = next(p for p in config["poses"]
+                    if p["name"] == args.scan_calibrate_pose)
+        print(f"[check] scan calibration pose {pose['name']}: {list(pose['arm_deg'])}")
+        return True
+    return check_homography(str(config["mapping"]["homography"]))
+
+
 def preflight(args: argparse.Namespace) -> bool:
     ok = True
     for label, path in (
@@ -201,6 +256,15 @@ def preflight(args: argparse.Namespace) -> bool:
         else:
             print(f"[FATAL] missing {label}: {path}")
             ok = False
+
+    if args.three_pose_scan or args.scan_calibrate_pose is not None:
+        for label, path in (("three-pose scanner", SCANNER),
+                            ("scan config", Path(args.scan_config))):
+            if path.is_file():
+                print(f"[check] {label}: {path}")
+            else:
+                print(f"[FATAL] missing {label}: {path}")
+                ok = False
 
     for module in ("cv2", "ultralytics", "stable_baselines3", "pybullet"):
         if importlib.util.find_spec(module) is None:
@@ -235,7 +299,10 @@ def preflight(args: argparse.Namespace) -> bool:
 
     # Skipped under --calibrate for the obvious reason: that mode exists to
     # create this file, so requiring it first would be a closed loop.
-    if not args.calibrate and not check_homography(args.homography):
+    if args.three_pose_scan or args.scan_calibrate_pose is not None:
+        if not check_scan_config(args):
+            ok = False
+    elif not args.calibrate and not check_homography(args.homography):
         ok = False
     return ok
 
@@ -254,13 +321,42 @@ def pump(proc: subprocess.Popen, log: IO[str], *,
             detection_sent.set()
 
 
-def stop_process(proc: Optional[subprocess.Popen], label: str) -> None:
+def parse_scan_result_line(line: str):
+    """Parse the scanner's sole handoff record; ordinary log lines return None."""
+    prefix = "[scan][result] "
+    if not line.startswith(prefix):
+        return None
+    try:
+        payload = json.loads(line[len(prefix):])
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid scan result JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("scan result must be a JSON object")
+    for key in ("x", "y", "z", "height"):
+        value = payload.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"scan result {key!r} must be numeric")
+        if not math.isfinite(float(value)):
+            raise ValueError(f"scan result {key!r} must be finite")
+    if float(payload["height"]) <= 0.0:
+        raise ValueError("scan result height must be positive")
+    count = payload.get("pose_count")
+    poses = payload.get("poses")
+    if not isinstance(count, int) or not 1 <= count <= 3:
+        raise ValueError("scan result pose_count must be in [1, 3]")
+    if not isinstance(poses, list) or len(poses) != count:
+        raise ValueError("scan result poses must match pose_count")
+    return payload
+
+
+def stop_process(proc: Optional[subprocess.Popen], label: str,
+                 grace_seconds: float = 8.0) -> None:
     if proc is None or proc.poll() is not None:
         return
     print(f"[launcher] stopping {label} (SIGINT)")
     try:
         proc.send_signal(signal.SIGINT)
-        proc.wait(timeout=8.0)
+        proc.wait(timeout=grace_seconds)
     except subprocess.TimeoutExpired:
         proc.terminate()
         try:
@@ -270,16 +366,15 @@ def stop_process(proc: Optional[subprocess.Popen], label: str) -> None:
             proc.wait(timeout=3.0)
 
 
-def build_ctrl_cmd(args: argparse.Namespace):
+def build_ctrl_cmd(args: argparse.Namespace, fixed_target=None):
     """Arm-controller command line."""
     # The controller holds the arm at E1 by waiting for a detection that
     # --calibrate never sends, so that wait has to outlast a measuring session
     # rather than a one-shot detection.
     latch_wait = max(args.latch_wait, 1800.0) if args.calibrate else args.latch_wait
-    return [
+    cmd = [
         sys.executable, str(CONTROLLER),
-        "--real", "--socket", "--latch-obj",
-        "--i-confirm-external-frame", "--unlock-candidate-real",
+        "--real", "--unlock-candidate-real",
         "--port", str(args.port),
         "--model", str(PPO_MODEL),
         "--vecnorm", str(VECNORM),
@@ -291,6 +386,41 @@ def build_ctrl_cmd(args: argparse.Namespace):
         "--stale-timeout", str(args.stale_timeout),
         "--max-steps", str(args.max_steps),
     ]
+    if fixed_target is None:
+        cmd[3:3] = ["--socket", "--latch-obj",
+                    "--i-confirm-external-frame"]
+    else:
+        cmd += [
+            "--obj-x", str(fixed_target["x"]),
+            "--obj-y", str(fixed_target["y"]),
+            "--obj-z", str(fixed_target["z"]),
+            "--object-height", str(fixed_target["height"]),
+        ]
+    return cmd
+
+
+def build_scan_cmd(args: argparse.Namespace):
+    """Three-pose scanner command; it exits before the PPO controller starts."""
+    cmd = [
+        sys.executable, str(SCANNER),
+        "--config", str(args.scan_config),
+        "--camera", str(args.camera),
+        "--port", str(args.port),
+        "--model", str(YOLO_MODEL),
+        "--class-height", str(args.class_height),
+        "--pose-tol-deg", str(min(3.0, args.pose_tol_deg)),
+        "--policy-x-range", POLICY_X_RANGE[0], POLICY_X_RANGE[1],
+        "--policy-y-range", POLICY_Y_RANGE[0], POLICY_Y_RANGE[1],
+        "--calibration-samples", str(args.calibration_samples),
+        "--i-am-beside-the-robot",
+    ]
+    if args.allow_top_clipped:
+        cmd.append("--allow-top-clipped")
+    if args.scan_calibrate_pose is not None:
+        cmd += ["--calibrate-pose", str(args.scan_calibrate_pose)]
+    if getattr(args, "accept_single_rotated_view", False):
+        cmd.append("--accept-single-rotated-view")
+    return cmd
 
 
 def build_bridge_cmd(args: argparse.Namespace):
@@ -324,6 +454,8 @@ def build_bridge_cmd(args: argparse.Namespace):
                 "--calibration-samples", str(args.calibration_samples)]
     else:
         cmd += ["--homography", str(args.homography), "--once"]
+        if args.allow_top_clipped:
+            cmd.append("--allow-top-clipped-grasp-home")
     return cmd
 
 
@@ -371,30 +503,116 @@ def camera_holders(device: str):
     return holders
 
 
+def run_scanner(args: argparse.Namespace, env, log_path: Path):
+    """Run the exclusive camera/serial search phase and return its fixed target."""
+    cmd = build_scan_cmd(args)
+    proc = None
+    result = None
+    with open(log_path, "w", encoding="utf-8") as log:
+        try:
+            proc = subprocess.Popen(
+                cmd, cwd=str(HERE), env=env, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                errors="replace", bufsize=1,
+                start_new_session=SCAN_START_NEW_SESSION)
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                print(line, end="", flush=True)
+                log.write(line)
+                log.flush()
+                parsed = parse_scan_result_line(line)
+                if parsed is not None:
+                    if result is not None:
+                        raise ValueError("scanner emitted more than one result")
+                    result = parsed
+            code = proc.wait()
+        except KeyboardInterrupt:
+            # The child is in its own POSIX session, so it did not receive the
+            # terminal's Ctrl+C. Send exactly one SIGINT and allow its finally
+            # block to complete the guarded, encoder-confirmed E1 return.
+            stop_process(proc, "three-pose scanner",
+                         grace_seconds=SCAN_INTERRUPT_GRACE_SEC)
+            raise
+        finally:
+            stop_process(proc, "three-pose scanner",
+                         grace_seconds=SCAN_INTERRUPT_GRACE_SEC)
+    if code != 0:
+        raise RuntimeError(f"three-pose scanner exited with {code}")
+    if args.scan_calibrate_pose is not None:
+        return None
+    if result is None:
+        raise RuntimeError("three-pose scanner exited without a verified E1 result")
+    return result
+
+
 def main() -> int:
     args = parse_args()
+    if args.calibrate and (args.three_pose_scan or args.scan_calibrate_pose is not None):
+        print("[FATAL] --calibrate is the legacy E1-only calibration path; use "
+              "--scan-calibrate-pose NAME by itself for a scan pose.")
+        return 2
+    if args.three_pose_scan and args.scan_calibrate_pose is not None:
+        print("[FATAL] --three-pose-scan and --scan-calibrate-pose are mutually exclusive.")
+        return 2
+    if args.scan_calibrate_pose is not None and args.allow_top_clipped:
+        print("[FATAL] calibration never accepts clipped bboxes; remove "
+              "--allow-top-clipped.")
+        return 2
     if not preflight(args):
         return 2
     if args.check:
         print("[check] PASS: files and Python dependencies are present; no hardware opened.")
         return 0
+    if args.calibrate and args.allow_top_clipped:
+        print("[FATAL] --allow-top-clipped is for runtime grasp only; calibration "
+              "must keep rejecting every clipped bbox.")
+        return 2
 
     stamp = time.strftime("%Y%m%d_%H%M%S")
     ctrl_log_path = Path.home() / f"mode_b_integrated_{stamp}_controller.log"
     vision_log_path = Path.home() / f"mode_b_integrated_{stamp}_vision.log"
+    scan_log_path = Path.home() / f"mode_b_integrated_{stamp}_three_pose_scan.log"
     if args.calibrate:
         print("[launcher] CALIBRATE: 手臂只會移到 E1 home 並停在那裡，不會夾任何東西。")
+    elif args.scan_calibrate_pose is not None:
+        print(f"[launcher] SCAN CALIBRATE {args.scan_calibrate_pose}: "
+              "只量這個姿態；Ctrl+C 後先回 E1，不會啟動 PPO。")
     else:
         print("[launcher] REAL supervised grasp: stay beside the robot, hand on power.")
+        if args.three_pose_scan:
+            print("[launcher] THREE-POSE: scanner exclusively owns camera+serial, "
+                  "returns to E1, exits, then PPO starts with a fixed target.")
+        if args.allow_top_clipped:
+            print("[launcher] TOP-CLIP OPT-IN: only the top edge may be clipped; "
+                  "bottom/left/right and target-centre homography-hull gates remain active.")
     print(f"[launcher] controller log: {ctrl_log_path}")
     print(f"[launcher] vision log    : {vision_log_path}")
+    if args.three_pose_scan or args.scan_calibrate_pose is not None:
+        print(f"[launcher] scan log      : {scan_log_path}")
     print("[launcher] 相機由本程序自己開，不需要另外開串流終端機。")
-
-    ctrl_cmd = build_ctrl_cmd(args)
-    bridge_cmd = build_bridge_cmd(args)
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
+    fixed_target = None
+    if args.three_pose_scan or args.scan_calibrate_pose is not None:
+        try:
+            fixed_target = run_scanner(args, env, scan_log_path)
+        except KeyboardInterrupt:
+            print("\n[launcher] Ctrl+C received; scanner was asked to return E1.")
+            return 130
+        except (RuntimeError, ValueError, OSError) as exc:
+            print(f"[FATAL] scan phase failed: {exc}")
+            return 2
+        if args.scan_calibrate_pose is not None:
+            return 0
+        print(f"[launcher] scan target fixed at "
+              f"({fixed_target['x']:+.4f}, {fixed_target['y']:+.4f}, "
+              f"{fixed_target['z']:+.4f}) from "
+              f"{fixed_target['pose_count']} pose(s). Starting PPO only now.")
+
+    ctrl_cmd = build_ctrl_cmd(args, fixed_target=fixed_target)
+    bridge_cmd = None if fixed_target is not None else build_bridge_cmd(args)
+
     ctrl = None
     bridge = None
     ctrl_thread = None
@@ -413,6 +631,14 @@ def main() -> int:
             kwargs={"home_ready": home_ready}, daemon=True)
         ctrl_thread.start()
 
+        if fixed_target is not None:
+            # The scanner already returned to and verified E1, then exited. The
+            # controller independently re-confirms E1 before using the fixed
+            # base-frame target. No camera/socket process exists in this phase.
+            while ctrl.poll() is None:
+                time.sleep(0.1)
+            return int(ctrl.returncode or 0)
+
         deadline = time.monotonic() + max(1.0, args.startup_timeout)
         while not home_ready.wait(0.1):
             if ctrl.poll() is not None:
@@ -430,6 +656,7 @@ def main() -> int:
                   "當驗證點。量完按 Ctrl+C。")
         else:
             print("[launcher] E1 home confirmed; starting one local YOLO detection.")
+        assert bridge_cmd is not None
         bridge = subprocess.Popen(
             bridge_cmd, cwd=str(REPO_ROOT), env=env, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True, encoding="utf-8",
