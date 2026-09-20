@@ -2444,6 +2444,20 @@ class GraspController:
         span = abs(closed - open_)
         stall = abs(closed - grip_deg)
         frac = stall / span if span > 1e-6 else 0.0
+        # A jaw that is barely closed is not holding anything either. This check
+        # used to have a lower bound only -- "stopped short of fully closed" --
+        # so a fully OPEN jaw scored 100% short and read as a confident grasp.
+        # That is precisely the state run_release_only() exists to catch: an
+        # object lost between the grasp and the bin. Measured on hardware
+        # 2026-09-20: release on an empty jaw reported "CONFIRMED - jaw stalled
+        # at 30.0deg (100.0% short of closed)" and ran the whole drop motion.
+        # The floor is the fraction the stage-0 shortcut already requires before
+        # it will call a stall a grasp, so the two paths agree on "closed enough".
+        closed_frac = abs(grip_deg - open_) / span if span > 1e-6 else 0.0
+        if closed_frac < self.cfg.timeout_close_min_grip_frac:
+            return "rejected", (f"jaw sits at {grip_deg:.1f}deg, only {closed_frac*100:.0f}% of "
+                                f"the way closed from {open_:.0f}deg — the fingers are not "
+                                f"around anything")
         if frac < self.cfg.grasp_stall_min_fraction:
             return "rejected", (f"jaw reached {grip_deg:.1f}deg, only {frac*100:.1f}% short of "
                            f"fully closed ({closed:.0f}deg) — nothing detected between "

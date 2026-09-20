@@ -110,7 +110,7 @@ echo "$gate" | grep -qi "serial Close" \
     || ok "拒絕發生在碰序列埠之前"
 
 echo
-echo "=== 7. controller 自測（需 all 148 checks passed）==="
+echo "=== 7. controller 自測（需 all 163 checks passed）==="
 # 用 grep 抓結果行而不是 tail：驅動的 "serial Close!" 之類訊息會在直譯器結束時
 # 才印出來，把結果行擠出尾端，看起來就像測試沒跑完。
 # 116 = 38 + 夾爪接觸處理（第 4 跑：物體夾住後指令仍走向 180，齒輪研磨；
@@ -124,8 +124,8 @@ echo "=== 7. controller 自測（需 all 148 checks passed）==="
 # 新增 26 項：_parse_payload 驗證、snapshot() 新鮮度、--latch-obj 凍結、--real --socket 雙重確認）。
 ctl=$(python3 test_deploy_controller.py 2>&1)
 echo "$ctl" | grep -E "checks passed|FAIL|Traceback|Error" || echo "$ctl" | tail -5
-echo "$ctl" | grep -q "all 148 checks passed" \
-    && ok "148 項全過" || bad "controller 自測未通過（完整輸出見上）"
+echo "$ctl" | grep -q "all 163 checks passed" \
+    && ok "163 項全過" || bad "controller 自測未通過（完整輸出見上）"
 # 測試不得碰硬體：若出現驅動的開/關埠訊息，代表有建構點漏掉 dry_run
 echo "$ctl" | grep -qi "serial Close" \
     && bad "測試過程開了序列埠（不該發生，檢查 ServoController 建構點）" \

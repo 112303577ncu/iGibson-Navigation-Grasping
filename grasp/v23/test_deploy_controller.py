@@ -558,6 +558,33 @@ def test_object_stall_is_accepted():
           f"grasp check accepts a genuine stall (got {status!r})", why)
 
 
+def test_open_jaw_is_not_a_grasp():
+    print("
+[5b] jaw still open -> grasp REJECTED")
+    # Nothing is commanded here: the jaw sits where a dropped object leaves it.
+    # The check used to measure only distance from the CLOSED stop, so a wide
+    # open jaw scored 100% and read as the most confident grasp possible --
+    # which is how run_release_only() came to reach out and mime a drop over an
+    # empty gripper on hardware (2026-09-20).
+    plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 30], object_blocks_at_deg=None)
+    ctrl, cfg = build(plant)
+    with contextlib.redirect_stdout(io.StringIO()):
+        status, why = ctrl._grasp_looks_real()
+    check(status == "rejected", f"an open jaw is not a grasp (got {status!r})", why)
+    check("not around anything" in why, f"the reason names the open jaw: {why}")
+
+
+def test_half_open_jaw_is_not_a_grasp():
+    print("
+[5c] jaw only a third closed -> grasp REJECTED")
+    # Between the two bounds: short of the closed stop (so the old lower bound
+    # passed it) but nowhere near closed enough to be around an object.
+    plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 75], object_blocks_at_deg=None)
+    ctrl, cfg = build(plant)
+    with contextlib.redirect_stdout(io.StringIO()):
+        status, why = ctrl._grasp_looks_real()
+    check(status == "rejected", f"a barely-closed jaw is not a grasp (got {status!r})", why)
+
 def test_close_is_rate_limited_and_needs_many_commands():
     print("\n[6] a full close is rate-limited and needs many commands")
     plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 30])
@@ -1352,6 +1379,8 @@ def main() -> int:
         test_read_failure_stops_and_does_not_advance,
         test_empty_jaw_closes_fully_and_is_rejected,
         test_object_stall_is_accepted,
+        test_open_jaw_is_not_a_grasp,
+        test_half_open_jaw_is_not_a_grasp,
         test_close_is_rate_limited_and_needs_many_commands,
         test_grasp_check_fails_closed_on_unreadable_servo,
         test_emergency_raise_increases_clearance,

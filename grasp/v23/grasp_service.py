@@ -148,6 +148,28 @@ class GraspService:
         return {"ok": bool(res.get("reached")), "reason": res.get("reason"),
                 "iters": res.get("iters"), "elapsed_s": round(time.time() - t0, 2)}
 
+    def cmd_release(self) -> dict:
+        """Stage 3 on its own: reach forward, open over the bin, come home.
+
+        The controller refuses to open while the pads sit below
+        bin_rim_height + release_clearance, and refuses outright when the jaw
+        does not look like it is holding anything. Note what the outcome does
+        NOT mean: the jaw-stall proxy reads "holding" right up until the jaw is
+        commanded open, so "released" says the motion ran, not that the object
+        landed in the bin.
+        """
+        t0 = time.time()
+        try:
+            outcome = self.controller.run_release_only()
+        except Exception as exc:
+            return {"ok": False, "outcome": "exception: %s" % exc,
+                    "elapsed_s": round(time.time() - t0, 2)}
+        return {"ok": outcome == "released", "outcome": outcome,
+                "rim_cm": round(self.controller.cfg.bin_rim_height * 100, 1),
+                "clearance_cm": round(self.controller.cfg.release_clearance * 100, 1),
+                "elapsed_s": round(time.time() - t0, 2),
+                "rss_mb": round(rss_mb(), 1)}
+
     def cmd_grasp(self, wait_s: float = 3.0) -> dict:
         # E1 first: the resident bridge streams a detection every second, so a
         # visible object is already in hand and the episode costs ~8.5 s with no
@@ -212,6 +234,8 @@ class GraspService:
                         reply = self.cmd_status()
                     elif line == "home":
                         reply = self.cmd_home()
+                    elif line == "release":
+                        reply = self.cmd_release()
                     elif line == "grasp":
                         reply = self.cmd_grasp()
                     else:

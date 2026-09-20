@@ -81,8 +81,8 @@
 | `v21/deploy_contract.py` / `action_execution_v21.py` | 觀測/動作契約定義；`obs_28_incremental` |
 | `v21/manifest.json` | 權重 sha256、契約、硬體 gate、變更紀錄（單一事實來源） |
 | `v21/jetson_one_command_grasp.py` | ★**一鍵辨識＋夾取**（C3 home → 相機辨識一次 → PPO 夾取）。自己開相機；`--calibrate` 產生 C3 homography 校正檔 |
-| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` / `test_one_command_launcher.py` | 回歸測試，須 **135 / 37 / 641 / 29** 全過 |
-| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（135/37/641/29、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
+| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` / `test_one_command_launcher.py` | 回歸測試，須 **138 / 37 / 641 / 29** 全過 |
+| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（138/37/641/29、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
 | `v21/bus_probe.py` / `pose_check.py` | 唯讀診斷：半雙工伺服匯流排讀取、姿態/FK 核對 |
 | `v24/run_candidate.py` / `manifest.json` | v24 E1 replacement 候選入口；鎖定新 pair 並重用 v23 controller；未通過新 hash 真機 gate，不是正式主線 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
