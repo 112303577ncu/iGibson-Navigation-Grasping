@@ -4,6 +4,14 @@
 They must never run at the same time because both open the Rosmaster controller
 through `/dev/myserial`.
 
+The units carry both `Conflicts=` and an ordering edge
+(`grasp-service.service` is `Before=x3plus-navigation.service`, equivalently
+navigation is `After=grasp-service.service`). When switching modes, systemd
+therefore finishes stopping the current owner before it starts the new one.
+The grasp drop-in also refuses to start if an unmanaged process still has
+`/dev/myserial` open. The arm's posture-change delay is extra margin, not part
+of the ownership guarantee.
+
 Install on the Jetson:
 
 ```bash
@@ -12,6 +20,9 @@ sudo install -d -m 0755 /etc/systemd/system/grasp-service.service.d
 sudo install -m 0644 grasp-service.service.d/serial-owner.conf \
   /etc/systemd/system/grasp-service.service.d/
 sudo systemctl daemon-reload
+sudo systemd-analyze verify \
+  /etc/systemd/system/x3plus-navigation.service \
+  /etc/systemd/system/grasp-service.service
 ```
 
 Switch to navigation mode (the ROS master must already be running):
@@ -45,4 +56,15 @@ Verify that there is exactly one owner:
 sudo fuser -v /dev/myserial
 systemctl --no-pager --full status \
   x3plus-navigation.service grasp-service.service grasp-vision.service
+```
+
+After exercising both switch directions, verify the stop completed before the
+next start. `systemctl start` waits for the transaction, so no extra `sleep` is
+required:
+
+```bash
+journalctl -b -o short-monotonic \
+  -u x3plus-navigation.service -u grasp-service.service
+systemctl show -p Before -p After -p Conflicts \
+  x3plus-navigation.service grasp-service.service
 ```
