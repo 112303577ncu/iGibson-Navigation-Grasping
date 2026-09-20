@@ -1,0 +1,28 @@
+[Unit]
+Description=X3Plus navigation chassis and odometry serial owner
+Documentation=file:/home/jetson/ROS/X3/yahboomcar_ws/src/yahboomcar_bringup/scripts/ai_motor_server_P0.py
+Wants=dev-myserial.device network-online.target
+After=dev-myserial.device network-online.target grasp-service.service grasp-vision.service
+Conflicts=grasp-service.service grasp-vision.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=jetson
+Group=jetson
+WorkingDirectory=/home/jetson/ROS/X3/yahboomcar_ws
+Environment=PYTHONUNBUFFERED=1
+Environment=ROS_MASTER_URI=http://127.0.0.1:11311
+Environment=ROS_IP=192.168.0.201
+# Fail closed if an unmanaged process still owns the Rosmaster UART.
+ExecStartPre=/usr/bin/test -e /dev/myserial
+ExecStartPre=/bin/bash -c '! /bin/fuser /dev/myserial >/dev/null 2>&1'
+ExecStart=/bin/bash -lc 'source /opt/ros/melodic/setup.bash; source /home/jetson/ROS/X3/yahboomcar_ws/devel/setup.bash; exec python3 -u /home/jetson/ROS/X3/yahboomcar_ws/src/yahboomcar_bringup/scripts/ai_motor_server_P0.py'
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target
