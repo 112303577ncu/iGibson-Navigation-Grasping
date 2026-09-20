@@ -3,6 +3,11 @@
 `mission_pipeline.py` 把導航（Navigation 交接包的 Route A/B/C）和夾取（v21）接成單一
 任務。單一 Python 3.8 程序擁有 `/dev/myserial`，ROS Melodic 只負責感測與定位。
 
+> **目前狀態（2026-09-06）：只允許 dry-run。** final align/latch 尚未接入 C3
+> grasp-home 的量測 homography，`--real` 會在載入 YOLO、相機、LiDAR 或序列埠前
+> fail-closed。下方實機步驟保留為完成 homography 整合後的驗證順序，現在不可視為
+> 可執行的正式啟動程序。
+
 ```
 本程序（唯一 /dev/myserial owner）          ROS Melodic（不得開底盤序列埠）
   GraspController → 伺服機（v21）             robot_state_publisher
@@ -164,16 +169,14 @@ python3 integration/nav_rl.py --probe --lidar-backend ros --ros-host 127.0.0.1
 ```
 
 ```bash
-# 4. 正式跑（--real 會先等你按 Enter 才開始巡航）
+# 4. 目前只跑 dry-run；--real 會在開啟裝置前拒絕
 source ~/grasp_venv/bin/activate
-python3 integration/mission_pipeline.py --real --show \
-  --route <route.yaml> \
-  --i-confirm-serial-owner \
-  --lidar-orientation-evidence ~/.route_b_runtime/scan_orientation_verified \
-  --i-confirm-arm-cam-pose
+python3 integration/mission_pipeline.py --dry-run --show \
+  --route <route.yaml>
 ```
 
-它會先印 `FAIL: AMCL not usable`，這是預期的 —— 現在才輪到定位。**不要關掉它**，
+完成 homography 整合並解除 runtime 封鎖後，實機流程才會先印
+`FAIL: AMCL not usable`；那是預期的 —— 現在才輪到定位。**不要關掉它**，
 它已經在發新的 `odom → base_footprint` 了，關掉再開就是把 odom 又歸零一次。
 
 **5. 主程式維持運行，回 RViz 設定位**

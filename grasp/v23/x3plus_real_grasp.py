@@ -213,7 +213,9 @@ class DeployConfig:
     release_clearance: float = 0.03   # m, pad bottom must clear the rim by this much
     release_settle_s: float = 0.5     # pause after opening, before retracting
     # The jaw travels open→closed = 150 hw deg, and send_degrees moves at most
-    # max_delta_deg (8) per command, so a full close needs ~19 iterations.
+    # jaw_max_delta_deg per command, so a full close needs ~19 iterations at the
+    # shipped 8 deg (~13 if --jaw-step-deg raises it to 12). Left at 40 so the bound
+    # still holds either way.
     close_max_iters: int = 40
     # Grasp proxy: this robot has no force/tactile sensor. A jaw closing on nothing
     # reaches the fully-closed stop; one closing on an object stalls short of it.
@@ -365,6 +367,26 @@ class DeployConfig:
     control_hz: float = 10.0        # inference rate
     servo_run_time_ms: int = 100    # time for servo to reach target (ms)
 
+    # ── scripted-move timing (2026-09-09: cut for a timed demo) ──
+    # move_guarded_and_verified sends at most one rate-limited step, waits settle_s,
+    # then reads. So a scripted move's wall clock is (travel / step) * settle_s, and
+    # these were the dominant cost of a run: the stage-1 close alone was ~15
+    # iterations x 0.30 s ~= 6 s of pure waiting.
+    #
+    # ⚠ THE ONE RULE: settle_s must stay >= run_time_ms, enforced in __post_init__.
+    # Read the encoder while the servo is still travelling and it looks like a jaw
+    # that is not keeping up with its command -- which is exactly the signature
+    # stop_on_jaw_contact treats as CONTACT. Too short a settle does not just slow
+    # convergence, it fabricates a grasp and lifts on empty air. Every pair below
+    # keeps 20 ms of headroom on top. (The half-duplex bus quiet window is not part
+    # of this bound; read_degrees waits that out on its own from _last_write_t.)
+    close_run_time_ms: int = 120    # stage-1 jaw close, and the stage-3 open
+    close_settle_s: float = 0.14
+    lift_run_time_ms: int = 150     # stage-2 lift, 0.05 rad (~2.9 deg) per step
+    lift_settle_s: float = 0.17
+    home_run_time_ms: int = 200     # startup walk to home, and every return
+    home_settle_s: float = 0.22
+
     # ── stage thresholds ──
     # Mirrors of the training entry condition (_is_centered_for_grasp):
     #   entry_xy = min(xy_alignment_tolerance 0.035, stage0_entry_xy_tolerance 0.022)
@@ -386,7 +408,13 @@ class DeployConfig:
     # pads_ready must all be genuinely satisfied — only the radius is relaxed, and
     # only by stage0_hover_extra_m.
     stage0_hover_extra_m: float = 0.005   # radius slack the fallback may forgive
-    stage0_hover_steps: int = 30          # consecutive near-gate steps (3 s at 10 Hz)
+    # 30 -> 15 (3 s -> 1.5 s at 10 Hz), 2026-09-09, for a timed demo. This is a
+    # patience setting, not a safety one: xy, z and pads_ready must ALL already be
+    # satisfied to be counted, and only the radius is forgiven, by 5 mm. What a
+    # shorter wait costs is the chance that an approach still genuinely converging
+    # gets read as an equilibrium and closes ~1.5 s early. Run 5's hover sat at a
+    # dead-still 27 mm for 270 steps, so it would have been caught at either value.
+    stage0_hover_steps: int = 15          # consecutive near-gate steps
 
     # ── guard deadlock ──
     # Run 6, 2026-07-31: the jaw closed early, close_drop took the modelled pads to
@@ -407,7 +435,27 @@ class DeployConfig:
     stage2_dist_threshold: float = 0.05   # dist to home for "done"
 
     # ── safety ──
-    max_delta_deg: float = 8.0            # max per-step servo change (deg)
+    max_delta_deg: float = 8.0            # max per-step ARM servo change (deg)
+    # S6's own rate limit, separate from the arm's. max_delta_deg is the anti-runaway
+    # bound on five joints that swing a 30 cm arm through the world; the jaw is a
+    # 150 deg travel between two fingers that cannot reach anything the arm has not
+    # already reached, and it pays the rate limit twice per grasp (close, release).
+    # Raising it does NOT raise grip force -- force is the command-vs-encoder error,
+    # and jaw_max_lag_deg caps that whatever step asks for it.
+    #
+    # ⚠ Shipped at 8, the SAME as the arm, so the default is a pure no-op. Raising it
+    # is opt-in via --jaw-step-deg, and it is not free: 12 roughly halves the close's
+    # iteration count but doubles the squeeze past contact on a SLIPPING object
+    # (16 deg -> 33 measured), because the force ceiling flattens the commanded step
+    # that jaw_contact_track_fraction's ratio test measures against. The one-command
+    # launcher enables that slip detector by default (--jaw-track-fraction 0.5, part
+    # of the 3/3 hardware run on 2026-08-30), so 12 would trade a protection that is
+    # already earning its keep for about 1.6 s. __post_init__ refuses the
+    # combination rather than letting it be chosen by accident.
+    #
+    # The close got its speed from close_run_time_ms/close_settle_s instead, which
+    # costs nothing: same commands, less waiting between them.
+    jaw_max_delta_deg: float = 8.0
     # v23 policy grasp-home = E1 高視野姿態（訓練 reset 與此完全一致，不可只改一邊）。
     #   sim (0,-0.275,-1.42,-1.42,0) → API (90, 74.2, 8.6, 8.6, 90)；S6=30 開爪。
     #   舊值（v21/C3）：API (90, 67.08, 9.79, 9.79, 90)。
@@ -465,6 +513,62 @@ class DeployConfig:
         (0.0, 180.0),   # S4
         (0.0, 270.0),   # S5
     )
+
+    def __post_init__(self) -> None:
+        # The settle >= run_time rule, enforced rather than commented. Reading the
+        # encoder mid-travel makes a healthy jaw look like one that stopped against
+        # something, and stop_on_jaw_contact reads that as a grasp: the arm would
+        # lift on empty air and report success. That failure is invisible in a log,
+        # so the cheap moment to catch it is here, before anything moves.
+        # Enforced for the CLOSE pair only, and that asymmetry is the whole point.
+        # attempt_close is the one caller that passes stop_on_jaw_contact, so it is
+        # the one place where reading early is not merely slow: a servo still in
+        # travel reads as a jaw not keeping up with its command, which is the exact
+        # signature of contact, and the run would lift on empty air and report a
+        # grasp. A short settle on a lift or home move only costs an extra iteration
+        # and fails safe through the existing "no progress" abort, so it is left
+        # alone -- the long-shipped home pair (400 ms / 0.35 s) is itself slightly
+        # short, and retroactively refusing to start over that would be wrong.
+        #
+        # The bus quiet window is deliberately not part of this bound: read_degrees
+        # tops that up itself from _last_write_t.
+        run_s = float(self.close_run_time_ms) / 1000.0
+        if float(self.close_settle_s) < run_s:
+            raise ValueError(
+                f"close_settle_s={self.close_settle_s} s is shorter than "
+                f"close_run_time_ms={self.close_run_time_ms} ms. The jaw would be "
+                f"read while it is still travelling, which the contact detector "
+                f"cannot tell apart from an object -- the run would lift on nothing "
+                f"and call it a grasp.")
+        # A step the force ceiling would clip on every iteration is not a faster
+        # close, it is the same close with a misleading config.
+        if self.jaw_max_lag_deg > 0.0 and self.jaw_max_delta_deg > self.jaw_max_lag_deg:
+            raise ValueError(
+                f"jaw_max_delta_deg={self.jaw_max_delta_deg} exceeds "
+                f"jaw_max_lag_deg={self.jaw_max_lag_deg}; the force ceiling would "
+                f"clip every step back to the ceiling and the close would not speed up.")
+
+        # A big jaw step and the slip detector cancel each other out, measured:
+        # with the ratio test on, an object slipping 3 deg per write is caught as
+        # "slipping" 16 deg past contact at an 8 deg step, but only as a late
+        # "stalled" 33 deg past it at 12. The reason is that the force ceiling
+        # clips the command down to the encoder's own creep rate, and the ratio
+        # test then compares the encoder against that clipped step -- so the jaw
+        # looks like it is keeping up with a command that is barely moving.
+        # Doubling the over-squeeze is the clicking and gear grinding this detector
+        # exists to prevent, so the two must not be combined silently. Speed is the
+        # right default here because the shipped jaw_contact_track_fraction is 0;
+        # anyone turning the slip detector on is asking for the careful close and
+        # should get it.
+        if self.jaw_contact_track_fraction > 0.0 and self.jaw_max_delta_deg > self.max_delta_deg:
+            raise ValueError(
+                f"jaw_contact_track_fraction={self.jaw_contact_track_fraction} needs "
+                f"jaw_max_delta_deg <= {self.max_delta_deg} (it is "
+                f"{self.jaw_max_delta_deg}). A larger jaw step defeats the slip test: "
+                f"the force ceiling flattens the commanded step, the ratio test stops "
+                f"seeing the slip, and the squeeze past contact roughly doubles. Pick "
+                f"one: --jaw-step-deg 8 for the careful close, or drop "
+                f"--jaw-track-fraction for the fast one.")
 
 
 def resolve_object_height_for_contract(
@@ -778,10 +882,11 @@ class ServoController:
         # logs and the software's own timing describe the command the board really sees.
         run_time_ms = min(int(run_time_ms), 2000)
 
-        # Rate limiting
+        # Rate limiting. S6 has its own, larger cap: see jaw_max_delta_deg.
         safe_deg = []
         for i, (target, prev) in enumerate(zip(deg6, self._last_deg)):
-            delta = float(np.clip(target - prev, -self.cfg.max_delta_deg, self.cfg.max_delta_deg))
+            cap = (self.cfg.jaw_max_delta_deg if i == 5 else self.cfg.max_delta_deg)
+            delta = float(np.clip(target - prev, -cap, cap))
             safe_deg.append(float(np.clip(prev + delta, 0.0, 270.0)))
 
         if self.dry_run:
@@ -1044,20 +1149,41 @@ class FKComputer:
         self.physics_client = p.connect(p.DIRECT)
         p.setGravity(0, 0, -9.81, physicsClientId=self.physics_client)
 
-        urdf_abs = str(Path(__file__).parent / urdf_path)
-        if not Path(urdf_abs).exists():
+        urdf_abs = Path(__file__).parent / urdf_path
+        if not urdf_abs.exists():
             raise FileNotFoundError(f"URDF not found: {urdf_abs}")
+
+        # Prefer the FK-only URDF when it has been generated. It carries collision
+        # meshes on the six gripper links only -- the sole links whose AABB anything
+        # here reads -- which drops 59.5 MB of STL nobody parses for a reason.
+        # Measured on the dev machine: 3.66 s -> 0.14 s, and the Nano reads the same
+        # bytes off an SD card. Proven identical over 402 poses by
+        # x3plus/make_deploy_urdf.py --verify. Falling back to the full URDF when it
+        # is absent costs startup time and nothing else: the two are the same model
+        # as far as this class is concerned.
+        deploy_urdf = urdf_abs.with_name(urdf_abs.stem + "_deploy" + urdf_abs.suffix)
+        chosen = deploy_urdf if deploy_urdf.exists() else urdf_abs
 
         # Loaded at the training-frame offset, not the origin: iGibson's loader merges
         # links and settles the base, so a bare origin load puts every reported
         # position ~2.2 cm away from what the policy saw in training. See
         # deploy_contract.URDF_TO_TRAINING_FRAME.
+        #
+        # IGNORE_VISUAL_SHAPES, and deliberately NOT the collision flag. The .obj
+        # visual meshes are ~88 MB and nothing here renders: DIRECT mode, no
+        # getCameraImage, no getVisualShapeData. Skipping them halves the load with
+        # the geometry bit-identical. URDF_IGNORE_COLLISION_SHAPES would be faster
+        # still and is a trap: it does not raise, it silently returns a pad_bottom_z
+        # 27 mm too high, i.e. 27 mm of clearance the floor guard does not have,
+        # against an 8 mm margin.
         self.body_id = p.loadURDF(
-            urdf_abs,
+            str(chosen),
             basePosition=list(dc.URDF_TO_TRAINING_FRAME),
             useFixedBase=True,
+            flags=p.URDF_IGNORE_VISUAL_SHAPES,
             physicsClientId=self.physics_client,
         )
+        self.urdf_used = chosen
 
         # Discover joint indices (same suffix-match logic as x3plus_ground_grasp_env.py)
         target_arm = ["arm_joint1", "arm_joint2", "arm_joint3", "arm_joint4", "arm_joint5"]
@@ -1094,7 +1220,26 @@ class FKComputer:
 
         self.ee_link = self.arm_indices[-1]   # arm_joint5 child link — orientation only
 
-        print(f"[FK] PyBullet DIRECT ready. tcp=gripper_center("
+        # The floor guard is made of getAABB on these links, and getAABB does not
+        # raise when the collision shape is missing or a placeholder — it quietly
+        # returns a smaller box, i.e. clearance the robot does not have. Both ways
+        # of losing it (URDF_IGNORE_COLLISION_SHAPES, or a deploy URDF that stripped
+        # the wrong link) show up here as "not a mesh", so check once at load rather
+        # than discover it with the fingers in the floor.
+        missing = []
+        for idx in {self.tcp_link_r, self.tcp_link_l, *(i for i, _ in self.grip_drive)}:
+            shapes = p.getCollisionShapeData(self.body_id, idx,
+                                             physicsClientId=self.physics_client)
+            if not shapes or shapes[0][2] != p.GEOM_MESH:
+                missing.append(idx)
+        if missing:
+            raise RuntimeError(
+                f"{chosen.name}: gripper links {sorted(missing)} have no collision "
+                f"mesh, so pad_bottom_z would report clearance that is not there. "
+                f"Regenerate with x3plus/make_deploy_urdf.py --verify, or delete the "
+                f"_deploy URDF to fall back to the full one.")
+
+        print(f"[FK] PyBullet DIRECT ready ({chosen.name}). tcp=gripper_center("
               f"{self.tcp_link_r},{self.tcp_link_l}) arm={self.arm_indices} "
               f"grip_linkage={[i for i, _ in self.grip_drive]}")
 
@@ -1458,6 +1603,11 @@ class DetectionReceiver:
             self._server.close()
         except OSError:
             pass
+        thread = getattr(self, "_thread", None)
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=3.0)
+            if thread.is_alive():
+                print("[DetectionReceiver][WARN] listener did not stop within 3.0s")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2419,7 +2569,8 @@ class GraspController:
         self._grip_hold_rad = None
         res = self.move_guarded_and_verified(
             self._current_arm_rads, dc.GRIPPER_ANGLE_CLOSED,
-            label="stage1-close", run_time_ms=300, settle_s=0.30,
+            label="stage1-close", run_time_ms=self.cfg.close_run_time_ms,
+            settle_s=self.cfg.close_settle_s,
             max_iters=self.cfg.close_max_iters, tol_deg=3.0,
             stop_on_jaw_contact=True)
 
@@ -2456,7 +2607,7 @@ class GraspController:
         rd = self.servo.read_degrees()
         if rd.valid:
             hold = self._park_jaw_hold(float(rd.degrees[5]), dc.GRIPPER_ANGLE_CLOSED,
-                                       run_time_ms=300)
+                                       run_time_ms=self.cfg.close_run_time_ms)
             out["reason"] = (f"jaw stalled against something ({res['reason']}); "
                              f"holding at {hold:.1f} deg")
         else:
@@ -2570,7 +2721,8 @@ class GraspController:
             target[1] += lift_sign * step_rad
             res = self.move_guarded_and_verified(
                 target, grip_hold, label=f"lift-{i+1}",
-                run_time_ms=250, settle_s=0.28, max_iters=8, tol_deg=3.5,
+                run_time_ms=self.cfg.lift_run_time_ms,
+                settle_s=self.cfg.lift_settle_s, max_iters=8, tol_deg=3.5,
                 grip_is_hold=holding)
             print(f"[Stage 2] lift {i+1}/{self.cfg.scripted_lift_steps}: "
                   f"reached={res['reached']} ({res['reason']}) guard={set(res['guard'])}")
@@ -2583,7 +2735,8 @@ class GraspController:
         home = self.mapper.hw_deg_to_sim_arm(list(self.cfg.home_deg[:5]))
         res = self.move_guarded_and_verified(
             home, grip_hold, label="return-home",
-            run_time_ms=400, settle_s=0.35, grip_is_hold=holding)
+            run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s, grip_is_hold=holding)
         print(f"[Stage 2] return home: reached={res['reached']} ({res['reason']}, "
               f"{res['iters']} steps)")
         if not res["reached"]:
@@ -2657,7 +2810,8 @@ class GraspController:
                 break
             res = self.move_guarded_and_verified(
                 cand, hold_rad, label=f"release-reach-{i+1}",
-                run_time_ms=250, settle_s=0.28, max_iters=8, tol_deg=2.5,
+                run_time_ms=self.cfg.lift_run_time_ms,
+                settle_s=self.cfg.lift_settle_s, max_iters=8, tol_deg=2.5,
                 grip_is_hold=True)
             print(f"[Stage 3] reach {i+1}/{self.cfg.release_extend_steps}: "
                   f"reached={res['reached']} ({res['reason']}) guard={set(res['guard'])}")
@@ -2695,7 +2849,8 @@ class GraspController:
         res = self.move_guarded_and_verified(
             np.asarray(self._current_arm_rads, dtype=np.float64).copy(),
             dc.GRIPPER_ANGLE_OPEN, label="release-open",
-            run_time_ms=300, settle_s=0.30, max_iters=self.cfg.close_max_iters,
+            run_time_ms=self.cfg.close_run_time_ms,
+            settle_s=self.cfg.close_settle_s, max_iters=self.cfg.close_max_iters,
             tol_deg=3.0)
         print(f"[Stage 3] open jaw: reached={res['reached']} ({res['reason']}, "
               f"{res['iters']} steps)")
@@ -2712,7 +2867,8 @@ class GraspController:
         home = self.mapper.hw_deg_to_sim_arm(list(self.cfg.home_deg[:5]))
         res = self.move_guarded_and_verified(
             home, self.mapper.hw_deg_to_sim_grip(self.cfg.home_deg[5]),
-            label="release-home", run_time_ms=400, settle_s=0.35)
+            label="release-home", run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s)
         print(f"[Stage 3] return home: reached={res['reached']} ({res['reason']})")
         if not res["reached"]:
             self._outcome = "release_home_not_confirmed"
@@ -2762,7 +2918,8 @@ class GraspController:
         home = self.mapper.hw_deg_to_sim_arm(list(self.cfg.home_deg[:5]))
         res = self.move_guarded_and_verified(
             home, dc.GRIPPER_ANGLE_OPEN, label="retreat-home",
-            run_time_ms=400, settle_s=0.35)
+            run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s)
         print(f"[Retreat] home: reached={res['reached']} ({res['reason']})")
 
     def move_home(self) -> bool:
@@ -2782,7 +2939,8 @@ class GraspController:
         home = self.mapper.hw_deg_to_sim_arm(list(self.cfg.home_deg[:5]))
         res = self.move_guarded_and_verified(
             home, dc.GRIPPER_ANGLE_OPEN, label="move-home",
-            run_time_ms=400, settle_s=0.35)
+            run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s)
         print(f"[Home] reached={res['reached']} ({res['reason']})")
         return bool(res["reached"])
 
@@ -2838,7 +2996,8 @@ class GraspController:
         startup_tol_deg = min(3.0, max(2.0, self.cfg.detection_pose_tol_deg))
         res = self.move_guarded_and_verified(
             home, self.mapper.hw_deg_to_sim_grip(start_pose[5]),
-            label="startup-home", run_time_ms=400, settle_s=0.35,
+            label="startup-home", run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s,
             tol_deg=startup_tol_deg)
         print(f"[Start] home: reached={res['reached']} ({res['reason']}, "
               f"{res['iters']} steps; tolerance {startup_tol_deg:.1f} deg)")
@@ -3161,16 +3320,27 @@ class GraspController:
         home = self.mapper.hw_deg_to_sim_arm(list(self.cfg.home_deg[:5]))
         res = self.move_guarded_and_verified(
             home, self.mapper.hw_deg_to_sim_grip(self.cfg.home_deg[5]),
-            label="end-home", run_time_ms=400, settle_s=0.35)
+            label="end-home", run_time_ms=self.cfg.home_run_time_ms,
+            settle_s=self.cfg.home_settle_s)
         print(f"[End] home: reached={res['reached']} ({res['reason']})")
         # Reached here only via the max-steps timeout with no rescue (stage never
         # got past 0, or the rescue found nothing to hold) -- never a grasp.
         return False
 
     def close(self):
-        if self.detection is not None:
-            self.detection.close()
-        self.fk.close()
+        # Each resource is independent. One failed cleanup must not keep the
+        # serial receive thread alive and leave /dev/myserial claimed.
+        for name, obj, method in (
+            ("detection", getattr(self, "detection", None), "close"),
+            ("servo", getattr(self, "servo", None), "_close_device"),
+            ("fk", getattr(self, "fk", None), "close"),
+        ):
+            if obj is None:
+                continue
+            try:
+                getattr(obj, method)()
+            except Exception as exc:
+                print(f"[WARN] {name} cleanup failed: {exc}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3185,7 +3355,8 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _release_gate_ok(cfg: DeployConfig, unlock: bool) -> bool:
+def _release_gate_ok(cfg: DeployConfig, unlock: bool,
+                     manifest_path: Optional[str] = None) -> bool:
     """Refuse --real unless the weights match manifest.json and the release is cleared.
 
     Every failure this package can suffer on hardware is silent: a model paired with
@@ -3200,7 +3371,9 @@ def _release_gate_ok(cfg: DeployConfig, unlock: bool) -> bool:
     not the ones this package documents.
     """
     script_dir = Path(__file__).resolve().parent
-    man_path = script_dir / "manifest.json"
+    man_path = (Path(manifest_path).expanduser().resolve()
+                if manifest_path else script_dir / "manifest.json")
+    asset_dir = man_path.parent
     if not man_path.exists():
         print(f"[FATAL] --real requires {man_path}, which is missing. Without it the "
               "weights cannot be verified.")
@@ -3223,7 +3396,7 @@ def _release_gate_ok(cfg: DeployConfig, unlock: bool) -> bool:
             bad = True
             continue
         try:
-            got = _sha256(_resolve_asset(rel, script_dir))
+            got = _sha256(_resolve_asset(rel, asset_dir))
         except FileNotFoundError as e:
             print(f"[FATAL] {label}: {e}")
             bad = True
@@ -3287,6 +3460,11 @@ def parse_args():
                    help="Path to .zip model (default: trained_6d_models_v18/ppo_6d_final_ready_for_real_robot.zip)")
     p.add_argument("--vecnorm", type=str, default=None,
                    help="Path to vecnormalize .pkl")
+    p.add_argument("--release-manifest", type=str, default=None,
+                   help="Manifest that owns this exact model/VecNormalize pair. "
+                        "Defaults to grasp/v23/manifest.json. Versioned wrappers "
+                        "may set this to reuse the hardened E1 controller without "
+                        "copying it.")
     p.add_argument("--real", action="store_true",
                    help="Actually send commands to servos (default: dry-run print only)")
     p.add_argument("--unlock-candidate-real", action="store_true",
@@ -3380,6 +3558,20 @@ def parse_args():
                         "many mm too far forward, so policy and close gate continue "
                         "farther in base +X (default 0; allowed 0..20). This does not "
                         "alter camera/object coordinates or floor-collision FK.")
+    p.add_argument("--slow-motion", action="store_true",
+                   help="restore the pre-2026-09-09 scripted-move timing (close "
+                        "300ms/0.30s, lift 250/0.28, home 400/0.35). "
+                        "The defaults are the demo-speed values; this is the one "
+                        "flag to reach for if the faster close starts reporting "
+                        "contact it should not, with nothing to edit under pressure.")
+    p.add_argument("--jaw-step-deg", type=float, default=None,
+                   help="per-command S6 travel limit in degrees (default 8, the same "
+                        "as the arm). 12 roughly halves the close's iteration count, "
+                        "but doubles the squeeze past contact on a SLIPPING object "
+                        "(16->33 deg measured) because the force ceiling flattens the "
+                        "step the slip detector measures against -- so it is refused "
+                        "together with --jaw-track-fraction, which the one-command "
+                        "launcher turns on by default. Never above --jaw-max-lag-deg.")
     p.add_argument("--bus-quiet-ms", type=float, default=None,
                    help="Gap between a servo write and the next read, ms (default 20). "
                         "Raise it if the [Bus] tally shows persistent read failures: "
@@ -3409,6 +3601,14 @@ def main():
         cfg.contract_name = args.contract
     if args.bus_quiet_ms is not None:
         cfg.bus_quiet_s = max(0.0, args.bus_quiet_ms / 1000.0)
+    if args.slow_motion:
+        (cfg.close_run_time_ms, cfg.close_settle_s) = (300, 0.30)
+        (cfg.lift_run_time_ms, cfg.lift_settle_s) = (250, 0.28)
+        (cfg.home_run_time_ms, cfg.home_settle_s) = (400, 0.35)
+        cfg.jaw_max_delta_deg = cfg.max_delta_deg
+        print("[Config] --slow-motion: pre-2026-09-09 scripted-move timing restored.")
+    if args.jaw_step_deg is not None:
+        cfg.jaw_max_delta_deg = float(args.jaw_step_deg)
     # Socket timing. DeployConfig is a plain dataclass, so a typo'd field name here
     # would silently create a dead attribute -- each of these four is a real field.
     if args.socket_port is not None:
@@ -3500,6 +3700,17 @@ def main():
               "toward the robot; policy and close gate will travel that much farther "
               "in base +X. Object coordinates and floor FK stay unchanged.")
 
+    # __post_init__ ran on the defaults, and every block above has been mutating the
+    # config since. Re-run the same checks over the finished thing -- placed AFTER
+    # the last mutation on purpose: --jaw-track-fraction and --jaw-max-lag-deg are
+    # both set below where this used to sit, so an earlier call validated a config
+    # that no longer existed and let the slip-detector clash through unnoticed.
+    try:
+        cfg.__post_init__()
+    except ValueError as e:
+        print(f"[FATAL] {e}")
+        return 2
+
     # --real --socket hands the arm a target computed by another process, in a frame
     # this script cannot verify, from a camera that moves with the arm. Both flags
     # below are acknowledgements, not switches: neither changes any geometry, they
@@ -3519,7 +3730,9 @@ def main():
     # Both --real gates run before the model is loaded and before the serial port is
     # opened, so a refusal costs nothing and cannot half-move the arm. Dry-run is
     # deliberately untouched by either: verification must stay free.
-    if args.real and not _release_gate_ok(cfg, unlock=args.unlock_candidate_real):
+    if args.real and not _release_gate_ok(
+            cfg, unlock=args.unlock_candidate_real,
+            manifest_path=args.release_manifest):
         return 3
 
     # --real without a driver used to run to completion printing angles, which reads

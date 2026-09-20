@@ -253,6 +253,39 @@ class VisionGraspBridgePoseTests(unittest.TestCase):
         self.assertIsNone(rejected)
         self.assertIn("outside the policy", rejected_note)
 
+    def test_forward_offset_moves_only_base_x_and_is_bounded(self):
+        self.assertEqual(
+            bridge.apply_grasp_forward_offset((0.2687, -0.0035), 5.0),
+            (0.2737, -0.0035),
+        )
+        for invalid in (-0.1, 15.1, float("inf"), float("nan")):
+            with self.assertRaisesRegex(ValueError, "forward offset"):
+                bridge.apply_grasp_forward_offset((0.25, 0.0), invalid)
+
+    def test_forward_offset_is_checked_by_policy_after_translation(self):
+        pixels = [(u, v) for v in (100.0, 300.0, 450.0)
+                  for u in (100.0, 300.0, 500.0)]
+        bases = [(0.30 - 0.0002 * v, 0.00025 * (u - 300.0))
+                 for u, v in pixels]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "grasp_home.json"
+            save_calibration(path, make_calibration(pixels, bases))
+            args = geometry_args(
+                homography=str(path), policy_x_range=[0.205, 0.243],
+                policy_y_range=[-0.070, 0.065])
+            bridge.resolve_camera_geometry(args)
+            with patch.object(bridge.acg, "undistort_pixel",
+                              side_effect=lambda u, v: (u, v)):
+                payload, note = bridge.build_homography_payload(
+                    args, (280.0, 250.0, 320.0, 300.0), "sugarbox",
+                    bridge.acg.V21_C3_GRASP_HOME,
+                    {"_fallback": 0.02}, {},
+                    base_xy_transform=lambda xy:
+                        bridge.apply_grasp_forward_offset(xy, 5.0),
+                )
+        self.assertIsNone(payload)
+        self.assertIn("outside the policy", note)
+
     def test_bbox_sides_may_leave_center_hull_for_bounded_width_only(self):
         pixels = [(u, v) for v in (100.0, 300.0, 450.0)
                   for u in (100.0, 300.0, 500.0)]

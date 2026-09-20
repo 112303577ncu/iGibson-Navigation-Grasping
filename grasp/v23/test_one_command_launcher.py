@@ -300,6 +300,52 @@ check("[FATAL]" in source and "3.8" in source,
       "says which interpreter is needed rather than dying with a SyntaxError")
 
 print()
+print("9. the vision bridge loads in parallel, but still looks only after E1")
+# The whole point of --wait-for-go is that the slow ultralytics import overlaps
+# the controller's startup. The safety half is that overlapping the LOAD must not
+# overlap the LOOK: the arm-camera geometry is only valid at E1, and the pose
+# stamp cannot catch a stale picture -- it is read when the detection is sent, so
+# it would truthfully say "home" about a frame taken while the arm was moving.
+for mode, kwargs in (("grasp", {}), ("calibrate", {"calibrate": True})):
+    wcmd = L.build_bridge_cmd(make_args(homography="/tmp/h.json", **kwargs))
+    check("--wait-for-go" in wcmd,
+          f"the launcher asks the bridge to wait for a go signal ({mode} mode)")
+check("--wait-for-go" in bridge_source,
+      "...and the bridge actually offers that flag")
+
+gate = bridge_source.find("if args.wait_for_go:")
+camera = bridge_source.find('print(f"[bridge] opening camera')
+model = bridge_source.find("model = YOLO(args.model)")
+check(gate != -1 and camera != -1 and model != -1,
+      "the bridge has a go gate, a model load and a camera open to order")
+check(model < gate,
+      "the model loads BEFORE the gate, so the slow import is what overlaps")
+# open_capture_checked keeps its probe frame and the detect loop consumes it as
+# frame one, so a camera opened early would feed a pre-home picture into
+# home-pose geometry.
+check(gate < camera,
+      "the gate is BEFORE the camera opens, so the first frame is taken after E1")
+gate_body = bridge_source[gate:camera]
+check("SystemExit" in gate_body and "sys.stdin.readline()" in gate_body,
+      "EOF on stdin aborts instead of detecting at an unverified arm pose")
+
+start = source.find("bridge = subprocess.Popen(")
+wait = source.find("while not home_ready.wait(")
+release = source.find('bridge.stdin.write("go')
+check(start != -1 and wait != -1 and release != -1,
+      "the launcher has a bridge start, a home wait and a go signal to order")
+check(start < wait,
+      "the bridge is started BEFORE the wait for E1, or nothing overlaps")
+check(wait < release,
+      "the go signal is sent only after E1 is confirmed")
+check("stdin=subprocess.PIPE" in source[start:release],
+      "the launcher keeps the bridge's stdin so it can release it")
+# Otherwise the launcher waits out the whole startup timeout and blames the
+# controller for a bridge that died loading.
+check("bridge.poll() is not None" in source[wait:release],
+      "a bridge that dies while loading is noticed during the home wait")
+
+print()
 if failures:
     print(f"{len(failures)} of {checks} checks FAILED:")
     for f in failures:

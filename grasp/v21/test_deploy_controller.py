@@ -548,8 +548,7 @@ def test_object_stall_is_accepted():
 
 
 def test_open_jaw_is_not_a_grasp():
-    print("
-[5b] jaw still open -> grasp REJECTED")
+    print("\n[5b] jaw still open -> grasp REJECTED")
     # Nothing is commanded here: the jaw sits where a dropped object leaves it.
     # The check used to measure only distance from the CLOSED stop, so a wide
     # open jaw scored 100% and read as the most confident grasp possible --
@@ -564,8 +563,7 @@ def test_open_jaw_is_not_a_grasp():
 
 
 def test_half_open_jaw_is_not_a_grasp():
-    print("
-[5c] jaw only a third closed -> grasp REJECTED")
+    print("\n[5c] jaw only a third closed -> grasp REJECTED")
     # Between the two bounds: short of the closed stop (so the old lower bound
     # passed it) but nowhere near closed enough to be around an object.
     plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 75], object_blocks_at_deg=None)

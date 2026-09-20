@@ -354,6 +354,7 @@ MAX_GRASP_WIDTH_M = 0.06
 # point of the copy here is WHERE the operator finds out.
 TRAINED_X_RANGE = (0.20, 0.33)
 TRAINED_Y_RANGE = (-0.10, 0.10)
+MAX_GRASP_FORWARD_OFFSET_MM = 15.0
 
 # --class-z and --class-height describe the same object. For a symmetric object
 # resting on the floor, height = 2 * centroid_z. Declaring both with a bigger
@@ -644,6 +645,23 @@ def policy_ranges(args) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     return x_range, y_range
 
 
+def apply_grasp_forward_offset(
+        xy: Tuple[float, float], offset_mm: float) -> Tuple[float, float]:
+    """Translate a homography result in base +X without changing its width.
+
+    This is an operational correction for a repeatable real-arm landing bias,
+    not part of the measured camera calibration. The translated centre still
+    passes through the receiving policy's envelope check.
+    """
+    value = float(offset_mm)
+    if (not math.isfinite(value)
+            or not 0.0 <= value <= MAX_GRASP_FORWARD_OFFSET_MM):
+        raise ValueError(
+            "grasp forward offset must be finite and in [0, {:.0f}] mm; got {!r}"
+            .format(MAX_GRASP_FORWARD_OFFSET_MM, offset_mm))
+    return float(xy[0]) + value / 1000.0, float(xy[1])
+
+
 def build_homography_payload(args,
                              box_xyxy: Tuple[float, float, float, float],
                              class_name: str, pose: acg.ArmCamPose,
@@ -765,6 +783,14 @@ def parse_args():
                         f"(e.g. {mission_status.DEFAULT_ENDPOINT}). Fire-and-forget.")
     p.add_argument("--once", action="store_true",
                    help="send/output the first valid detection batch then exit")
+    p.add_argument("--wait-for-go", action="store_true",
+                   help="load the model, then block on a line from stdin before "
+                        "opening the camera. Lets a launcher start this process "
+                        "alongside the arm controller so the ultralytics import "
+                        "overlaps the controller's own startup instead of queueing "
+                        "behind it, while the first frame is still taken only after "
+                        "the arm is confirmed at the pose the geometry assumes. "
+                        "EOF on stdin aborts rather than detecting at an unknown pose.")
     p.add_argument("--show", action="store_true", help="show annotated camera window")
     p.add_argument("--dry-run", action="store_true",
                    help="compute and print detections without sending. Use this to "
@@ -792,6 +818,11 @@ def parse_args():
                    help="base-frame y band the receiving policy was trained on "
                         f"(default {TRAINED_Y_RANGE[0]} {TRAINED_Y_RANGE[1]}, which "
                         "is v21's). v23 is -0.070 0.065.")
+    p.add_argument("--grasp-forward-offset-mm", type=float, default=0.0,
+                   help="translate a grasp-home homography target in base +X "
+                        "(forward/away from the robot) after calibration and "
+                        "before the policy envelope check (default 0; allowed "
+                        "0..15 mm). Width is unchanged.")
     p.add_argument("--calibration-only", action="store_true",
                    help="print median undistorted bbox pixels; never connect to TCP")
     p.add_argument("--calibration-samples", type=int, default=10,
@@ -883,6 +914,16 @@ def main():
         raise SystemExit("--max-width must be finite and positive")
     if args.calibration_samples <= 0:
         raise SystemExit("--calibration-samples must be > 0")
+    try:
+        apply_grasp_forward_offset((0.0, 0.0),
+                                   args.grasp_forward_offset_mm)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+    if args.calibration_only and args.grasp_forward_offset_mm != 0.0:
+        raise SystemExit("--grasp-forward-offset-mm is runtime-only; calibration "
+                         "must record the uncorrected measured geometry")
+    if args.camera_pose != "grasp-home" and args.grasp_forward_offset_mm != 0.0:
+        raise SystemExit("--grasp-forward-offset-mm requires --camera-pose grasp-home")
     if (args.allow_top_clipped_grasp_home
             and (args.camera_pose != "grasp-home" or args.calibration_only)):
         raise SystemExit("--allow-top-clipped-grasp-home is runtime-only and requires "
@@ -896,12 +937,22 @@ def main():
         pose.require_measured(real=True,
                               acknowledged=args.i_accept_predicted_extrinsics)
 
-    if args.once:
+    # --wait-for-go removes the race this warns about: the launcher releases the
+    # gate only after the controller has confirmed the home pose, so the single
+    # detection cannot be taken or sent early.
+    if args.once and not args.wait_for_go:
         print("[bridge] NOTE: --once sends a single detection and exits. The grasp "
               "side latches only AFTER it has driven the arm to the home pose, "
               "which takes several seconds, and treats anything older than "
               "detection_stale_timeout_sec as no detection at all. Use --once for "
               "sanity checks; leave it off for a real grasp run.")
+
+    target_transform = None
+    if args.grasp_forward_offset_mm:
+        offset_mm = args.grasp_forward_offset_mm
+        target_transform = lambda xy: apply_grasp_forward_offset(xy, offset_mm)
+        print(f"[bridge] grasp target correction: base +X {offset_mm:+.1f} mm "
+              "after homography; policy envelope remains active")
 
     print(f"[bridge] loading YOLO model: {args.model}")
     model = YOLO(args.model)
@@ -928,6 +979,33 @@ def main():
             if name != "_fallback" and name not in known:
                 print(f"[bridge] WARN: {flag} names {name!r}, which this model does not "
                       f"predict. Known classes: {sorted(known)}")
+
+    if args.wait_for_go:
+        # Everything above this line -- the ultralytics import, the YOLO weights, the
+        # class tables -- is the slow part of starting up and none of it depends on
+        # where the arm is. Waiting HERE lets a launcher start this process at the
+        # same time as the arm controller, so this load overlaps the controller's
+        # own torch/PPO load and its walk to the grasp home instead of queueing
+        # behind them. Peak memory is unchanged: both processes are already resident
+        # together by the time a detection is sent.
+        #
+        # The gate is deliberately BEFORE the camera opens, not after. open_capture
+        # keeps the frame it probed with and the detect loop consumes it as its
+        # first frame, and the camera driver buffers more behind that -- so a camera
+        # opened early would hand the first detection an image taken while the arm
+        # was still moving, measured against home-pose geometry. The arm-pose stamp
+        # would not catch it either: that is read when the detection is sent, so it
+        # would truthfully say "home" about a picture taken somewhere else.
+        print("[bridge] loaded; waiting for the go signal on stdin before opening "
+              "the camera", flush=True)
+        line = sys.stdin.readline()
+        if not line:
+            # EOF = the launcher is gone. Opening the camera now would detect at an
+            # unknown arm pose with nobody left to check the result.
+            raise SystemExit("[bridge] ERROR: stdin closed before the go signal; "
+                             "refusing to detect at an unverified arm pose.")
+        print(f"[bridge] go signal received ({line.strip()!r}); opening the camera",
+              flush=True)
 
     print(f"[bridge] opening camera: {args.stream}")
     cap, pending_frame, camera_error = open_capture_checked(args.stream)
@@ -1037,7 +1115,8 @@ def main():
                 elif args.camera_pose == "grasp-home":
                     payload, note = build_homography_payload(
                         args, (x1, y1, x2, y2), class_name, pose,
-                        class_z, class_height, args.max_width)
+                        class_z, class_height, args.max_width,
+                        base_xy_transform=target_transform)
                 else:
                     payload, note = build_payload(
                         (x1, y1, x2, y2), class_name, pose,

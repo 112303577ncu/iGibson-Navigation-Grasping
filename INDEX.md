@@ -7,6 +7,7 @@ Quick map for finding the right code without scanning the whole project.
 | Task | File | What to inspect first |
 |---|---|---|
 | **PPO grasp deployment** | `grasp/v21/x3plus_real_grasp.py` | `DeployConfig`, `FloorGuard`, `GraspController.run()` |
+| v24 E1 replacement candidate | `grasp/v24/run_candidate.py` | locked artifact tuple; delegates to hardened v23 controller |
 | Full mission (patrol → grasp → bin) | `integration/mission_pipeline.py` | `MissionRunner`, the tick loop, `_await_operator()` |
 | Mission state machine | `integration/mission_fsm.py` | `State`, `Action`, `step()` — 21 states, `--diagram` |
 | Operator console | `ui/server.py` | request routing, SSE stream, the two `--allow-real` gates |
@@ -107,6 +108,7 @@ Current calibration status: `vision_grasp_bridge.py`、`vision_grasp_pipeline.py
 |---|---|
 | `grasp/v21/models/candidate_v21_seed816_ckpt550000.zip` + `_vec.pkl` | **Current** grasp policy + VecNormalize. Contract `obs_28_incremental` |
 | `grasp/v21/manifest.json` | Single source of truth: weight sha256, contract, hardware gates |
+| `grasp/v24/models/*` + `grasp/v24/manifest.json` | E1 replacement candidate (230/235 delivered formal rows); new hash hardware gates still false |
 | `grasp/trained_6d_models_v17/*.zip` `.pkl` | v17 fallback policy. Absolute contract — never feed these to v21 |
 | `integration/nav_best_model/ppo_nav_281440_steps.zip` + `ppo_nav_vecnormalize_281440_steps.pkl` | Current nav baseline/default |
 | `integration/nav_best_model/doorway_ft_final.zip` + `doorway_ft_final_vecnormalize.pkl` | Candidate nav pair; on-robot A/B required before default switch |
@@ -136,8 +138,11 @@ python3 integration/vision_grasp_bridge.py --host 127.0.0.1 --once --show
 # Pre-flight before any --real run: 119/37/641/29, dry-run offset, safety gate
 ./grasp/v21/jetson_verify.sh
 
-# Same, for the unmerged v23/E1 stack: 119/37/641/45 + three-pose 40
+# Same, for the unmerged v23/E1 stack: 148/37/641/50 + three-pose 89
 ./grasp/v23/jetson_verify.sh
+
+# Static v24 pair/manifest/locked-launcher checks; does not load the model
+python3 grasp/v24/test_candidate_package.py
 
 # Measure the E1 pixel->base homography. The C3 one is wrong at E1 by
 # construction, and swapping them raises no error -- only the filename differs.

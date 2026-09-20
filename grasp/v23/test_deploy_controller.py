@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import io
 import os
+import pathlib
 import sys
 import threading
 import time
@@ -128,9 +129,14 @@ def build(plant, **cfg_over):
         servo.readings_are_simulated = False
 
         def _send(deg6, run_time_ms=None):
+            # Mirrors ServoController.send_degrees, INCLUDING S6's separate cap. When
+            # this stub applied cfg.max_delta_deg to all six, the jaw's own limit was
+            # invisible to every test here and the close-iteration check was really
+            # measuring FakeServoPlant's default instead of the controller.
             safe = []
-            for want, prev in zip(deg6, servo._last_deg):
-                d = float(np.clip(want - prev, -cfg.max_delta_deg, cfg.max_delta_deg))
+            for i, (want, prev) in enumerate(zip(deg6, servo._last_deg)):
+                cap = cfg.jaw_max_delta_deg if i == 5 else cfg.max_delta_deg
+                d = float(np.clip(want - prev, -cap, cap))
                 safe.append(float(np.clip(prev + d, 0.0, 270.0)))
             try:
                 plant.write(safe)
@@ -346,6 +352,12 @@ def test_a_slipping_object_is_contact_not_a_reason_to_squeeze():
 
     def close(**over):
         plant = SlippingJawPlant(home, grip_at_deg=110.0, slip_deg_per_write=3.0)
+        # Pinned to the arm's 8 deg on purpose. The slip detector and a larger jaw
+        # step cancel out — measured here, 16 deg of over-squeeze at 8 becomes 33 at
+        # 12, because the force ceiling flattens the commanded step the ratio test
+        # measures against. DeployConfig refuses that combination outright; this
+        # test is about the careful close, so it uses the step that supports it.
+        over.setdefault("jaw_max_delta_deg", 8.0)
         ctrl, cfg = build(plant, **over)
         arm = ctrl.mapper.hw_deg_to_sim_arm(home[:5])
         with contextlib.redirect_stdout(io.StringIO()):
@@ -559,8 +571,7 @@ def test_object_stall_is_accepted():
 
 
 def test_open_jaw_is_not_a_grasp():
-    print("
-[5b] jaw still open -> grasp REJECTED")
+    print("\n[5b] jaw still open -> grasp REJECTED")
     # Nothing is commanded here: the jaw sits where a dropped object leaves it.
     # The check used to measure only distance from the CLOSED stop, so a wide
     # open jaw scored 100% and read as the most confident grasp possible --
@@ -575,8 +586,7 @@ def test_open_jaw_is_not_a_grasp():
 
 
 def test_half_open_jaw_is_not_a_grasp():
-    print("
-[5c] jaw only a third closed -> grasp REJECTED")
+    print("\n[5c] jaw only a third closed -> grasp REJECTED")
     # Between the two bounds: short of the closed stop (so the old lower bound
     # passed it) but nowhere near closed enough to be around an object.
     plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 75], object_blocks_at_deg=None)
@@ -587,18 +597,141 @@ def test_half_open_jaw_is_not_a_grasp():
 
 def test_close_is_rate_limited_and_needs_many_commands():
     print("\n[6] a full close is rate-limited and needs many commands")
-    plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 30])
+    # The plant must not be the binding limit here, or this measures the fake
+    # instead of the controller.
+    plant = FakeServoPlant([90, 67.08, 9.79, 9.79, 90, 30], max_delta_deg=180.0)
     ctrl, cfg = build(plant)
     span = abs(cfg.gripper_hw_closed - cfg.gripper_hw_open)
-    expected_min = int(span / cfg.max_delta_deg) - 1
+    expected_min = int(span / cfg.jaw_max_delta_deg) - 1
     with contextlib.redirect_stdout(io.StringIO()):
         res = ctrl.move_guarded_and_verified(
             ctrl._current_arm_rads, dc.GRIPPER_ANGLE_CLOSED, label="close",
             run_time_ms=1, settle_s=0.0, max_iters=60, tol_deg=3.0)
     check(res["iters"] >= expected_min,
           f"close took {res['iters']} commands (>= {expected_min} for {span:.0f} deg "
-          f"at {cfg.max_delta_deg:.0f} deg/step)",
+          f"at {cfg.jaw_max_delta_deg:.0f} deg/step)",
           "one send_degrees call cannot close the jaw")
+
+
+def test_jaw_step_is_separate_from_the_arm_step():
+    print("\n[6b] S6 has its own rate limit; the arm keeps the anti-runaway 8 deg")
+    import x3plus_real_grasp as X
+    cfg = X.DeployConfig(jaw_max_delta_deg=12.0)   # differs from the arm on purpose
+    with contextlib.redirect_stdout(io.StringIO()):
+        servo = X.ServoController(cfg, dry_run=True)
+        servo._last_deg = [90.0, 90.0, 90.0, 90.0, 90.0, 30.0]
+        servo.send_degrees([180.0] * 5 + [180.0])
+    moved_arm = servo._last_deg[0] - 90.0
+    moved_jaw = servo._last_deg[5] - 30.0
+    check(abs(moved_arm - cfg.max_delta_deg) < 1e-9,
+          f"one command moves an arm joint {moved_arm:.1f} deg "
+          f"(= max_delta_deg {cfg.max_delta_deg:.0f}); a bigger jaw step must not "
+          f"loosen the arm's runaway bound")
+    check(abs(moved_jaw - cfg.jaw_max_delta_deg) < 1e-9,
+          f"one command moves the jaw {moved_jaw:.1f} deg "
+          f"(= jaw_max_delta_deg {cfg.jaw_max_delta_deg:.0f})")
+    # Grip force is the command-vs-encoder error, and jaw_max_lag_deg is what caps
+    # it. A step larger than that ceiling would be clipped every iteration, so the
+    # close would not actually speed up -- config that lies about what it does.
+    check(cfg.jaw_max_delta_deg <= cfg.jaw_max_lag_deg,
+          f"jaw step {cfg.jaw_max_delta_deg:.0f} <= force ceiling "
+          f"{cfg.jaw_max_lag_deg:.0f} deg, so the ceiling does not clip every step")
+
+
+def test_close_settle_shorter_than_run_time_is_refused():
+    print("\n[6c] a close settle shorter than the servo's travel time is refused")
+    import x3plus_real_grasp as X
+    cfg = X.DeployConfig()
+    check(cfg.close_settle_s >= cfg.close_run_time_ms / 1000.0,
+          f"shipped close timing settles {cfg.close_settle_s:.3f} s for a "
+          f"{cfg.close_run_time_ms} ms move")
+    try:
+        X.DeployConfig(close_settle_s=cfg.close_run_time_ms / 1000.0 - 0.01)
+        check(False, "a too-short close settle is rejected",
+              "it was accepted — reading the jaw mid-travel looks exactly like "
+              "contact, so the run would lift on empty air and call it a grasp")
+    except ValueError:
+        check(True, "a too-short close settle is rejected before anything moves")
+    # The 2026-07-31 timing must still construct: this rule exists to stop a bad
+    # speed-up, not to retroactively condemn the configuration that worked.
+    try:
+        X.DeployConfig(close_run_time_ms=300, close_settle_s=0.30,
+                       jaw_max_delta_deg=8.0)
+        check(True, "the pre-2026-09-09 timing still constructs (--slow-motion)")
+    except ValueError as e:
+        check(False, "the pre-2026-09-09 timing still constructs", str(e))
+
+    # The shipped jaw step is the arm's, so nothing about the close changed except
+    # how long it waits. The one-command launcher passes --jaw-track-fraction 0.5 by
+    # default (part of the 3/3 run on 2026-08-30), and that must keep working.
+    check(cfg.jaw_max_delta_deg == cfg.max_delta_deg,
+          f"the shipped jaw step is the arm's {cfg.max_delta_deg:.0f} deg, so the "
+          f"speed-up came from timing alone and the close is command-for-command "
+          f"what the hardware run did")
+    try:
+        X.DeployConfig(jaw_contact_track_fraction=0.5)
+        check(True, "the launcher's default slip detector still constructs")
+    except ValueError as e:
+        check(False, "the launcher's default slip detector still constructs", str(e))
+
+    # A raised jaw step and the slip detector cancel out (16 deg of over-squeeze
+    # becomes 33), so they must not be combinable by accident.
+    try:
+        X.DeployConfig(jaw_contact_track_fraction=0.5, jaw_max_delta_deg=12.0)
+        check(False, "a raised jaw step cannot be combined with the slip detector",
+              "it was accepted — the ratio test would silently stop working and the "
+              "squeeze past contact would roughly double")
+    except ValueError:
+        check(True, "a raised jaw step cannot be combined with the slip detector")
+    try:
+        X.DeployConfig(jaw_max_delta_deg=12.0)
+        check(True, "...but a raised jaw step alone is allowed (--jaw-step-deg 12)")
+    except ValueError as e:
+        check(False, "...but a raised jaw step alone is allowed", str(e))
+
+
+def test_fk_refuses_a_urdf_without_gripper_collision_meshes():
+    print("\n[6d] FK refuses a URDF whose gripper links lost their collision mesh")
+    import tempfile
+    import xml.etree.ElementTree as ET
+    import x3plus_real_grasp as X
+
+    cfg = X.DeployConfig()
+    src = (pathlib.Path(X.__file__).parent / cfg.urdf_path).resolve()
+    tree = ET.parse(src)
+    root = tree.getroot()
+    gripper_links = {j.find("child").get("link") for j in root.findall("joint")
+                     if j.get("name") in dc.GRIPPER_JOINT_MULTIPLIERS}
+    # Strip exactly the links the floor guard measures. getAABB does NOT raise on
+    # these — it quietly returns a smaller box, i.e. clearance the robot does not
+    # have — so if FKComputer does not refuse this file, nothing downstream will.
+    stripped = 0
+    for link in root.findall("link"):
+        if link.get("name") not in gripper_links:
+            continue
+        for col in link.findall("collision"):
+            geom = col.find("geometry")
+            mesh = geom.find("mesh") if geom is not None else None
+            if mesh is not None:
+                geom.remove(mesh)
+                ET.SubElement(geom, "box").set("size", "0.01 0.01 0.01")
+                stripped += 1
+    check(stripped > 0, f"the fixture actually stripped {stripped} gripper collisions")
+
+    with tempfile.TemporaryDirectory(dir=str(src.parent)) as tmp:
+        bad = pathlib.Path(tmp) / "yahboomcar.urdf"
+        tree.write(bad, encoding="utf-8", xml_declaration=True)
+        rel = os.path.relpath(bad, pathlib.Path(X.__file__).parent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                fk = X.FKComputer(rel)
+            OPEN_FK.append(fk)
+            check(False, "FKComputer refuses a URDF with no gripper collision mesh",
+                  "it loaded — pad_bottom_z would report clearance that is not there")
+        except RuntimeError as e:
+            check("collision mesh" in str(e),
+                  "FKComputer refuses a URDF with no gripper collision mesh",
+                  str(e)[:90])
 
 
 def test_grasp_check_fails_closed_on_unreadable_servo():
@@ -1382,6 +1515,9 @@ def main() -> int:
         test_open_jaw_is_not_a_grasp,
         test_half_open_jaw_is_not_a_grasp,
         test_close_is_rate_limited_and_needs_many_commands,
+        test_jaw_step_is_separate_from_the_arm_step,
+        test_close_settle_shorter_than_run_time_is_refused,
+        test_fk_refuses_a_urdf_without_gripper_collision_meshes,
         test_grasp_check_fails_closed_on_unreadable_servo,
         test_emergency_raise_increases_clearance,
         test_emergency_raise_actually_reaches_the_plant,

@@ -34,7 +34,7 @@
 
 3. **改完要跑回歸測試，而且不需要硬體。**
    ```bash
-   python3 grasp/v21/test_deploy_controller.py    # 須 119 全過
+   python3 grasp/v21/test_deploy_controller.py    # 須 135 全過
    python3 grasp/v21/test_servo_read.py           # 須  37 全過
    python3 grasp/v21/test_deploy_floor_guard.py   # 須 641 全過
    python3 ui/test_server.py                      # 須  47 全過

@@ -1001,20 +1001,38 @@ class FKComputer:
         self.physics_client = p.connect(p.DIRECT)
         p.setGravity(0, 0, -9.81, physicsClientId=self.physics_client)
 
-        urdf_abs = str(Path(__file__).parent / urdf_path)
-        if not Path(urdf_abs).exists():
+        urdf_abs = Path(__file__).parent / urdf_path
+        if not urdf_abs.exists():
             raise FileNotFoundError(f"URDF not found: {urdf_abs}")
+
+        # Prefer the FK-only URDF when it has been generated: collision meshes on the
+        # six gripper links only, which is every link whose AABB anything here reads.
+        # Drops 59.5 MB of STL nobody parses for a reason (3.66 s -> 0.14 s measured;
+        # the Nano reads the same bytes off an SD card). Proven identical over 402
+        # poses by x3plus/make_deploy_urdf.py --verify. Falling back to the full URDF
+        # when it is absent costs startup time and nothing else.
+        deploy_urdf = urdf_abs.with_name(urdf_abs.stem + "_deploy" + urdf_abs.suffix)
+        chosen = deploy_urdf if deploy_urdf.exists() else urdf_abs
 
         # Loaded at the training-frame offset, not the origin: iGibson's loader merges
         # links and settles the base, so a bare origin load puts every reported
         # position ~2.2 cm away from what the policy saw in training. See
         # deploy_contract.URDF_TO_TRAINING_FRAME.
+        #
+        # IGNORE_VISUAL_SHAPES, and deliberately NOT the collision flag. The .obj
+        # visual meshes are ~88 MB and nothing here renders: DIRECT mode, no
+        # getCameraImage, no getVisualShapeData. URDF_IGNORE_COLLISION_SHAPES would
+        # be faster still and is a trap: it does not raise, it silently returns a
+        # pad_bottom_z 27 mm too high -- clearance the floor guard does not have,
+        # against an 8 mm margin.
         self.body_id = p.loadURDF(
-            urdf_abs,
+            str(chosen),
             basePosition=list(dc.URDF_TO_TRAINING_FRAME),
             useFixedBase=True,
+            flags=p.URDF_IGNORE_VISUAL_SHAPES,
             physicsClientId=self.physics_client,
         )
+        self.urdf_used = chosen
 
         # Discover joint indices (same suffix-match logic as x3plus_ground_grasp_env.py)
         target_arm = ["arm_joint1", "arm_joint2", "arm_joint3", "arm_joint4", "arm_joint5"]
@@ -1051,7 +1069,26 @@ class FKComputer:
 
         self.ee_link = self.arm_indices[-1]   # arm_joint5 child link — orientation only
 
-        print(f"[FK] PyBullet DIRECT ready. tcp=gripper_center("
+        # The floor guard is made of getAABB on these links, and getAABB does not
+        # raise when the collision shape is missing or a placeholder — it quietly
+        # returns a smaller box, i.e. clearance the robot does not have. Both ways
+        # of losing it (URDF_IGNORE_COLLISION_SHAPES, or a deploy URDF that stripped
+        # the wrong link) show up here as "not a mesh", so check once at load rather
+        # than discover it with the fingers in the floor.
+        missing = []
+        for idx in {self.tcp_link_r, self.tcp_link_l, *(i for i, _ in self.grip_drive)}:
+            shapes = p.getCollisionShapeData(self.body_id, idx,
+                                             physicsClientId=self.physics_client)
+            if not shapes or shapes[0][2] != p.GEOM_MESH:
+                missing.append(idx)
+        if missing:
+            raise RuntimeError(
+                f"{chosen.name}: gripper links {sorted(missing)} have no collision "
+                f"mesh, so pad_bottom_z would report clearance that is not there. "
+                f"Regenerate with x3plus/make_deploy_urdf.py --verify, or delete the "
+                f"_deploy URDF to fall back to the full one.")
+
+        print(f"[FK] PyBullet DIRECT ready ({chosen.name}). tcp=gripper_center("
               f"{self.tcp_link_r},{self.tcp_link_l}) arm={self.arm_indices} "
               f"grip_linkage={[i for i, _ in self.grip_drive]}")
 
@@ -1415,6 +1452,11 @@ class DetectionReceiver:
             self._server.close()
         except OSError:
             pass
+        thread = getattr(self, "_thread", None)
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=3.0)
+            if thread.is_alive():
+                print("[DetectionReceiver][WARN] listener did not stop within 3.0s")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3119,9 +3161,19 @@ class GraspController:
         return False
 
     def close(self):
-        if self.detection is not None:
-            self.detection.close()
-        self.fk.close()
+        # Each resource is independent. One failed cleanup must not keep the
+        # serial receive thread alive and leave /dev/myserial claimed.
+        for name, obj, method in (
+            ("detection", getattr(self, "detection", None), "close"),
+            ("servo", getattr(self, "servo", None), "_close_device"),
+            ("fk", getattr(self, "fk", None), "close"),
+        ):
+            if obj is None:
+                continue
+            try:
+                getattr(obj, method)()
+            except Exception as exc:
+                print(f"[WARN] {name} cleanup failed: {exc}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

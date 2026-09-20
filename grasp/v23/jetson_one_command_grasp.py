@@ -667,6 +667,13 @@ def build_bridge_cmd(args: argparse.Namespace):
                 str(args.grasp_forward_offset_mm), "--once"]
         if args.allow_top_clipped:
             cmd.append("--allow-top-clipped-grasp-home")
+    # The bridge loads its model, then blocks for a line on stdin before touching
+    # the camera. That is what lets main() start it at the same time as the
+    # controller: the slow ultralytics import runs while the controller loads torch
+    # and walks to E1, instead of starting only once both are done. The camera --
+    # and therefore the first frame the geometry is computed from -- still waits
+    # for confirmed E1.
+    cmd.append("--wait-for-go")
     return cmd
 
 
@@ -848,6 +855,24 @@ def main() -> int:
             kwargs={"home_ready": home_ready}, daemon=True)
         ctrl_thread.start()
 
+        # Start the bridge NOW, not after E1 is confirmed. It runs with
+        # --wait-for-go, so it loads ultralytics and the YOLO weights -- by far the
+        # slowest part of starting it -- and then blocks before opening the camera.
+        # That load now overlaps the controller's torch/PPO load and its walk to E1
+        # instead of queueing behind both. Nothing about detection moves earlier:
+        # the camera, and therefore every frame the geometry is computed from, still
+        # waits for the go signal below. Peak memory is unchanged, because both
+        # processes were already resident together at detection time.
+        if bridge_cmd is not None:
+            bridge = subprocess.Popen(
+                bridge_cmd, cwd=str(REPO_ROOT), env=env, stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                encoding="utf-8", errors="replace", bufsize=1)
+            bridge_thread = threading.Thread(
+                target=pump, args=(bridge, vision_log),
+                kwargs={"detection_sent": detection_sent}, daemon=True)
+            bridge_thread.start()
+
         if fixed_target is not None:
             # The scanner already returned to and verified E1, then exited. The
             # controller independently re-confirms E1 before using the fixed
@@ -861,27 +886,37 @@ def main() -> int:
             if ctrl.poll() is not None:
                 print(f"[FATAL] controller exited before confirming E1 home (exit {ctrl.returncode}).")
                 return ctrl.returncode or 2
+            # The bridge is loading in parallel now, so it can also be the thing
+            # that dies while we wait. Without this the launcher would sit here
+            # until the startup timeout and then blame the controller.
+            if bridge is not None and bridge.poll() is not None:
+                print(f"[FATAL] vision bridge exited during startup "
+                      f"(exit {bridge.returncode}) while the arm was still homing.")
+                stop_process(ctrl, "controller")
+                return bridge.returncode or 2
             if time.monotonic() >= deadline:
                 print("[FATAL] timed out waiting for the controller to confirm E1 home.")
                 return 2
 
         if args.calibrate:
-            print("[launcher] E1 home confirmed; starting the calibration camera pass.")
+            print("[launcher] E1 home confirmed; releasing the calibration camera pass.")
             print("[launcher] 每擺一個位置，等下面印出一行 [bridge][calibration] {...}，")
             print("[launcher] 把裡面的 u,v 和你量到的 base 座標 x,y 記成一組。")
             print(f"[launcher] 至少 {HOMOGRAPHY_MIN_POINTS} 組不共線的點，另外多留 2 組"
                   "當驗證點。量完按 Ctrl+C。")
         else:
-            print("[launcher] E1 home confirmed; starting one local YOLO detection.")
-        assert bridge_cmd is not None
-        bridge = subprocess.Popen(
-            bridge_cmd, cwd=str(REPO_ROOT), env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True, encoding="utf-8",
-            errors="replace", bufsize=1)
-        bridge_thread = threading.Thread(
-            target=pump, args=(bridge, vision_log),
-            kwargs={"detection_sent": detection_sent}, daemon=True)
-        bridge_thread.start()
+            print("[launcher] E1 home confirmed; releasing one local YOLO detection.")
+        assert bridge is not None and bridge.stdin is not None
+        try:
+            bridge.stdin.write("go\n")
+            bridge.stdin.flush()
+        except (BrokenPipeError, OSError) as exc:
+            # The bridge is gone or its pipe is closed. It is blocked before the
+            # camera and will abort on EOF, so nothing detects at an unknown pose —
+            # but the controller is holding the arm at E1 and must be told to stop.
+            print(f"[FATAL] could not release the vision bridge: {exc}")
+            stop_process(ctrl, "controller")
+            return 2
 
         while ctrl.poll() is None:
             if bridge.poll() is not None:

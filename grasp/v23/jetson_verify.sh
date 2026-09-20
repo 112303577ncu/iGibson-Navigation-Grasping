@@ -144,7 +144,7 @@ echo "$rd" | grep -q "all 37 checks passed" \
     && ok "37 項全過" || bad "伺服機讀取測試未通過（完整輸出見上）"
 
 echo
-echo "=== 7.6 一鍵 launcher 接線（需 all 50 checks passed）==="
+echo "=== 7.6 一鍵 launcher 接線（需 all 62 checks passed）==="
 # 2026-08-14：launcher 還在傳 nav-home 外參、也沒傳 --homography，而 bridge 早就把 grasp
 # home 改成只收實測 homography。兩邊各自都對，是介面對不上——而且要等手臂走到定位才會發現。
 # v23 又多釘四條同類型的線：--pose 必須是 v23_e1_grasp_home（bridge 的預設還是 C3，漏傳
@@ -152,8 +152,8 @@ echo "=== 7.6 一鍵 launcher 接線（需 all 50 checks passed）==="
 # 校正檔路徑不能是 v21 那支，權重 sha256 要對得上 manifest（v21/v23 契約相同，形狀檢查抓不到）。
 lch=$(python3 test_one_command_launcher.py 2>&1)
 echo "$lch" | grep -E "checks passed|FAIL|Traceback" || echo "$lch" | tail -5
-echo "$lch" | grep -q "all 50 checks passed" \
-    && ok "50 項全過" || bad "一鍵 launcher 接線測試未通過（完整輸出見上）"
+echo "$lch" | grep -q "all 62 checks passed" \
+    && ok "62 項全過" || bad "一鍵 launcher 接線測試未通過（完整輸出見上）"
 
 echo
 echo "=== 7.7 三姿態掃描交接（需 all 89 checks passed）==="
@@ -183,7 +183,7 @@ tail -3 /tmp/v23_guard.log
 echo
 echo "═══════════════════════════════════════════════════════════════"
 echo "Gate 判準："
-echo "  · 148 / 37 / 641 / 50 / 89 一字不差"
+echo "  · 160 / 37 / 641 / 62 / 89 一字不差"
 echo "  · wrist_z_offset 必須 0.0564（純幾何，跨平台不該變；也不隨姿態變——hover 高度錨在地板不是手臂，所以 C3→E1 這個值不動）"
 echo "  · Stage 序列 0→1 → jaw close → ABORT → retreat home，exit 0"
 echo "  · 策略步數容許 ±3 浮點漂移；超過就停下來回報"
