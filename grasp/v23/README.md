@@ -227,6 +227,20 @@ Ctrl+C 只送掃描器一次 SIGINT，最多等 45 秒完成 guarded E1 回程�
 編碼器到位，且各個驗證點每軸誤差 ≤1 cm 後，才把 `three_pose_scan.json` 中 LEFT／RIGHT
 的 `hardware_validated` 與 `yaw_mapping_validated` 改成 `true`。在此之前正式模式故意拒絕。
 
+**2026-09-20：LEFT 第一次在真機上走完並夾取成功（單視角，仍不算驗證）。**
+`graspscan.sh --accept-single-rotated-view` 下，LEFT 取得 `(+0.2569, +0.0388)`、
+5 樣本散布 0.1 mm，E1／RIGHT 未見；回 E1 編碼器確認後釋出目標，PPO 41 步收斂到
+`target_dist = 0.019 m`，回 home 後物體仍在爪中。逼近時 S1 由 90° 降到 71–74°，
+方向與物體在左側一致，**所以 yaw 正負號在真機上沒有反向**。
+
+但這次沒有尺量點、沒有 ≤1 cm 誤差數據，兩個旗標**維持 false**。另外值得盯的是
+`pad_after_close = 62.9 mm` 對 `object_top = 65.0 mm`，只差 2.1 mm
+（E1 正面那次是 41.6 mm）—— LEFT 的落點偏高、夾得較淺，補驗證時要一起看。
+
+三視角的用意是**擴大可見範圍**，不是讓視角互相驗算，所以
+`--accept-single-rotated-view` 是常態用法而非捷徑：E1 正面單獨能用的區域只有約
+3 cm 縱深（見下節）。
+
 ```bash
 python3 three_pose_scan.py --check
 python3 jetson_one_command_grasp.py --three-pose-scan --check
@@ -238,6 +252,36 @@ python3 jetson_one_command_grasp.py --three-pose-scan --allow-top-clipped
 `yaw_mapping_validated` 留成 true。S1 超過配置允許的 ±25° 也會被拒絕。
 
 ---
+
+## 常駐服務：把 23 秒的啟動成本只付一次
+
+一次一鍵夾取量到 42.3 秒，其中**手臂只動了 8.1 秒**：啟動與載模型 23.3 秒
+（PyBullet 載 URDF 就佔 11.5 秒、670 MB），視覺 10.5 秒。常駐之後單次夾取 **8.5 秒**。
+
+| 檔案 | 用途 |
+|------|------|
+| `grasp_service.py` | 常駐夾取服務。用 launcher 自己的 `build_ctrl_cmd()` 組參數，所有安全閘照跑；`GraspController.run` 換成 serve loop |
+| `graspctl.py` | 指令列用戶端（`grasp` / `status` / `quit`），系統 python 3.6.9 可跑 |
+| `graspscan.sh` | 三姿態後備：停服務 → 跑掃描流程 → `trap EXIT` 還原服務 |
+
+```bash
+python3 graspctl.py status           # 服務狀態、伺服角度、目前偵測是否新鮮
+python3 graspctl.py grasp            # 一次夾取，約 8.5 秒
+sudo systemctl stop grasp-vision grasp-service   # 要用 move_arm/bus_probe 前必須先停
+```
+
+開機由 systemd 帶起：`grasp-service.service`（`Wants/After=dev-myserial.device`）與
+`grasp-vision.service`（`BindsTo` 前者）。視覺端就是原本的
+`vision_grasp_bridge.py`，只是拿掉 `--once`、加上 `--imgsz 320 --rate 1.0`。
+
+**E1 優先，掃描是後備。** 服務收到 `grasp` 時先看有沒有新鮮的 E1 偵測，有就直接夾；
+沒有就在 3 秒內拒絕且**不動手臂**，並提示改用 `graspscan.sh`。掃描器獨占相機與
+`/dev/myserial` 且在 PPO 啟動前就退出，無法與常駐服務並存，所以後備會付完整啟動成本。
+
+⚠ **服務活著時它獨占 `/dev/myserial` 和相機**，`move_arm.py`、`bus_probe.py`、
+`jetson_one_command_grasp.py` 都會開不了，症狀看起來像裝置壞掉。先 `systemctl stop`。
+
+⚠ 記憶體：夾取服務 985 MB、視覺 301 MB。ROS 全套另外 569 MB，三者同時在還剩約 1 GB。
 
 ## 姿勢還沒定案 — `pose_explorer.py`
 
