@@ -1,5 +1,90 @@
 # X3Plus 專題進度記錄
 
+## 2026-09-20 — 常駐夾取服務（42.3 s → 8.5 s）、LEFT 首次真機夾取
+
+### 新系統碟（128 GB）開機檢查：全項通過
+
+- 裝置對應正確：`/dev/myserial`→`ttyUSB0`（ch341 Rosmaster）、`/dev/ydlidar`→`ttyUSB1`
+  （CP2102 TG30）、`arm_cam`→`video0`、`rear_cam`→`video1`（SN0001）；兩顆相機都取得
+  640×480 畫面，`startup_device_check.py` PASS。
+- 根目錄在 `/dev/sda1`（114 GB，用 42 GB），**swap 6 GB 已寫進 `/etc/fstab`**。
+- venv 是 Python 3.8.0：torch 2.4.1（**CPU-only**，JetPack 4.6 沒有對應的 CUDA wheel）、
+  SB3 2.3.2、gymnasium 0.29.1、cv2 4.13.0、ultralytics 8.4.83、pyserial 3.5。
+- v23 權重 sha256 與 manifest 一致；`detection/models/best.pt` = `ca42c3f4…`。
+- 匯流排：45 輪讀取 **0 錯位、0 逾時**。過程中 S3 一度連續回報 raw 3664（有效區間
+  900–3100），那是**關節被扳到模型範圍外**，不是伺服機故障 —— 讀值穩定到 ±1 才是判斷關鍵，
+  壞掉的伺服機會回亂數。扳回範圍後六顆全正常。
+- S1 ±5° 實機寫入驗證通過，其他五顆數字一格未動。
+
+### 一次完整夾取的耗時拆解（`jetson_one_command_grasp.py`，42.3 s）
+
+| 階段 | 秒 |
+|------|----|
+| 程序啟動與模型載入（PyBullet 載 URDF 就佔 11.5 s / 670 MB） | 23.3 |
+| 視覺（YOLO 載入、開相機 1.6 s、冷啟動推論 1.5 s） | 10.5 |
+| policy 對位 4.3 + 抬升 1.9 + 回 home 1.9 | 8.1 |
+
+**夾爪不是瓶頸。** 正式流程的閉合發生在 stage 0 的 S6 停滯捷徑裡
+（`--s6-stall-grasp-steps 2` 會一併把 `jaw_hold_bias_deg` 設成 **1**），
+`attempt_close()` 那條 stage-1 路徑根本不會被呼叫。
+
+曾實驗把 stage-1 close 的 `run_time_ms/settle_s` 由 300/0.30 改成 100/0.15
+（空夾 5.6 s → 3.06 s，且全程無誤判接觸），但**已還原**：那條路徑不在正式流程上，
+而且在真實物體上會讓接觸判定多花 6 步才成立，指令多壓進去 7°。
+附帶量到伺服機的真實速度上限：8° 一步最快約 90 ms，300 ms 是我們自己叫它慢的。
+
+### 新增：常駐服務（本次主要成果）
+
+- `grasp/v23/grasp_service.py` — 呼叫 launcher 自己的 `parse_args_from()` 與
+  `build_ctrl_cmd()` 取得**完全相同的 argv**，再把 `GraspController.run` 換成 serve
+  loop 後呼叫 controller 的 `main()`。因此 sha256、契約、homography、candidate 解鎖
+  等每一道閘照跑，**已驗證檔案零修改**；`run()` 本身的 docstring 就寫明可重複呼叫。
+- `grasp/v23/graspctl.py` — unix socket 用戶端，系統 python 3.6.9 可直接跑
+  （`grasp` / `status` / `quit`）。
+- `grasp/v23/graspscan.sh` — 三姿態後備：停服務 → 跑 launcher 掃描流程 →
+  `trap EXIT` 把服務拉回來。掃描器設計上獨占相機與序列埠且在 PPO 啟動前就退出，
+  無法與常駐服務並存，所以後備會付完整啟動成本。
+- systemd：`grasp-service.service`（`Wants/After=dev-myserial.device`，避免搶在 udev
+  之前啟動）、`grasp-vision.service`（`BindsTo` 夾取服務），兩者 `enabled`。
+  視覺端維持原檔，只是拿掉 `--once`、加上 `--imgsz 320 --rate 1.0`。
+- 實測 **單次夾取 8.52 s（confirmed）**。RSS：夾取 985 MB、視覺 301 MB；ROS 全套
+  569 MB；三者同時在仍餘約 1 GB，不碰 swap。閒置時 CPU 幾乎是 0（負載 1.09 / 4 核）。
+- **E1 優先**：沒有新鮮偵測時 3.2 s 內拒絕且**手臂完全不動**（原本會走到 home 然後
+  空等 `--latch-wait` 120 s）。
+
+### imgsz 320 可以直接用
+
+同一場景比較 640／480／320：座標差 **0.4 mm**（640 自身抖動就有 0.2 mm，homography
+RMSE 是 3.9 mm），320 的重複性反而更好；推論 1.37 s → 0.62 s（暖機後 0.65 → 0.25 s）。
+
+### LEFT 姿態首次真機夾取成功（單視角，**非驗證**）
+
+- `graspscan.sh --accept-single-rotated-view`：LEFT 取得 `(+0.2569, +0.0388)`，
+  5 樣本散布 0.1 mm；E1／RIGHT 未見；回 E1 編碼器確認後釋出目標。PPO 41 步收斂到
+  `target_dist = 0.019 m`，S6 判定 slipping 停在 151°（hold bias 1°），抬升 6 段、
+  回 home 後仍夾著。
+- 逼近過程 S1 由 90° 降到 **71–74°**，方向與物體在左側一致 →
+  **yaw 正負號在真機上沒有反向**。方向錯的話 S1 會往 110° 去夾空氣。
+- **但這不是 gate 要的驗證**：沒有尺量點、沒有 ≤1 cm 誤差數據，
+  `hardware_validated` / `yaw_mapping_validated` 維持 `false`。
+- 擦邊觀察：`Gate 25` 時 `pad_after_close = 62.9 mm` 對 `object_top = 65.0 mm`，
+  **只差 2.1 mm**（E1 正面那次是 41.6 mm）。LEFT 的落點明顯偏高、夾得較淺，
+  這是之後補驗證時要盯的數字。
+
+### 設計意圖釐清
+
+三視角的目的是**擴大可見範圍**，不是讓視角互相驗算。**只要有一個視角看到就允許夾取**
+是刻意的設計，因為單視角覆蓋太小。`--accept-single-rotated-view` 因此是常態用法，
+不是繞過檢查的捷徑。
+
+### E1 homography 的實際可用窗口只有約 3 cm 縱深
+
+7 個校正點的像素凸包換算回 base 約 `x = 0.249–0.279 m`。今天三次掃描失敗全部卡在這裡：
+左緣裁切 ×2、凸包外 ×1。物體必須放進這個窄帶，這是目前整套視覺夾取真正的範圍限制，
+與三姿態無關；要擴大就得在更廣的位置補校正點重新擬合。
+
+---
+
 ## 2026-08-30 — v23 三姿態改為 LEFT/E1/RIGHT S1 剛體旋轉
 
 - 新增 `grasp/v23/three_pose_scan.py` + `three_pose_scan.json`；原先 E1／F3／F6 的
@@ -1408,3 +1493,50 @@ URDF 掃 12 萬組關節組合，**夾爪中心（訓練定義）**在部署區�
 3. **`object_z` 慣例** — 仍是 UNRESOLVED。應統一為「物體幾何中心的真實高度」並寫進 manifest。
 4. **PR #13（draft）暫不可 merge** — 它啟用 v18/C3，但在 TCP 修好前 v18 一樣夾不到，
    merge 會給人「可以上機」的錯誤印象。
+
+## 2026-08-30 — v23 E1 夾取目標前移補償
+
+- 實機已能穩定夾取，但落點系統性偏物體近側；沒有改寫 7 點實測
+  `integration/grasp_home_homography_e1.json`，而是在 homography／S1 視角旋轉完成後、
+  policy envelope 檢查前，加可稽核的 base `+X` runtime correction。
+- `grasp/v23/jetson_one_command_grasp.py` 預設 `--grasp-forward-offset-mm 5`；可用 `0`
+  完全停用，硬限制 `0–15 mm`。修正同時作用於 bbox 中心與兩個寬度端點，因此不改變
+  估計寬度；超出 v23 `x=0.205–0.280 m` 的修正後目標仍 fail closed。
+- 單 E1 bridge 與 LEFT／E1／RIGHT scanner 使用同一修正；scan 在旋轉回最終 base frame
+  後才沿 `+X` 平移。校正模式不帶補償，保證量測資料仍是原始幾何。
+- 第二次實抓 log 證明前述 +5 mm 已套用：bridge 送 `x=0.2728`，故 raw homography
+  `x=0.2678`，只比「前 4 cm」尺量 `x≈0.2687` 少 0.9 mm。繼續把物體座標加 1 cm
+  會成為 `x=0.2828`，越過 v23 `0.280` envelope；因此新增 controller-side
+  `--tcp-forward-error-mm 10`。它只把 policy／close gate 使用的 FK TCP X 減 10 mm，
+  讓手臂實際再往 base +X 走 1 cm；camera/object 座標與 floor/collision FK 均不變。
+- 後續實抓仍落在機器人側，因此以 5 mm 小步幅把 launcher 的預設
+  `--tcp-forward-error-mm` 從 10 提高到 15；視覺座標仍維持 +5 mm，合計約 +20 mm，
+  controller 硬上限仍為 20 mm。
+- 同日成功夾到後仍聽見喀喀聲。完整 log 證明 S6 在 Stage 0 從 117° 被 policy 推到
+  179°；147–152° 的物體滑動／回彈讓舊的「完全不動」計數反覆歸零。當時雖帶
+  `--jaw-track-fraction 0.5`，該比例判定其實只接到 scripted Stage 1，沒有保護 Stage 0。
+- Stage 0 現在也比較上一筆 S6 命令的未完成角度與下一筆 encoder 進度；連續兩筆低於
+  0.5 時，以 `slipping` 接觸鎖定接觸角 +1°，直接進 scripted lift。正常追蹤、單筆慢速、
+  ineligible 動作與 `fraction=0` 均不觸發；controller 回歸新增 6 項，合計 148 全過。
+- 實機修正後操作者在 E1 可辨識範圍內重複 **3/3 成功**。已核對的一份完整 run：
+  S6 在 152° 以 2/8° slow-tracking 連續兩筆觸發、hold 153°；Stage 2 初檢 confirmed、
+  lift 6/6、return home 成功、回家後仍 confirmed（S6 150°），bus 無失敗、guard 45 次 pass。
+- 將該實測組合升為 `jetson_one_command_grasp.py` 正式預設：target +5 mm、
+  `floor-finger-error=15 mm`、`jaw-track-fraction=0.5`、`tcp-forward-error=20 mm`。
+  `manifest.hardware_gates.first_real_grasp_logged` 改為 true；仍保留 candidate，因 motion
+  envelope、dry-run 與 LEFT/RIGHT scan 硬體 gate 尚未完成。
+## 2026-09-07 — v24 E1 replacement 候選封裝
+
+- 接收訓練端 `v24_e1_corner_recovery_seed23404_r3` 的 selected BC update 10；完整交付
+  55 個 checksum 全部吻合，formal rows 重算 230/235，舊 v23 弱點 `(0.280,-0.070)`
+  為 15/15。新 model/VecNormalize hash 分別以 `0ed998...d81`、`6ebb5a...d26` 鎖定。
+- 新增 `grasp/v24/run_candidate.py`、`manifest.json`、必要 provenance 與 9 項靜態測試。
+  wrapper 重用 `grasp/v23/x3plus_real_grasp.py`，拒絕使用者覆寫 model、VecNormalize、
+  contract、release manifest 或既有 E1 3/3 runtime profile，避免產生另一份會漂移的
+  motor/servo/safety runtime，也避免驗收時同時改權重與控制參數。
+- v23 release gate 現可由版本 wrapper 指定所屬 manifest；hash 與 incremental contract
+  仍不可由 `--unlock-candidate-real` 繞過。v24 的新 hash 硬體 gate 全部起始為 false。
+- 尚未執行模型反序列化、模擬重播或實機動作。97/235 正式模擬紀錄低於部署 8mm
+  clearance，且 evaluator 含 magnet/scripted return；需完成 deployment parity 與新 hash
+  Jetson／固定座標／E1 視覺 3/3 後才可考慮切換。完整限制見
+  `docs/planning/v24_intake_2026-09-07/INTAKE_REVIEW.md`。

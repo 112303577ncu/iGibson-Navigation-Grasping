@@ -37,17 +37,38 @@
 > **★ 分支 `v23-grasp-test` 上另有 `grasp/v23/`（E1 高姿態），尚未合併。**
 > main 上不存在。v23 只改了 grasp home（C3 → E1）與權重；契約、`deploy_contract.py`、
 > `action_execution_v21.py`、URDF 都與 v21 逐位元組相同。2026-08-29 已完成 E1 實測
-> homography、夾取中心高度與最小物體高度；motion envelope、dry-run 與成功實抓完整 log
-> 仍未過。E1 runtime 可用明確 opt-in `--allow-top-clipped` 放行「只碰上緣」的 bbox；
+> homography、夾取中心高度與最小物體高度；2026-08-30 一鍵 E1 夾取在可辨識範圍內
+> 實測 3/3 成功，且一份完整 log 已核對。正式 launcher 預設為 target +5 mm、finger
+> correction 15 mm、jaw tracking 0.5、TCP +20 mm。motion envelope 與 dry-run 仍未過。
+> E1 runtime 可用明確 opt-in `--allow-top-clipped` 放行「只碰上緣」的 bbox；
 > 左／右／下緣與目標中心 homography 凸包 gate 不可繞過。2026-08-30 已加入 LEFT/E1/RIGHT
 > S1-only 掃描框架（40 項純邏輯測試）：共用 E1 homography，再繞 S1 training-frame 軸心
-> 旋轉 base XY。左右真機動作與各至少 2 點的 ≤1 cm 映射驗證尚未完成，正式掃描會在
-> 開硬體前拒絕。細節見 `grasp/v23/README.md`。
+> 旋轉 base XY。2026-09-20 **LEFT 首次在真機上走完並夾取成功**（單視角、
+> `--accept-single-rotated-view`；S1 逼近時降到 71–74°，證明 yaw 正負號沒反向），
+> 但沒有尺量點，**≤1 cm 映射驗證仍未完成、RIGHT 仍未走過**，兩個旗標維持 false、
+> 正式掃描照樣在開硬體前拒絕。三視角的用意是擴大可見範圍（E1 單獨可用的縱深只有
+> 約 3 cm），不是視角互相驗算，所以單視角可夾是刻意的。細節見 `grasp/v23/README.md`。
 > 模式 A / B / C 在兩個分支上都還是接 v21。
 
-> **★ 2026-08-01 起，正式夾取流程是 `grasp/v21/`，不是根目錄那支。**
-> 唯一在實機上夾取成功過的是 v21（2026-07-31，3cm 物體，完整 log 見
+> **2026-09-20 起 v23 有常駐服務：`grasp/v23/grasp_service.py` + `graspctl.py`。**
+> 一鍵夾取原本 42.3 秒，其中 34 秒是每次重新載入 torch／PyBullet／PPO／YOLO；
+> 常駐之後單次 **8.5 秒**。服務用 launcher 自己的 `build_ctrl_cmd()` 組參數，
+> 安全閘一道不少，已驗證檔案零修改。systemd 兩個單元開機自動啟動。
+> ⚠ **服務活著時獨占 `/dev/myserial` 與相機**，要跑 `move_arm.py`、`bus_probe.py`、
+> `jetson_one_command_grasp.py` 前必須先 `sudo systemctl stop grasp-vision grasp-service`。
+> 三姿態後備走 `graspscan.sh`（會自己停再還原服務）。
+
+> **2026-09-07 已把 v24 E1 replacement 訓練包封裝成獨立候選。**
+> `grasp/v24/run_candidate.py` 鎖定 model、VecNormalize、incremental contract 與 v24
+> manifest，實際控制重用加固後的 v23 controller，沒有再 fork 一份硬體程式。
+> 55 個 checksum 條目一致，交付 formal rows 重算 230/235；新 hash 尚無真機驗收，
+> 且預註冊時間、環境版本與 deployment 8mm guard parity 待釐清。正式流程仍是 v21。
+> 詳見 [接收審查](docs/planning/v24_intake_2026-09-07/INTAKE_REVIEW.md)。
+
+> **★ 2026-08-01 起，整合模式的正式夾取流程是 `grasp/v21/`，不是根目錄那支。**
+> v21 是第一套實機夾取成功版本（2026-07-31，3cm 物體，完整 log 見
 > `grasp/v21/manifest.json` 的 `hardware_gates.first_real_grasp_2026_07_31`）。
+> v23 分支另於 2026-08-30 完成 E1 單視角一鍵夾取 3/3，但尚未接入模式 A/B/C。
 > 模式 A / 模式 C 兩支自走流程都已改接 v21（透過 `_load_grasp_module()`）。
 > 根目錄的 `x3plus_real_grasp.py` + `trained_6d_models_v17/` 原封保留可直接跑，
 > 根目錄那支 v17 已無任何程式匯入（`tests/test_safety_guards.py` 也在 2026-08-01
@@ -60,9 +81,10 @@
 | `v21/deploy_contract.py` / `action_execution_v21.py` | 觀測/動作契約定義；`obs_28_incremental` |
 | `v21/manifest.json` | 權重 sha256、契約、硬體 gate、變更紀錄（單一事實來源） |
 | `v21/jetson_one_command_grasp.py` | ★**一鍵辨識＋夾取**（C3 home → 相機辨識一次 → PPO 夾取）。自己開相機；`--calibrate` 產生 C3 homography 校正檔 |
-| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` / `test_one_command_launcher.py` | 回歸測試，須 **119 / 37 / 641 / 29** 全過 |
-| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（119/37/641/29、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
+| `v21/test_deploy_controller.py` / `test_servo_read.py` / `test_deploy_floor_guard.py` / `test_one_command_launcher.py` | 回歸測試，須 **135 / 37 / 641 / 29** 全過 |
+| `v21/jetson_verify.sh` | 上機前一鍵前置檢查（135/37/641/29、dry-run `wrist_z_offset = 0.0564`、安全閘 exit 3） |
 | `v21/bus_probe.py` / `pose_check.py` | 唯讀診斷：半雙工伺服匯流排讀取、姿態/FK 核對 |
+| `v24/run_candidate.py` / `manifest.json` | v24 E1 replacement 候選入口；鎖定新 pair 並重用 v23 controller；未通過新 hash 真機 gate，不是正式主線 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
 | `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |
 | `x3plus/yahboomcar.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
@@ -114,14 +136,14 @@ v21 是 incremental（`desired = current + action × 0.08 rad`），v17 是 abso
 | `static/` | 前端：連線 / 主控台 / 任務設定 / 地圖 / 紀錄 |
 | `make_qr.py` | 開機偵測 IP 並把連線 QR code 畫到桌面（`--watch` 隨 IP 變動重畫） |
 | `jetson_check.sh` | ★上機一鍵檢查：連接埠、防火牆、UDP 迴路、序列埠占用、路線 |
-| `test_server.py` | 回歸測試，須 **47** 全過 |
+| `test_server.py` | 回歸測試，須 **48** 全過 |
 | `prototype.html` | 早期靜態原型，單檔雙擊即開、免 Python。功能以 `static/` 為準 |
 
 ```bash
 ./ui/jetson_check.sh                # ★上機前先跑這個
 python3 ui/server.py --simulate     # 開發機，無硬體（狀態與位置由模擬器產生）
 python3 ui/server.py                # Jetson，唯讀監看（不驅動硬體）
-python3 ui/server.py --allow-real   # Jetson，允許驅動硬體
+python3 ui/server.py --allow-real   # 只開第一道閘；目前 A/B/C 實機仍 fail-closed
 ```
 
 ⚠️ **操作台刻意不顯示相機畫面。** Jetson Nano 跑這個專案 RAM 已經吃到九成，
@@ -142,8 +164,10 @@ MJPEG 端點、`vision_grasp_pipeline` 的預覽掛勾）已全部移除，有�
 
 操作台右上角顯示機器人**剩餘記憶體**（讀 `/proc/meminfo`），≥88% 轉黃、≥95% 轉紅。
 
-⚠️ **驅動硬體需要兩道獨立的閘同時成立**：伺服器以 `--allow-real` 啟動（有人在
-機器人旁邊打的指令），**且**該次請求帶著操作者在「任務設定」勾選的確認。
+⚠️ `--allow-real` 與「任務設定」確認目前只是操作台的前兩道閘。操作台尚未提供
+serial owner、LiDAR 方向與 grasp-home homography 等模式專用證據，因此 A/B/C
+實機請求都會被 server 拒絕；dry-run 與 simulation 可用。完整任務的 final
+align/latch 接上量測 homography 後，才可重新開放 `mission_pipeline.py --real`。
 網頁上的停止鈕送的是 `SIGINT`（走任務自己的關機路徑，才會把輪子歸零），
 夾取途中按下會等該次夾取結束才生效 —— **真正的急停是電源開關**。
 
@@ -172,7 +196,7 @@ pip install -r ~/Documents/deploy_jetson2/detection/requirements_detection.txt
 ```bash
 cd grasp/v21
 
-# 0) 上機前置檢查：119/37/641/29 全過、wrist_z_offset=0.0564、安全閘 exit 3
+# 0) 上機前置檢查：135/37/641/29 全過、wrist_z_offset=0.0564、安全閘 exit 3
 ./jetson_verify.sh
 
 # 1) 空跑測試（不驅動伺服機，確認角度輸出合理）
