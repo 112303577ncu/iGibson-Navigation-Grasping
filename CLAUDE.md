@@ -1,5 +1,9 @@
 # X3Plus 專題 — Sim-to-Real 夾取部署
 
+> **接手這個專案？先讀 [`docs/handoff/HANDOFF_2026-09-20.md`](docs/handoff/HANDOFF_2026-09-20.md)。**
+> 那份講的是「現在做到哪裡、能跑什麼指令、卡在哪一步、下一步做什麼」，以及機器上的
+> 檔案跟這個 repo 不同步這件事。本檔是規格，那份是現況，兩份都要看。
+
 ## 專題概述
 將 PyBullet + PPO 訓練的 6D 夾取策略，部署到 Yahboom X3Plus 實體機器人。
 
