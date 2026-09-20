@@ -121,6 +121,33 @@ class GraspService:
                 "rss_mb": round(rss_mb(), 1),
                 "uptime_s": round(time.time() - self.started, 1)}
 
+    def cmd_home(self) -> dict:
+        """Park at the grasp home pose with the jaw open, releasing anything held.
+
+        Without this the only way to put the object back on the table is to stop
+        the service, run move_arm.py and start it again -- a minute of reloading
+        PyBullet to open a gripper. Uses the same guarded move run() uses, so the
+        floor guard still applies.
+        """
+        ctl = self.controller
+        cfg = ctl.cfg
+        arm = ctl.mapper.hw_deg_to_sim_arm(list(cfg.home_deg[:5]))
+        grip = ctl.mapper.hw_deg_to_sim_grip(cfg.home_deg[5])
+        t0 = time.time()
+        try:
+            res = ctl.move_guarded_and_verified(
+                arm, grip, label="service-home", run_time_ms=400, settle_s=0.35,
+                tol_deg=3.0)
+        except Exception as exc:
+            # A hardware fault must not take the service down with it; the arm
+            # holds position while powered, so reporting and staying up is safer
+            # than dying and leaving no way to ask what happened.
+            return {"ok": False, "reason": "exception: %s" % exc,
+                    "elapsed_s": round(time.time() - t0, 2)}
+        ctl._grip_hold_rad = None     # nothing is held any more
+        return {"ok": bool(res.get("reached")), "reason": res.get("reason"),
+                "iters": res.get("iters"), "elapsed_s": round(time.time() - t0, 2)}
+
     def cmd_grasp(self, wait_s: float = 3.0) -> dict:
         # E1 first: the resident bridge streams a detection every second, so a
         # visible object is already in hand and the episode costs ~8.5 s with no
@@ -166,9 +193,15 @@ class GraspService:
         try:
             while True:
                 conn, _ = srv.accept()
+                # A client that connects and never sends a line would otherwise
+                # block the only thread that can drive the arm.
+                conn.settimeout(10.0)
                 try:
-                    with conn.makefile("r") as stream:
-                        line = stream.readline().strip()
+                    try:
+                        with conn.makefile("r") as stream:
+                            line = stream.readline().strip()
+                    except (socket.timeout, OSError):
+                        continue    # a client that said nothing costs us nothing
                     if not line:
                         continue
                     if line == "quit":
@@ -177,6 +210,8 @@ class GraspService:
                         return
                     if line == "status":
                         reply = self.cmd_status()
+                    elif line == "home":
+                        reply = self.cmd_home()
                     elif line == "grasp":
                         reply = self.cmd_grasp()
                     else:
