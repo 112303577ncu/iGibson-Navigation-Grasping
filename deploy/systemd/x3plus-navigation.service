@@ -14,11 +14,11 @@ Group=jetson
 WorkingDirectory=/home/jetson/ROS/X3/yahboomcar_ws
 Environment=PYTHONUNBUFFERED=1
 Environment=ROS_MASTER_URI=http://127.0.0.1:11311
-Environment=ROS_IP=192.168.0.201
+EnvironmentFile=-/etc/default/x3plus-navigation
 # Fail closed if an unmanaged process still owns the Rosmaster UART.
 ExecStartPre=/usr/bin/test -e /dev/myserial
-ExecStartPre=/bin/bash -c '! /bin/fuser /dev/myserial >/dev/null 2>&1'
-ExecStart=/bin/bash -lc 'source /opt/ros/melodic/setup.bash; source /home/jetson/ROS/X3/yahboomcar_ws/devel/setup.bash; exec python3 -u /home/jetson/ROS/X3/yahboomcar_ws/src/yahboomcar_bringup/scripts/ai_motor_server_P0.py'
+ExecStartPre=+/usr/local/libexec/x3plus/check-serial-owner.sh /dev/myserial
+ExecStart=/usr/local/libexec/x3plus/start-navigation.sh
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGINT

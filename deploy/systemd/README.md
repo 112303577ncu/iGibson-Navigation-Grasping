@@ -12,6 +12,15 @@ The grasp drop-in also refuses to start if an unmanaged process still has
 `/dev/myserial` open. The arm's posture-change delay is extra margin, not part
 of the ownership guarantee.
 
+Navigation chooses `ROS_IP` from the kernel's default IPv4 route at each
+startup. On an isolated LAN with no default route, it accepts the only global
+IPv4 address. Multiple viable addresses are treated as ambiguous and stop the
+service. An operator can override the choice in `/etc/default/x3plus-navigation`:
+
+```bash
+ROS_IP=192.168.0.201
+```
+
 Install on the Jetson:
 
 ```bash
@@ -19,10 +28,20 @@ sudo install -m 0644 x3plus-navigation.service /etc/systemd/system/
 sudo install -d -m 0755 /etc/systemd/system/grasp-service.service.d
 sudo install -m 0644 grasp-service.service.d/serial-owner.conf \
   /etc/systemd/system/grasp-service.service.d/
+sudo install -d -m 0755 /usr/local/libexec/x3plus
+sudo install -m 0755 check-serial-owner.sh start-navigation.sh \
+  /usr/local/libexec/x3plus/
 sudo systemctl daemon-reload
 sudo systemd-analyze verify \
   /etc/systemd/system/x3plus-navigation.service \
   /etc/systemd/system/grasp-service.service
+```
+
+The portable helper tests use fake `ip` and `fuser` commands, so they are safe
+to run without a robot or serial device:
+
+```bash
+bash deploy/systemd/test_helpers.sh
 ```
 
 Switch to navigation mode (the ROS master must already be running):
@@ -57,6 +76,12 @@ sudo fuser -v /dev/myserial
 systemctl --no-pager --full status \
   x3plus-navigation.service grasp-service.service grasp-vision.service
 ```
+
+`check-serial-owner.sh` exits `0` only for a confirmed free device, `3` when an
+owner exists, and `2` when the check itself cannot be trusted. A missing
+`fuser`, permission failure, or unexpected tool error therefore blocks startup
+instead of being mistaken for "no owner". The unit runs this check as root via
+systemd's `+` command prefix so it can see processes owned by other users.
 
 After exercising both switch directions, verify the stop completed before the
 next start. `systemctl start` waits for the transaction, so no extra `sleep` is
