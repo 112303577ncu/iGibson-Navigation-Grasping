@@ -566,8 +566,10 @@ def parse_args():
     p.add_argument("--lidar-backend", choices=("ros", "rplidar", "none"),
                    default="ros", help="scan source (X3Plus TG30 default: ros)")
     p.add_argument("--lidar-port", type=str, default=None)
-    p.add_argument("--lidar-yaw-offset-deg", type=float, default=None)
-    p.add_argument("--lidar-forward-offset-m", type=float, default=0.0)
+    p.add_argument("--lidar-yaw-offset-deg", type=float, default=180.0,
+                   help="measured TG30 yaw; raw 180 deg points robot-forward")
+    p.add_argument("--lidar-forward-offset-m", type=float, default=0.10,
+                   help="measured LiDAR origin ahead(+) of base footprint")
     p.add_argument("--lidar-orientation-evidence", default=None,
                    help="verified Route B four-direction evidence/marker; required by --real")
     p.add_argument("--lidar-dir", type=float, default=None, choices=(-1.0, 1.0))

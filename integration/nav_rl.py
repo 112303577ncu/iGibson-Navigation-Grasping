@@ -115,7 +115,20 @@ class NavRLConfig:
     # ── safety overlay (NOT in training — geometric last-resort brake) ──
     # Uses RAW point distances (the 48-ray obs is floored at 0.33 m and cannot
     # see closer). Blocks forward motion only; turning/reverse stay available.
-    safety_brake_dist: float = 0.25
+    # Real X3Plus measurements (2026-09-27), expressed in the robot-centre
+    # frame after ``lidar_forward_offset_m`` is applied:
+    #   front extent (arm in navigation/carry pose) 0.17 m
+    #   half width 0.12 m
+    #   requested obstacle clearance 0.10 m
+    #   measured post-stop travel at motor 30 0.056 m
+    #   one 6 Hz control period at measured peak speed 0.029 m
+    #   measurement margin about 0.02 m
+    # This gives a 0.375 m stop plane, rounded up to 0.38 m.  The rectangular
+    # corridor prevents nearby side walls from tripping the forward brake.
+    robot_front_extent_m: float = 0.17
+    safety_brake_dist: float = 0.38
+    safety_corridor_half_width_m: float = 0.22
+    # Retained for config/CLI compatibility; the brake no longer uses a cone.
     safety_brake_halfangle_deg: float = 50.0
     lidar_stale_timeout_s: float = 0.7
 
@@ -133,7 +146,9 @@ def validate_config(cfg: NavRLConfig) -> None:
         "max_angular_vel": cfg.max_angular_vel,
         "lidar_fov_deg": cfg.lidar_fov_deg,
         "lidar_max_dist": cfg.lidar_max_dist,
+        "robot_front_extent_m": cfg.robot_front_extent_m,
         "safety_brake_dist": cfg.safety_brake_dist,
+        "safety_corridor_half_width_m": cfg.safety_corridor_half_width_m,
         "safety_brake_halfangle_deg": cfg.safety_brake_halfangle_deg,
         "lidar_stale_timeout_s": cfg.lidar_stale_timeout_s,
     }
@@ -229,16 +244,28 @@ def scan_to_rays(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> np.
 
 
 def front_min_raw(points: Sequence[Tuple[float, float]], cfg: NavRLConfig) -> float:
-    """Minimum RAW distance in the front safety cone (for the geometric brake)."""
-    half = math.radians(cfg.safety_brake_halfangle_deg)
+    """Nearest forward x in the footprint-aware swept corridor.
+
+    The old cone widened with distance and stopped beside harmless side walls.
+    A straight-moving rectangular footprint instead occupies a fixed lateral
+    band. Points behind the robot or outside that band cannot collide during
+    straight forward braking and are ignored here.
+    """
     best = float("inf")
     for ang_deg, dist in points:
         sample = _transform_scan_sample(ang_deg, dist, cfg)
         if sample is None:
             continue
         a, dist = sample
-        if abs(a) <= half and dist < best:
-            best = dist
+        x = dist * math.cos(a)
+        y = dist * math.sin(a)
+        # TG30 sees parts of the robot itself. Anything at or behind the
+        # measured front plane cannot be a new obstacle in the forward swept
+        # path and must not latch the brake forever.
+        if (x > cfg.robot_front_extent_m
+                and abs(y) <= cfg.safety_corridor_half_width_m
+                and x < best):
+            best = x
     return best
 
 
@@ -905,6 +932,17 @@ def run_selftest():
 
     print("== front_min_raw sees below the 0.33 ray floor ==")
     _approx(front_min_raw([(0.0, 0.18), (120.0, 0.05)], cfg), 0.18)
+
+    print("== front_min_raw uses a fixed-width swept corridor ==")
+    corridor_cfg = dataclasses.replace(
+        cfg, lidar_forward_offset_m=0.10,
+        safety_corridor_half_width_m=0.22,
+    )
+    _approx(front_min_raw([(0.0, 0.25)], corridor_cfg), 0.35)
+    assert math.isinf(front_min_raw([(180.0, 0.10)], corridor_cfg))
+    wall_angle = math.degrees(math.atan2(0.23, 0.20 - 0.10))
+    wall_range = math.hypot(0.20 - 0.10, 0.23)
+    assert math.isinf(front_min_raw([(wall_angle, wall_range)], corridor_cfg))
 
     print("== build_nav_obs ordering ==")
     obs = build_nav_obs(2.0, math.radians(30), 0.4, -0.5,

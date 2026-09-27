@@ -1945,9 +1945,10 @@ def parse_args(argv=None):
 
     p.add_argument("--lidar-backend", default="ros", choices=("ros", "rplidar", "none"))
     p.add_argument("--lidar-dir", type=float, default=1.0, choices=(-1.0, 1.0))
-    p.add_argument("--lidar-yaw-offset-deg", type=float, default=0.0)
-    p.add_argument("--lidar-forward-offset-m", type=float, default=0.0,
-                   help="LiDAR origin ahead(+)/behind(-) of base footprint")
+    p.add_argument("--lidar-yaw-offset-deg", type=float, default=180.0,
+                   help="measured TG30 yaw; raw 180 deg points robot-forward")
+    p.add_argument("--lidar-forward-offset-m", type=float, default=0.10,
+                   help="measured LiDAR origin ahead(+) of base footprint")
     p.add_argument("--scan-topic", default="/scan")
     p.add_argument("--ros-backend", default="ros", choices=("ros", "none"))
     p.add_argument("--ros-host", default="127.0.0.1")
