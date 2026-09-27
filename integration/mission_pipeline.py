@@ -252,7 +252,7 @@ class MissionNavigator(nrgp.RLNavigator):
         # Geometric brake on RAW points: the 48-ray obs is floored at 0.33 m and
         # is blind below it. The policy alone still collides in 20-27% of sim
         # episodes, so this is not optional.
-        front = nr.front_min_raw(points, cfg)
+        front = nr.front_min_brake(points, cfg)
         braked = front < cfg.safety_brake_dist and vx > 0.0
         if braked:
             vx = 0.0
@@ -863,7 +863,7 @@ class MissionRunner:
             b = self.nav.tracker.bearing()
             wz = max(-INVESTIGATE_WZ, min(INVESTIGATE_WZ, 2.0 * b))
             vx = INVESTIGATE_VX if abs(b) < math.radians(15.0) else 0.0
-            front = nr.front_min_raw(self.lidar.get_points(), self.nav.ncfg)
+            front = nr.front_min_brake(self.lidar.get_points(), self.nav.ncfg)
             if front < self.nav.ncfg.safety_brake_dist:
                 vx = 0.0
             self.nav.creep(vx, wz, dt)
@@ -1562,7 +1562,8 @@ def run_selftest() -> None:
     for _ in range(ncfg.motor_delay_steps + 1):
         primed = nav2.nav_tick(3.0, 0.0, dt, clear)
     assert primed.vx > 0.0 and not primed.braked, primed
-    blocked = [(0.0, 0.15)] + [(a - 90.0, 4.0) for a in range(0, 181, 5)]
+    blocked = ([(-0.2, 0.25), (0.0, 0.25), (0.2, 0.25)]
+               + [(a - 90.0, 4.0) for a in range(0, 181, 5)])
     tick = nav2.nav_tick(3.0, 0.0, dt, blocked)
     assert tick.braked and tick.vx == 0.0, tick
     assert tick.min_ray >= ncfg.lidar_min_dist, \

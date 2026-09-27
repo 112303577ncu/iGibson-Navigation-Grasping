@@ -48,6 +48,7 @@ from integration.nav_rl import (
     RosLaserScanSource,
     describe_scan,
     front_min_raw,
+    front_min_brake,
     laser_scan_to_points,
     make_lidar,
     scan_to_rays,
@@ -313,6 +314,28 @@ class SafetyGuardTests(unittest.TestCase):
             front_min_raw([(obstacle_angle, obstacle_range)], cfg), 0.20,
             places=6,
         )
+
+    def test_forward_brake_rejects_one_or_two_normal_zone_speckles(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        self.assertEqual(front_min_brake([(0.0, 0.25)], cfg), float("inf"))
+        self.assertEqual(
+            front_min_brake([(-0.2, 0.25), (0.2, 0.25)], cfg),
+            float("inf"),
+        )
+
+    def test_forward_brake_accepts_three_point_obstacle_cluster(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        points = [(-0.2, 0.25), (0.0, 0.25), (0.2, 0.25)]
+        self.assertAlmostEqual(front_min_brake(points, cfg), 0.35, places=4)
+
+    def test_forward_brake_does_not_join_separated_speckles(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        points = [(-8.0, 0.25), (0.0, 0.25), (8.0, 0.25)]
+        self.assertEqual(front_min_brake(points, cfg), float("inf"))
+
+    def test_forward_brake_keeps_single_point_emergency_stop(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        self.assertAlmostEqual(front_min_brake([(0.0, 0.14)], cfg), 0.24)
 
     def test_scan_coverage_wraps_for_a_full_scan_and_is_not_orientation_proof(self):
         cfg = NavRLConfig(lidar_yaw_offset_deg=180.0)
