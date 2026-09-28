@@ -120,18 +120,20 @@ class NavRLConfig:
     #   front extent (arm in navigation/carry pose) 0.17 m
     #   half width 0.12 m
     #   requested obstacle clearance 0.10 m
-    #   measured post-stop travel at motor 30 0.056 m
-    #   one 6 Hz control period at measured peak speed 0.029 m
+    #   measured post-stop travel at motor 30 up to 0.066 m (2026-09-28)
+    #   scan age about 0.12 s at the Jetson, plus one 6 Hz control period
     #   measurement margin about 0.02 m
-    # This gives a 0.375 m stop plane, rounded up to 0.38 m.  The rectangular
+    # A 0.38 m plane left only ~0.12 m between the travel-pose gripper and a
+    # cardboard obstacle.  A 0.42 m test triggered on LiDAR (not the odom hard
+    # limit) and left 0.14–0.15 m by ruler.  The rectangular
     # corridor prevents nearby side walls from tripping the forward brake.
     robot_front_extent_m: float = 0.17
-    safety_brake_dist: float = 0.38
+    safety_brake_dist: float = 0.42
     safety_corridor_half_width_m: float = 0.22
     # Normal-zone braking rejects one/two isolated returns.  A real obstacle
     # must form at least this many neighbouring scan samples.  The TG30 on the
     # robot publishes at about 0.177 deg/sample, so a 0.10 m obstacle spans
-    # roughly 85 samples at the 0.38 m brake plane (and about 8 at 4 m).
+    # many samples at the 0.42 m brake plane (and about 8 at 4 m).
     safety_cluster_min_points: int = 3
     safety_cluster_max_angle_gap_deg: float = 1.0
     safety_cluster_max_point_gap_m: float = 0.04
@@ -1036,6 +1038,13 @@ def run_selftest():
         [(-0.2, 0.25), (0.0, 0.25), (0.2, 0.25)], corridor_cfg),
         0.35, 1e-3)
     _approx(front_min_brake([(0.0, 0.14)], corridor_cfg), 0.24, 1e-3)
+
+    print("== 0.42 m default brake plane: cluster inside stops, outside passes ==")
+    _approx(cfg.safety_brake_dist, 0.42, 1e-9)
+    near_cluster = [(-0.2, 0.315), (0.0, 0.315), (0.2, 0.315)]
+    far_cluster = [(-0.2, 0.325), (0.0, 0.325), (0.2, 0.325)]
+    assert front_min_brake(near_cluster, corridor_cfg) < cfg.safety_brake_dist
+    assert front_min_brake(far_cluster, corridor_cfg) > cfg.safety_brake_dist
 
     print("== build_nav_obs ordering ==")
     obs = build_nav_obs(2.0, math.radians(30), 0.4, -0.5,
