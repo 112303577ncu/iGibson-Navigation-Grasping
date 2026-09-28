@@ -11,6 +11,7 @@ Windows; the Jetson runs all of them.
 """
 
 import json
+import queue
 import math
 import os
 from pathlib import Path
@@ -103,6 +104,7 @@ def make_chassis(to_motor, clock=None):
     board = FakeBoard()
     chassis = cs.Chassis(board, to_motor, max_motor=60, watchdog_s=0.5,
                          clock=clock or time.monotonic, log=lambda _msg: None)
+    chassis.set_arm_pose("travel")      # R7: the pose these checks drive in
     return board, chassis
 
 
@@ -272,15 +274,37 @@ def main():
     ok(raises(lambda: socket.create_connection(("127.0.0.1", srv.port), timeout=0.5)),
        "and stops listening")
 
+    print("\n== R7: the wheels follow the arm pose ==")
+    board, ch = make_chassis(to_motor, Clock())
+    ch.set_arm_pose("unknown")
+    n = len(board.calls)
+    ok(ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0}) == "arm_pose"
+       and all(c == (0, 0, 0, 0) for c in board.calls[n:]) and ch.pose_blocked == 1,
+       "an unknown arm pose refuses velocity and never turns a wheel")
+    ch.set_arm_pose("travel")
+    ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0})
+    ok(board.last == (30, 30, 30, 30), "the travel pose drives at full speed")
+    ch.set_arm_pose("e1")
+    ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0})
+    ok(board.last == to_motor(cs.CREEP_VX, 0.0), "at E1 forward speed is capped to the creep")
+    ch.command({"action": "velocity", "vx": 0.0, "wz": 1.0})
+    ok(board.last == to_motor(0.0, cs.CREEP_WZ), "and so is the turn rate")
+    ch.set_arm_pose("other")
+    ok(board.last == (0, 0, 0, 0), "an arm left anywhere else stops the wheels at once")
+
     print("\n== grasp service: R1/R2 around the arm commands ==")
+    gs.GRASP_SETTLE_S = 0.0     # the settle wait has its own checks in test_travel_pose.py
+
+    E1 = (90.0, 74.2, 8.6, 8.6, 90.0, 30.0)
 
     class FakeServo:
         def read_degrees(self):
-            return type("R", (), {"valid": True, "degrees": [90] * 6})()
+            return type("R", (), {"valid": True, "degrees": list(E1)})()
 
     class FakeController:
         detection = None
         servo = FakeServo()
+        cfg = type("C", (), {"home_deg": E1})()
         _outcome = "grasped"
 
     clock = Clock()
@@ -335,7 +359,14 @@ to_motor, mx, wd = cs.load_motor_mapping(__import__("pathlib").Path(sys.argv[1])
 # A 60 s watchdog, so the only thing that can zero the wheels here is SIGTERM.
 ch = cs.Chassis(board, to_motor, watchdog_s=60.0, log=lambda m: print(m, flush=True))
 srv = cs.ChassisServer(ch, host="127.0.0.1", port=0, log=lambda m: None)
-class C: detection = None
+class Servo:
+    # serve() asks the encoders where the arm is (R7); say the travel pose.
+    def read_degrees(self):
+        return type("R", (), {"valid": True, "degrees": list(gs.TRAVEL_DEG)})()
+class C:
+    detection = None
+    servo = Servo()
+    cfg = type("Cfg", (), {"home_deg": (90.0, 74.2, 8.6, 8.6, 90.0, 30.0)})()
 svc = gs.GraspService(C(), None, 1, sys.argv[3], chassis_server=srv)
 gs.install_sigterm_shutdown(svc)
 orig = srv.start
@@ -352,22 +383,43 @@ finally:
             proc = subprocess.Popen([sys.executable, "-c", child_src, str(HERE), str(HERE),
                                      sock_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, universal_newlines=True)
-            port = None
-            for line in proc.stdout:
-                if line.startswith("PORT"):
-                    port = int(line.split()[1])
-                    break
-            cli = socket.create_connection(("127.0.0.1", port), timeout=2)
-            cli.sendall(b'{"action": "velocity", "vx": 0.15, "wz": 0.0}\n')
+            # Read the child on a thread with deadlines: a child that never prints
+            # what we wait for must fail this check, not hang the whole suite.
+            lines = queue.Queue()
+            threading.Thread(target=lambda: [lines.put(ln) for ln in proc.stdout],
+                             daemon=True).start()
+            seen = []
+
+            def wait_line(pred, timeout=15.0):
+                deadline = time.time() + timeout
+                while time.time() < deadline:
+                    try:
+                        ln = lines.get(timeout=0.2)
+                    except queue.Empty:
+                        continue
+                    seen.append(ln)
+                    if pred(ln):
+                        return ln
+                return None
+
+            port_line = wait_line(lambda ln: ln.startswith("PORT"))
             driving = False
-            for line in proc.stdout:
-                if "m1=30" in line:
-                    driving = True
-                    break
+            if port_line:
+                cli = socket.create_connection(("127.0.0.1", int(port_line.split()[1])), timeout=2)
+                cli.sendall(b'{"action": "velocity", "vx": 0.15, "wz": 0.0}\n')
+                driving = wait_line(lambda ln: "m1=30" in ln) is not None
             ok(driving, "the child service is driving before the signal")
             proc.send_signal(signal.SIGTERM)
-            out = proc.communicate(timeout=10)[0]
-            cli.close()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            time.sleep(0.3)                         # let the reader drain the pipe
+            while not lines.empty():
+                seen.append(lines.get())
+            out = "".join(seen)
+            if port_line:
+                cli.close()
             ok(proc.returncode == 0 and "LAST (0, 0, 0, 0)" in out,
                "SIGTERM while driving leaves the wheels at zero (got: {})".format(
                    out.strip().splitlines()[-1] if out.strip() else "no output"))

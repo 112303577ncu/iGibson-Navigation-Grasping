@@ -166,9 +166,10 @@ echo "$scn" | grep -q "all 89 checks passed" \
     && ok "89 項全過" || bad "三姿態掃描測試未通過（完整輸出見上）"
 
 echo
-echo "=== 7.8 G2 底盤（需 all 48 checks passed）==="
+echo "=== 7.8 G2 底盤（需 all 53 checks passed）==="
 # 純邏輯：假控制板 + 假時鐘。釘住 TCP 7000 協定、看門狗、R1（輪子在轉或剛停不到 0.5 秒
-# 不准動手臂）、R2（手臂動作時速度指令丟掉）、R3（一把鎖）、以及 SIGTERM 會先停輪。
+# 不准動手臂）、R2（手臂動作時速度指令丟掉）、R3（一把鎖）、R7（輪子看手臂姿態）、
+# 以及 SIGTERM 會先停輪。
 # 輪速換算從 integration/sugarbox_rl_motor_server.py 匯入，所以那支檔案也要在機器上。
 chs=$(python3 test_chassis_server.py 2>&1)
 echo "$chs" | grep -E "checks passed|FAIL|Traceback" || echo "$chs" | tail -5
@@ -183,6 +184,16 @@ odo=$(python3 test_odom_bridge.py 2>&1)
 echo "$odo" | grep -E "checks passed|FAIL|Traceback" || echo "$odo" | tail -5
 echo "$odo" | grep -q "all 20 checks passed" \
     && ok "20 項全過" || bad "G2 里程計測試未通過（完整輸出見上）"
+
+echo
+echo "=== 7.10 行駛姿態 <-> E1（需 all 25 checks passed）==="
+# 假控制器記錄每一段 guarded move：只能經 validate_nav_to_grasp_transition.py 驗過的
+# 中繼點進出行駛姿態、夾著東西不會在途中張爪、grasp 只從 E1 開始，
+# 而且要等手臂與輪子都靜止後拍的新畫面。
+trv=$(python3 test_travel_pose.py 2>&1)
+echo "$trv" | grep -E "checks passed|FAIL|Traceback" || echo "$trv" | tail -5
+echo "$trv" | grep -q "all 25 checks passed" \
+    && ok "25 項全過" || bad "行駛姿態測試未通過（完整輸出見上）"
 
 echo
 echo "=== 8. dry-run（不驅動伺服機；需 wrist_z_offset = 0.0564）==="
@@ -202,7 +213,7 @@ tail -3 /tmp/v23_guard.log
 echo
 echo "═══════════════════════════════════════════════════════════════"
 echo "Gate 判準："
-echo "  · 163 / 37 / 641 / 62 / 89 / 48 / 20 一字不差"
+echo "  · 163 / 37 / 641 / 62 / 89 / 53 / 20 / 25 一字不差"
 echo "  · wrist_z_offset 必須 0.0564（純幾何，跨平台不該變；也不隨姿態變——hover 高度錨在地板不是手臂，所以 C3→E1 這個值不動）"
 echo "  · Stage 序列 0→1 → jaw close → ABORT → retreat home，exit 0"
 echo "  · 策略步數容許 ±3 浮點漂移；超過就停下來回報"

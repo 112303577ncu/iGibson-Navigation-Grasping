@@ -27,6 +27,11 @@ Safety rules, enforced here rather than trusted to clients:
   R3  Every write to the board goes through one lock. Rosmaster_Lib sends each
       command as a single ser.write(), so locking that call keeps arm and wheel
       packets from interleaving when they come from different threads.
+  R7  The wheels follow the arm pose the service last verified: full speed in the
+      travel pose, a creep (|vx| <= 0.10 m/s, |wz| <= 0.5 rad/s) at E1 for the
+      last centimetres into the 3 cm grasp window, and nothing anywhere else --
+      the braking corridor was measured with the arm in the travel pose, and an
+      arm frozen half-way through an aborted grasp is not something to drive with.
 
 The wheel mapping is imported from sugarbox_rl_motor_server, never copied: two
 copies of motor constants is how the old RL server ended up with a mirrored yaw.
@@ -45,6 +50,9 @@ from pathlib import Path
 SETTLE_S = 0.5
 ZERO = (0, 0, 0, 0)
 MAX_LINE_BYTES = 4096
+CREEP_VX = 0.10
+CREEP_WZ = 0.5
+DRIVE_POSES = ("travel", "e1")
 
 
 def load_motor_mapping(repo_root: Path):
@@ -94,6 +102,8 @@ class Chassis:
         # could land after the final stop: seen on the robot 2026-09-28, the
         # wheels went back to 20 for 2 ms after systemctl restart zeroed them.
         self._closed = False
+        self._arm_pose = "unknown"          # set by the service after every arm move
+        self.pose_blocked = 0               # velocity commands refused by R7, total
         self.dropped = 0                    # velocity commands eaten by R2, total
         self._dropped_this_arm = 0
         self.refused = 0                    # arm commands refused by R1, total
@@ -150,6 +160,16 @@ class Chassis:
                 self.dropped += 1
                 self._dropped_this_arm += 1
                 return "dropped"
+            if self._arm_pose not in DRIVE_POSES:
+                self.pose_blocked += 1
+                self._write(ZERO)
+                if self.pose_blocked in (1, 10) or self.pose_blocked % 100 == 0:
+                    self._log("[chassis] velocity refused (%dx): arm pose is %s, "
+                              "stow or home it first" % (self.pose_blocked, self._arm_pose))
+                return "arm_pose"
+            if self._arm_pose == "e1":
+                vx = max(-CREEP_VX, min(CREEP_VX, vx))
+                wz = max(-CREEP_WZ, min(CREEP_WZ, wz))
             self._write(self._to_motor(vx, wz))
             return "ok"
 
@@ -187,6 +207,20 @@ class Chassis:
             self._dropped_this_arm = 0
             return None
 
+    def set_arm_pose(self, pose: str) -> None:
+        """R7 input: 'travel', 'e1' or anything else (which stops the wheels)."""
+        with self._lock:
+            self._arm_pose = str(pose)
+            if self._arm_pose not in DRIVE_POSES:
+                self._write(ZERO)
+
+    def still_since(self):
+        """Clock time the wheels have been stopped since; None while they turn."""
+        with self._lock:
+            if self._motors not in (None, ZERO):
+                return None
+            return self._stopped_since if math.isfinite(self._stopped_since) else 0.0
+
     def end_arm(self) -> None:
         with self._lock:
             self._arm_busy = False
@@ -206,6 +240,8 @@ class Chassis:
                     "moving": self._moving_or_settling(now),
                     "stopped_for_s": stopped_for,
                     "arm_busy": self._arm_busy,
+                    "arm_pose": self._arm_pose,
+                    "pose_blocked_total": self.pose_blocked,
                     "dropped_total": self.dropped,
                     "refused_total": self.refused,
                     "client": self.client}

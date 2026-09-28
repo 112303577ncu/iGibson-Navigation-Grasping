@@ -54,7 +54,26 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_SOCKET = "/tmp/grasp_service.sock"
-ARM_COMMANDS = ("grasp", "home", "release")
+ARM_COMMANDS = ("grasp", "home", "release", "stow")
+
+# The travel pose the robot drives in (docs/calibration/arm_pose.md) and the one
+# path between it and E1 that has been checked: S2 swings to WAYPOINT_S2 with
+# S3/S4 still at their E1 angles, then everything goes the rest of the way.
+# Going direct while holding a box folds the arm before it rises and sweeps the
+# box to 10.6 mm of the TG30 (validate_nav_to_grasp_transition.py).
+TRAVEL_DEG = (90.0, 140.0, 0.0, 0.0, 90.0, 30.0)
+WAYPOINT_S2 = 115.0
+POSE_TOL_DEG = 4.0
+
+# How old a detection can be relative to the frame it came from. The bridge reads
+# the camera flat out (~4 fps with YOLO), so the V4L2 queue hands it frames up to
+# about a second old, plus ~0.25 s of inference; it sends the newest result once a
+# second. A detection received FRAME_LAG_S after the arm and the wheels stopped
+# was therefore shot after they stopped.
+FRAME_LAG_S = 1.5
+# The grasp starts no sooner than this after the last motion, so every detection
+# still fresh (received in the last 1 s) at latch time is newer than FRAME_LAG_S.
+GRASP_SETTLE_S = 2.5
 
 
 def rss_mb() -> float:
@@ -89,6 +108,8 @@ class GraspService:
         self.episodes = 0
         self.last = None
         self.started = time.time()
+        # Monotonic, like the detection receiver's own stamps.
+        self._arm_moved_at = time.monotonic()
 
     # ── detection ───────────────────────────────────────────────────────
     def detection(self):
@@ -104,7 +125,12 @@ class GraspService:
         return {"pos": [round(float(v), 4) for v in pos],
                 "height": height, "fresh": bool(fresh)}
 
-    def wait_for_detection(self, timeout_s: float):
+    def detection_received_at(self) -> float:
+        """Monotonic receipt time of the latest detection; 0.0 when none/no receiver."""
+        recv = getattr(self.controller, "detection", None)
+        return float(getattr(recv, "_last_update_ts", 0.0) or 0.0)
+
+    def wait_for_detection(self, timeout_s: float, newer_than: float = 0.0):
         """Wait briefly for a fresh E1 detection.
 
         Returns the detection, or None when one never arrived. A controller
@@ -120,7 +146,7 @@ class GraspService:
         deadline = time.time() + timeout_s
         while True:
             det = self.detection()
-            if det is None or det["fresh"]:
+            if det is None or (det["fresh"] and self.detection_received_at() >= newer_than):
                 return det
             if time.time() >= deadline:
                 return None
@@ -148,18 +174,107 @@ class GraspService:
         included: the grasp latches what the camera sees, so the robot has to
         stand still from that moment on, not only once the arm starts moving.
         """
-        if self.chassis is None:
-            return fn()
-        why = self.chassis.begin_arm()
-        if why is not None:
-            return {"ok": False, "reason": why,
-                    "hint": "the wheels are turning or stopped less than 0.5 s ago; "
-                            "the arm was not moved",
-                    "chassis": self.chassis.status()}
+        if self.chassis is not None:
+            why = self.chassis.begin_arm()
+            if why is not None:
+                return {"ok": False, "reason": why,
+                        "hint": "the wheels are turning or stopped less than 0.5 s ago; "
+                                "the arm was not moved",
+                        "chassis": self.chassis.status()}
         try:
             return fn()
         finally:
-            self.chassis.end_arm()
+            self._arm_moved_at = time.monotonic()
+            if self.chassis is not None:
+                self.chassis.set_arm_pose(self.arm_pose())
+                self.chassis.end_arm()
+
+    def arm_pose(self) -> str:
+        """'travel', 'e1' or 'other' from the encoders ('unreadable' if they fail)."""
+        try:
+            deg = self._arm_deg()
+        except Exception:
+            deg = None
+        if deg is None:
+            return "unreadable"
+        if self._near(deg, TRAVEL_DEG):
+            return "travel"
+        if self._near(deg, self.controller.cfg.home_deg):
+            return "e1"
+        return "other"
+
+    def still_since(self) -> float:
+        """Monotonic time since which both the arm and the wheels have been still."""
+        since = self._arm_moved_at
+        if self.chassis is not None:
+            wheels = self.chassis.still_since()
+            since = max(since, wheels if wheels is not None else time.monotonic())
+        return since
+
+    # ── travel pose ─────────────────────────────────────────────────────
+    def _arm_deg(self):
+        rd = self.controller.servo.read_degrees()
+        return list(rd.degrees) if rd.valid else None
+
+    @staticmethod
+    def _near(deg, pose) -> bool:
+        return deg is not None and all(abs(a - b) <= POSE_TOL_DEG
+                                       for a, b in zip(deg[:5], pose[:5]))
+
+    def _waypoint(self):
+        e1 = self.controller.cfg.home_deg
+        return (e1[0], WAYPOINT_S2, e1[2], e1[3], e1[4])
+
+    def _move_legs(self, legs, label: str, deg) -> dict:
+        """Guarded moves through `legs` (S1-S5 each), keeping whatever the jaw holds.
+
+        A held object keeps the controller's hold command, not the encoder angle:
+        re-commanding the jaw to where it reads zeroes the squeeze and drops it.
+        """
+        ctl = self.controller
+        holding = ctl._grip_hold_rad is not None
+        grip = (ctl._grip_hold_rad if holding
+                else ctl.mapper.hw_deg_to_sim_grip(ctl.cfg.gripper_hw_open))
+        # Start from the encoders, as run() does, not from the last episode's idea.
+        ctl._current_arm_rads = ctl.mapper.hw_deg_to_sim_arm(deg[:5])
+        ctl._current_grip_rad = ctl.mapper.hw_deg_to_sim_grip(deg[5])
+        t0 = time.time()
+        for i, leg in enumerate(legs):
+            try:
+                res = ctl.move_guarded_and_verified(
+                    ctl.mapper.hw_deg_to_sim_arm(list(leg[:5])), grip,
+                    label="%s-%d" % (label, i), run_time_ms=400, settle_s=0.35,
+                    tol_deg=3.0, grip_is_hold=holding)
+            except Exception as exc:
+                return {"ok": False, "reason": "exception: %s" % exc, "leg": i,
+                        "elapsed_s": round(time.time() - t0, 2)}
+            if not res.get("reached"):
+                return {"ok": False, "reason": res.get("reason"), "leg": i,
+                        "holding": holding, "elapsed_s": round(time.time() - t0, 2)}
+        return {"ok": True, "holding": holding, "elapsed_s": round(time.time() - t0, 2)}
+
+    def _to_e1_from_travel(self, deg):
+        """None when the arm is at E1 (or got there); otherwise a refusal reply."""
+        if self._near(deg, self.controller.cfg.home_deg):
+            return None
+        if not self._near(deg, TRAVEL_DEG):
+            return {"ok": False, "reason": "arm_not_at_e1_or_travel", "servo_deg": deg,
+                    "hint": "only E1 <-> travel is a checked path; run home first"}
+        res = self._move_legs([self._waypoint(), self.controller.cfg.home_deg],
+                              "unstow", deg)
+        return None if res["ok"] else res
+
+    def cmd_stow(self) -> dict:
+        """E1 -> travel pose through the checked waypoint. A held object stays held."""
+        deg = self._arm_deg()
+        if deg is None:
+            return {"ok": False, "reason": "servo_read_failed"}
+        if self._near(deg, TRAVEL_DEG):
+            return {"ok": True, "already": True}
+        if not self._near(deg, self.controller.cfg.home_deg):
+            return {"ok": False, "reason": "arm_not_at_e1", "servo_deg": deg,
+                    "hint": "only E1 -> travel is a checked path; run home first"}
+        return self._move_legs([self._waypoint(), TRAVEL_DEG], "stow", deg)
 
     def cmd_home(self) -> dict:
         """Park at the grasp home pose with the jaw open, releasing anything held.
@@ -167,10 +282,17 @@ class GraspService:
         Without this the only way to put the object back on the table is to stop
         the service, run move_arm.py and start it again -- a minute of reloading
         PyBullet to open a gripper. Uses the same guarded move run() uses, so the
-        floor guard still applies.
+        floor guard still applies. From the travel pose it first goes back to E1
+        through the waypoint with the jaw still closed, so a held object is let go
+        at E1 rather than dropped on the chassis.
         """
         ctl = self.controller
         cfg = ctl.cfg
+        deg = self._arm_deg()
+        if deg is not None and self._near(deg, TRAVEL_DEG):
+            refused = self._to_e1_from_travel(deg)
+            if refused is not None:
+                return refused
         arm = ctl.mapper.hw_deg_to_sim_arm(list(cfg.home_deg[:5]))
         grip = ctl.mapper.hw_deg_to_sim_grip(cfg.home_deg[5])
         t0 = time.time()
@@ -198,6 +320,15 @@ class GraspService:
         commanded open, so "released" says the motion ran, not that the object
         landed in the bin.
         """
+        deg = self._arm_deg()
+        if deg is None:
+            return {"ok": False, "outcome": "servo_read_failed"}
+        # The release reach was checked on the robot from E1 (2026-09-25); from the
+        # travel pose, carry the object back to E1 first rather than reach from there.
+        refused = self._to_e1_from_travel(deg)
+        if refused is not None:
+            refused["outcome"] = refused.get("reason")
+            return refused
         t0 = time.time()
         try:
             outcome = self.controller.run_release_only()
@@ -217,7 +348,24 @@ class GraspService:
         # worth its rotations -- and that path stays a separate, manually
         # unlocked flow (graspscan.sh), because a LEFT/RIGHT-only target rests
         # entirely on the S1 rotation the scan config still calls unvalidated.
-        if self.detection() is not None and self.wait_for_detection(wait_s) is None:
+        #
+        # Only from E1. The latch takes any detection received in the last second
+        # and checks the camera pose against the encoders at latch time, not at
+        # capture time, so a frame shot on the way up from the travel pose would
+        # pass and put the grasp somewhere plausible and wrong.
+        deg = self._arm_deg()
+        if deg is None or not self._near(deg, self.controller.cfg.home_deg):
+            return {"ok": False, "reason": "arm_not_at_e1", "servo_deg": deg,
+                    "hint": "run home first; it comes up from the travel pose "
+                            "through the checked waypoint", "episodes": self.episodes}
+        # A frame shot before the arm or the wheels last stopped would latch fine
+        # and put the grasp somewhere plausible and wrong, so wait for one shot after.
+        since = self.still_since()
+        pause = since + GRASP_SETTLE_S - time.monotonic()
+        if pause > 0:
+            time.sleep(pause)
+        if (self.detection() is not None
+                and self.wait_for_detection(wait_s, newer_than=since + FRAME_LAG_S) is None):
             return {"ok": False, "reason": "no_fresh_e1_detection",
                     "hint": "nothing visible from E1 in %.0fs — object outside "
                             "the E1 window, or the vision service is down. The "
@@ -252,10 +400,12 @@ class GraspService:
         try:
             if self.chassis_server is not None:
                 self.chassis_server.start()
+                # R7 starts closed ("unknown") until the encoders say where the arm is.
+                self.chassis.set_arm_pose(self.arm_pose())
             if self.odom_bridge is not None:
                 self.odom_bridge.start()
             print("\n[service] ready on %s — startup cost is now paid.\n"
-                  "[service] commands: grasp | release | home | status | quit"
+                  "[service] commands: grasp | release | home | stow | status | quit"
                   "   chassis: %s   odom: %s   (rss %.0f MB)\n"
                   % (self.sock_path,
                      "TCP %d" % self.chassis_server.port if self.chassis_server
@@ -284,7 +434,7 @@ class GraspService:
                     elif line in ARM_COMMANDS:
                         reply = self.run_arm_command(
                             {"home": self.cmd_home, "release": self.cmd_release,
-                             "grasp": self.cmd_grasp}[line])
+                             "grasp": self.cmd_grasp, "stow": self.cmd_stow}[line])
                     else:
                         reply = {"ok": False, "error": "unknown command %r" % line}
                     conn.sendall((json.dumps(reply) + "\n").encode())
