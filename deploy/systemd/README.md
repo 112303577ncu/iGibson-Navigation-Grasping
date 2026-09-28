@@ -50,6 +50,29 @@ Switch to navigation mode (the ROS master must already be running):
 sudo systemctl start x3plus-navigation.service
 ```
 
+Start the TG30 with the robot-specific measured transform, rather than the
+vendor `TG_test.launch` (whose height and yaw do not match this installation):
+
+```bash
+source /opt/ros/melodic/setup.bash
+source ~/ydlidar_ws/devel/setup.bash
+roslaunch /path/to/repo/deploy/ros/x3plus_tg30_navigation.launch
+```
+
+The transform was measured on the real robot on 2026-09-27.  The laser centre
+is approximately 0.10 m forward of the chassis centre and its scan plane is
+0.095 m above the floor.  A board physically in front appeared at raw scan
+angle 180 degrees, so the launch applies a pi-radian yaw.  Verify the live tree
+before mapping or AMCL:
+
+```bash
+rosrun tf tf_echo base_footprint laser
+rostopic hz /scan
+```
+
+The expected transform is translation `[0.100, 0.000, 0.095]`, yaw `180 deg`,
+with `/scan` close to 10 Hz.
+
 Switch back to the resident grasp mode:
 
 ```bash

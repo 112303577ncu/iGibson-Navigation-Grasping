@@ -47,6 +47,8 @@ from integration.nav_rl import (
     NavRLConfig,
     RosLaserScanSource,
     describe_scan,
+    front_min_raw,
+    front_min_brake,
     laser_scan_to_points,
     make_lidar,
     scan_to_rays,
@@ -280,6 +282,60 @@ class SafetyGuardTests(unittest.TestCase):
         left = scan_to_rays([(85.0, 1.0)], cfg)
         self.assertLessEqual(int(np.argmin(right)), 3)
         self.assertGreaterEqual(int(np.argmin(left)), 44)
+
+    def test_forward_brake_uses_fixed_width_swept_corridor(self):
+        cfg = NavRLConfig(
+            lidar_forward_offset_m=0.10,
+            safety_brake_dist=0.38,
+            safety_corridor_half_width_m=0.22,
+        )
+
+        # Raw point 0.25 m ahead of the forward-mounted lidar is 0.35 m ahead
+        # of the robot centre and lies inside the swept footprint.
+        self.assertAlmostEqual(front_min_raw([(0.0, 0.25)], cfg), 0.35)
+
+        # The real TG30 sees the robot platform behind its forward-mounted
+        # origin. After the 180-degree mount correction those returns fall at
+        # or behind the robot's front plane and must not latch the brake.
+        self.assertEqual(front_min_raw([(180.0, 0.10)], cfg), float("inf"))
+
+        # A nearby wall point can have a short radial range while remaining
+        # outside the robot's 0.22 m half-width corridor. It must not stop a
+        # straight drive.
+        wall_angle = math.degrees(math.atan2(0.23, 0.20 - 0.10))
+        wall_range = math.hypot(0.20 - 0.10, 0.23)
+        self.assertEqual(front_min_raw([(wall_angle, wall_range)], cfg),
+                         float("inf"))
+
+        # Moving the same obstacle 2 cm inward places it inside the corridor.
+        obstacle_angle = math.degrees(math.atan2(0.21, 0.20 - 0.10))
+        obstacle_range = math.hypot(0.20 - 0.10, 0.21)
+        self.assertAlmostEqual(
+            front_min_raw([(obstacle_angle, obstacle_range)], cfg), 0.20,
+            places=6,
+        )
+
+    def test_forward_brake_rejects_one_or_two_normal_zone_speckles(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        self.assertEqual(front_min_brake([(0.0, 0.25)], cfg), float("inf"))
+        self.assertEqual(
+            front_min_brake([(-0.2, 0.25), (0.2, 0.25)], cfg),
+            float("inf"),
+        )
+
+    def test_forward_brake_accepts_three_point_obstacle_cluster(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        points = [(-0.2, 0.25), (0.0, 0.25), (0.2, 0.25)]
+        self.assertAlmostEqual(front_min_brake(points, cfg), 0.35, places=4)
+
+    def test_forward_brake_does_not_join_separated_speckles(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        points = [(-8.0, 0.25), (0.0, 0.25), (8.0, 0.25)]
+        self.assertEqual(front_min_brake(points, cfg), float("inf"))
+
+    def test_forward_brake_keeps_single_point_emergency_stop(self):
+        cfg = NavRLConfig(lidar_forward_offset_m=0.10)
+        self.assertAlmostEqual(front_min_brake([(0.0, 0.14)], cfg), 0.24)
 
     def test_scan_coverage_wraps_for_a_full_scan_and_is_not_orientation_proof(self):
         cfg = NavRLConfig(lidar_yaw_offset_deg=180.0)

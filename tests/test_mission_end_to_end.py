@@ -727,7 +727,9 @@ class FineAlignSafetyRegression(unittest.TestCase):
         self.assertGreaterEqual(h.stops, 1)
 
     def test_blocking_align_obeys_live_health_and_lidar_brake(self):
-        h = self.Harness([(0.0, 0.10)])
+        # Keep the synthetic obstacle beyond the measured 0.17 m robot front
+        # plane; shorter returns are the real TG30 seeing the robot itself.
+        h = self.Harness([(0.0, 0.20)])
         checks = iter(("", "wheel feedback stale"))
         with mock.patch.object(nrgp.vgp, "decide_arm_action_by_distance",
                                return_value=("forward", 0.1, "move", None, 0.0)), \
