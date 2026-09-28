@@ -1,5 +1,35 @@
 # X3Plus 專題進度記錄
 
+## 2026-09-28 — G2 相容導航端第一階段（112303577ncu）
+
+新增 `integration/g2_nav_client.py`：Jetson Python 3.8 從 rosbridge 訂閱
+`/scan`、`/odom_setmotor`，底盤只對常駐 `grasp-service` 的 TCP 7000
+送速度／停車，**自己不開 `/dev/myserial`**。目前提供唯讀 `--probe` 和
+有額外人工確認旗標的受控短直線 `--real`（速度 30、20 Hz、10–25 cm）；
+內建 0.42 m LiDAR 幾何煞車、掃描／odom 逾時、odom 跳躍／無進展、
+直線偏離、時間／位移硬上限與 finally 停車。僅允許 travel 姿態，
+且序列埠唯一持有 PID 必須等於 `grasp-service` 的 MainPID。
+
+本機 6 項新測試全過，整體 `integration/preflight.py --offline` 為
+**24 pass、1 warn、0 fail**；warn 是 Windows 本機找不到 Jetson 才有的
+`route.yaml`。已在 Jetson 直接驗證
+`/home/jetson/x3plus/route_package/config/routes/route.yaml` 為 `route VALID`
+（117 → 83 waypoints），不能將 Windows 警告解讀為 Jetson 缺檔。
+Jetson `--selftest` 和**不移動**的 `--probe` 通過：
+`scan_frame=laser`、前方紙板 x 約 0.322–0.325 m、
+`brake=lidar_brake`，odom 速度零，唯一 serial owner 為服務 PID 4324。
+**新程式的 `--real` 尚未執行**；先前的 LiDAR 停車 3/3 是獨立測試程式，
+不能冒充新控制端的實車驗收。
+
+probe 時發現 TG30 2020 束由 float32 角度算出的掃描跨度是
+359.9999964°，舊 `nav_rl.describe_scan` 用 360°−1e-6 判斷整圈，
+因此誤報前方覆蓋率只有 50%。改成容忍不大於一束的缺口後，
+Jetson 自測與再 probe 均不再誤報；真正的部分視野仍會被攔截。
+Jetson `integration/nav_rl.py` 的原檔已另存
+`nav_rl.py.bak_20260928_g2_probe`，再部署此次修正；
+`grasp-service` 未重啟，機器人未移動。操作方法及限制見
+`docs/operations/G2_NAV_CLIENT_2026-09-28.md`。
+
 ## 2026-09-28 — 導航端速度 30 短脈衝與 odom 尺量（112303577ncu）
 
 Jetson `172.20.10.2`，`grasp-service` 單獨持有 `/dev/myserial`，手臂在 travel pose；

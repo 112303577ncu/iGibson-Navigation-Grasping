@@ -627,7 +627,11 @@ def describe_scan(message: Mapping[str, Any], cfg: NavRLConfig) -> dict:
     # false partial overlap for a valid 360-degree scan with a 180-degree offset.
     half = cfg.lidar_fov_deg / 2.0
     raw_span = abs(angle_inc) * max(n - 1, 0)
-    if raw_span >= 360.0 - 1e-6:
+    # TG30 reports 2020 rays from -pi to +pi.  Its float32 increment makes
+    # the calculated span 359.9999964 deg, so a 1e-6 tolerance falsely says
+    # only half the forward 180 deg is covered after the 180 deg frame flip.
+    # A gap no larger than one sample still represents a complete revolution.
+    if raw_span >= 360.0 - max(1e-3, abs(angle_inc)):
         covered = min(360.0, cfg.lidar_fov_deg)
     else:
         # a = dir*raw + offset is affine, so the image of the raw window is
@@ -1132,6 +1136,16 @@ def _selftest_describe_scan():
     info = describe_scan(msg("laser", 95.0, 265.0), shifted)
     assert info["forward_fraction"] > 0.9, info
     assert not info["warnings"], info["warnings"]
+
+    # Actual TG30 metadata on the Jetson: the 3.6e-6 deg float32 rounding
+    # gap must not be mistaken for a half-covered front hemisphere.
+    tg30 = {"header": {"frame_id": "laser"},
+            "angle_min": -math.pi,
+            "angle_increment": math.radians(0.1783060903),
+            "ranges": [1.0] * 2020}
+    info = describe_scan(tg30, shifted)
+    _approx(info["forward_fraction"], 1.0, 1e-6)
+    assert not info["warnings"], info
 
     # A narrow window is reported as partial rather than silently padded.
     info = describe_scan(msg("laser_link", -40.0, 40.0), cfg)
