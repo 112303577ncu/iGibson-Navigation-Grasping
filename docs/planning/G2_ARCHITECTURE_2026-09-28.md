@@ -10,13 +10,19 @@
 
 ## 為什麼這樣定
 
-**1. TCP 7000 已經是全隊的共同介面。** 會送速度指令到 7000 的程式有：enoch 的
-`sugarbox_rl_approach_final2.py`、`detection/arm_center_setmotor.py`、
-`detection/rear_nav/rear_to_arm_blind_handoff.py`、`detection/calibration/` 的底盤校正腳本
-與 `detection/debug_tools/` 的除錯工具；2026-09-22 的導航硬體測試也是經
-`x3plus-navigation` 的 7000 馬達服務進行。協定是一行一個 JSON（`{"vx":…,"wz":…}` 或
-`{"action":"stop"}`），0.5 秒沒收到指令就停車。**讓持有序列埠的程式講同一個協定，
-這些程式一行都不用改。**
+**1. TCP 7000 已經是接近端的介面。** enoch 的 `sugarbox_rl_approach_final2.py` 經 7000
+送速度指令，對面是 `integration/sugarbox_rl_motor_server.py`（在 112303577ncu 的 PR 裡）。
+協定是一行一個 JSON：`{"action":"velocity","vx":…,"wz":…}` 或 `{"action":"stop"}`；
+**沒寫 `action` 等於 stop**，其他 action 一律停車並記錄；0.5 秒沒收到指令就停車。
+**讓持有序列埠的程式講同一個協定，接近程式一行都不用改。**
+
+⚠ 7000 上其實有**兩種格式**（2026-09-28 核對程式碼才發現，初版寫錯）。`detection/` 底下的
+舊工具（`arm_center_setmotor.py`、`rear_nav/rear_to_arm_blind_handoff.py`、`calibration/`、
+`debug_tools/`）送的是 `{"action":"forward"/"turn_left"/…,"speed":N}`，對面是
+`x3plus-navigation` 跑的 `ai_motor_server_P0.py`。這支**只存在 Jetson 上、不在 repo**，
+格式的完整定義讀不到。**決定：常駐服務只講速度格式**；舊格式工具照舊在維修模式
+（`x3plus-navigation` + P0）下使用，與常駐服務互斥。等 P0 收進 repo、確認有工具還需要，
+再決定要不要加。
 
 另一類是 repo 內的 `mission_pipeline.py`、`nav_rl_grasp_pipeline.py`（模式 C）、
 `vision_grasp_pipeline.py`（模式 A）：它們在程式內直接 `set_car_motion` 控車，並要求 7000
@@ -45,7 +51,7 @@ flowchart LR
     V["grasp-vision<br/>手臂相機 video0 → YOLO"]
     ROS["ROS：TG30 /scan、AMCL、rosbridge :9090"]
     CAM["後相機 video1 → NVENC 串流"]
-    NAV["導航／校正工具"]
+    NAV["其他速度格式用戶端<br/>（導航測試工具）"]
   end
   BOARD["Rosmaster 控制板<br/>/dev/myserial"]
 
@@ -66,7 +72,7 @@ flowchart LR
 
 | 介面 | 內容 | 狀態 |
 |------|------|------|
-| TCP 7000 | 一行一個 JSON；`vx`／`wz` 或 `action: stop`；0.5 s 看門狗；速度上限與死區沿用 `sugarbox_rl_motor_server.py` | **沿用，不改格式** |
+| TCP 7000 | 一行一個 JSON；`action: velocity` + `vx`／`wz`，或 `action: stop`；缺 action 視為 stop；0.5 s 看門狗；速度上限與死區沿用 `sugarbox_rl_motor_server.py` | **沿用，不改格式**；舊 `action/speed` 格式不收（見上） |
 | `graspctl` socket | `grasp`／`release`／`home`／`status`／`quit` | 沿用；`status` 加上底盤狀態 |
 | `/odom_setmotor` + `odom→base_footprint` TF | `FeedbackOdomReader`（linear 0.98、angular 0.501）算出，20 Hz | 改由常駐服務發 |
 | TCP 5555 | 視覺服務送物體座標 | 沿用 |
@@ -79,7 +85,8 @@ odom 用 rosbridge 發（`integration/ros_io.py` 的做法）：常駐服務跑�
 ## 程式內強制的安全規則
 
 **R1 手臂動作前，底盤必須已停止 ≥ 0.5 秒。** 否則 `grasp`／`release`／`home` 直接回
-`{"ok": false, "reason": "chassis_moving"}`，手臂不動。
+`{"ok": false, "reason": "chassis_moving"}`，手臂不動。「停止」指最後一次**非零**輪速寫入
+已過 0.5 秒；用戶端持續送 `stop` 或 `vx=wz=0` 不算在動，連線可以一直開著。
 
 **R2 手臂動作期間，底盤指令一律丟棄。** 開始動手臂前先送一次停車，整段手臂動作持有
 硬體鎖；這段時間 7000 收到的速度指令不寫入控制板，只記錄並回報。
@@ -109,9 +116,11 @@ odom 用 rosbridge 發（`integration/ros_io.py` 的做法）：常駐服務跑�
 **112303577ncu（導航）**
 1. 先把 fork 上 9/27 的 4 個 commit 開 PR 合進 `v23-grasp-test`（改到 `mission_pipeline.py`
    與 `sugarbox_rl_motor_server.py`，G2 要用）。
-2. 經 7000 的導航與校正工具不用改。程式內直接控車的 `nav_rl.py`／`nav_rl_grasp_pipeline.py`
-   （模式 C）要改成 7000 用戶端，或保留為與常駐服務互斥的獨立模式，由導航端決定。
-3. 驗證 odom 改由 rosbridge 發之後，AMCL 與 TF 是否正常。
+2. 把 Jetson 上的 `ai_motor_server_P0.py` 收進 repo，寫清楚它收哪些 action。它是
+   `x3plus-navigation` 實際在跑的馬達服務，也是舊 `action/speed` 格式唯一的定義。
+3. 程式內直接控車的 `nav_rl.py`／`nav_rl_grasp_pipeline.py`（模式 C）要改成 7000 用戶端，
+   或保留為與常駐服務互斥的獨立模式，由導航端決定。
+4. 驗證 odom 改由 rosbridge 發之後，AMCL 與 TF 是否正常。
 
 **enoch20050427（接近）**
 1. 把 `codex/sugarbox-approach-review` 重新接到 `v23-grasp-test` 上。
@@ -126,9 +135,9 @@ koala915 名下。
 ## 實作順序
 
 1. 合併 112303577ncu 的 PR（前置條件）。
-2. 常駐服務加上 TCP 7000 與 R1–R3。**先把車架起來、輪子離地**，用
-   `detection/calibration/` 的工具送速度，確認輪子會轉、看門狗會停、手臂動作期間
-   速度指令被擋下。
+2. 常駐服務加上 TCP 7000 與 R1–R3。**先把車架起來、輪子離地**，用幾行 Python 送
+   速度格式的 JSON（`detection/calibration/` 的工具是舊格式，不能拿來測），確認輪子會轉、
+   看門狗會停、手臂動作期間速度指令被擋下。
 3. 加上 odom 發布，驗證 AMCL 與 TF。
 4. 落地測：enoch 的接近程式開到盒子前 → `graspctl grasp` → `graspctl release`，
    中間不重啟任何服務。
