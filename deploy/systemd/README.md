@@ -12,6 +12,19 @@ The grasp drop-in also refuses to start if an unmanaged process still has
 `/dev/myserial` open. The arm's posture-change delay is extra margin, not part
 of the ownership guarantee.
 
+Since G2 (2026-09-28) `g2-chassis.conf` makes the grasp service drive the wheels
+too, on TCP 7000 with the same velocity protocol as
+`integration/sugarbox_rl_motor_server.py`. The approach controller therefore
+needs no mode switch at all; `x3plus-navigation` is only for the older
+`{"action","speed"}` tools and maintenance. Two things to know:
+
+- `systemctl stop/restart grasp-service` zeroes the wheels before the process
+  exits (SIGTERM takes the Ctrl+C path). Verified on the robot, wheels off the
+  ground, 3/3.
+- The unit allows 3 starts in 300 s. A fourth `restart` inside that window
+  leaves the service `failed (start-limit-hit)`; recover with
+  `sudo systemctl reset-failed grasp-service && sudo systemctl start grasp-service grasp-vision`.
+
 Navigation chooses `ROS_IP` from the kernel's default IPv4 route at each
 startup. On an isolated LAN with no default route, it accepts the only global
 IPv4 address. Multiple viable addresses are treated as ambiguous and stop the
@@ -27,6 +40,7 @@ Install on the Jetson:
 sudo install -m 0644 x3plus-navigation.service /etc/systemd/system/
 sudo install -d -m 0755 /etc/systemd/system/grasp-service.service.d
 sudo install -m 0644 grasp-service.service.d/serial-owner.conf \
+  grasp-service.service.d/g2-chassis.conf \
   /etc/systemd/system/grasp-service.service.d/
 sudo install -d -m 0755 /usr/local/libexec/x3plus
 sudo install -m 0755 check-serial-owner.sh start-navigation.sh \
