@@ -53,7 +53,39 @@ G2 直接 import 它的 `velocity_to_motor_values`。常駐服務用兩個環境
   期間照常 20 Hz 發布、姿態不歸零。空轉無負載，**不能當校正數據**；證明的是控制板速度回報
   有開、方向正確、手臂動作不中斷 odom。
 - 記憶體：服務 503 MB（+17 MB）、辨識 298 MB、ROS 全套 561 MB，剩 1.67 GB。
-- **第 3 節（AMCL）尚未做**，一定要落地、在 RViz 設好初始位置後才有意義。
+- 第 3 節（AMCL）落地做，見下一段。
+
+### 第 3 步驗收第 3 節：AMCL 落地，3/3 通過（已驗證）
+
+機器人不能裝 RViz，改在 Windows 裝 **Lichtblick 1.29.1**（Foxglove Studio 的開源分支，
+GitHub 官方 release，sha256 與 release digest 相符；安裝檔無程式碼簽章）。連線要選
+**Rosbridge**（預設的 Foxglove WebSocket 會報 protocol version 錯誤），`ws://<Jetson IP>:9090`，
+匯入 `deploy/ros/lichtblick_g2_amcl.json`（地圖、光達、粒子、AMCL 共變異數，2D Pose
+Estimate 預設 0.15 m／7°）。ROS 用 `deploy/ros/start_g2_test_stack.sh` 以暫時性 systemd
+單元啟動；量測用 `deploy/ros/amcl_probe.py`（每筆先呼叫 `/request_nomotion_update` 再取
+**下一筆** `/amcl_pose`）、`scan_match.py`（光達落在地圖牆上的比例）、`drive7000.py`。
+
+- 靜止 30 秒：位置 variance 0.022 → 0.011、yaw 43 → 13 deg²，單調收斂；這段 AMCL 位置
+  往 x 修了約 15 cm（從手點的初始位置收斂到光達最吻合處，每 4 秒修正量 3.1 → 1.5 cm）。
+- 三輪「直行（輪速 30、1.5 秒）→ 尺量 → 原地轉（輪速 25、2 秒）」：
+
+| 輪 | 尺量 | odom | AMCL | 轉向 odom | 轉向 AMCL | 光達吻合 |
+|----|------|------|------|-----------|-----------|----------|
+| 1 | 31 cm | 30.6 | 31.8 | 左 +47.2° | +47.7° | — |
+| 2 | 31 cm | 31.2 | 29.9 | 右 −42.7° | −42.6° | 77 → 87% |
+| 3 | 31 cm | 31.5 | 31.2 | 左 +43.5° | +43.4° | 88 → 90% |
+
+- 全程位置 variance 最大 0.022（門檻 0.0625）、yaw 最大 47 deg²（門檻約 400）；沒有任何
+  一次跳超過 0.25 m 或 20°；移動方向與車頭一致（直行偏差 0–3°）。
+- 轉向 odom 與 AMCL 差 0.1–0.5°，證實 2026-09-24 的 angular 0.986 正確；舊的 0.501 會
+  只算出一半角度。
+- 第 1、2 輪之間操作員用手擺車，odom 與 AMCL 都沒變；`scan_match.py --sweep` 顯示最吻合
+  的方向正好是 AMCL 的方向（83%，±10° 掉到 62%），所以定位仍正確。**covariance 小不代表
+  位置對**：手動搬車後要用吻合度確認，不對就重設 2D Pose Estimate。一次 53% 是有人站在
+  光達旁，下一幀回到 88%。
+- 服務全程 RSS 503 → 505 MB，odom 發了 50,072 筆、失敗 0；證據 bag 在 Jetson
+  `~/g2_bags/g2_odom_acceptance_20260928_161613.bag`（第 1 輪）與 `..._162412.bag`（第 2、3 輪）。
+- 這次沒驗：長距離、AMCL 對 rosbridge 延遲的敏感度在高速下是否仍成立（本次最高 0.15 m/s）。
 
 ### 機器上的里程計校正比 repo 新（已收進 repo）
 

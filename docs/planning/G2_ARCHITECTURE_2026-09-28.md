@@ -134,8 +134,8 @@ koala915 名下。
 
 ## 實作順序
 
-> **進度（2026-09-28）**：第 1、2 步完成；第 3 步 odom 已上線，ncu 驗收第 1、2 節在架輪
-> 狀態通過，第 3 節（AMCL）待落地。數據見 `progress.md` 2026-09-28。程式：
+> **進度（2026-09-28）**：第 1、2、3 步完成。odom 驗收三節全過，第 3 節（AMCL）落地
+> 3/3。下一步是第 4 步。數據見 `progress.md` 2026-09-28。程式：
 > `grasp/v23/chassis_server.py`、`odom_bridge.py`；開關在
 > `deploy/systemd/grasp-service.service.d/g2-chassis.conf`。
 
