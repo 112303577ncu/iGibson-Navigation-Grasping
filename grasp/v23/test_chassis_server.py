@@ -292,6 +292,47 @@ def main():
     ch.set_arm_pose("other")
     ok(board.last == (0, 0, 0, 0), "an arm left anywhere else stops the wheels at once")
 
+    print("\n== R8: the wheels need the board to be talking ==")
+    # The robot, 2026-09-28: a USB hub glitch stopped only the read side. The
+    # wheels obeyed, servo reads failed and the wheel feedback froze.
+    clock = Clock()
+    rx = cs.RxMonitor(clock)
+    board = FakeBoard()
+    ch = cs.Chassis(board, to_motor, clock=clock, log=lambda _m: None, rx_age=rx.age)
+    ch.set_arm_pose("travel")
+    ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0})
+    ok(board.last == (30, 30, 30, 30), "a talking board drives")
+    clock.advance(0.6)
+    ch._last_cmd = clock()                          # a client that keeps sending
+    ok(ch.watchdog_tick() and board.last == (0, 0, 0, 0),
+       "0.6 s without a byte from the board stops wheels that were turning")
+    n = len(board.calls)
+    ok(ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0}) == "board_silent"
+       and all(c == (0, 0, 0, 0) for c in board.calls[n:]),
+       "and velocity is refused while it stays silent")
+    rx.saw(12)
+    ok(ch.command({"action": "velocity", "vx": 0.15, "wz": 0.0}) == "ok"
+       and board.last == (30, 30, 30, 30), "the next byte from the board lets it drive again")
+
+    class ReadSer:
+        def __init__(self):
+            self.feed = [b"\xff", b"", b"\xfc"]
+
+        def read(self, n=1):
+            return self.feed.pop(0) if self.feed else b""
+
+    dev = type("Dev", (), {})()
+    dev.ser = ReadSer()
+    clock = Clock()
+    mon = cs.install_rx_monitor(dev, clock=clock)
+    ok(cs.install_rx_monitor(dev) is mon, "installing the monitor twice keeps one")
+    clock.advance(2.0)
+    dev.ser.read()
+    ok(mon.age() == 0.0 and mon.bytes == 1, "a byte read by the driver resets the silence")
+    clock.advance(1.0)
+    dev.ser.read()
+    ok(mon.age() == 1.0, "an empty read does not")
+
     print("\n== grasp service: R1/R2 around the arm commands ==")
     gs.GRASP_SETTLE_S = 0.0     # the settle wait has its own checks in test_travel_pose.py
 

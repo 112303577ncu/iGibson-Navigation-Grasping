@@ -151,6 +151,20 @@ def main():
     br.tick()
     ok(len(br._odom.sent) > n, "publishing resumes once the feedback is good again")
 
+    print("\n== a silent board is never published as standing still ==")
+    silent = {"age": 2.0}
+    br._feedback_age = lambda: silent["age"]
+    n = len(br._odom.sent)
+    clock.t += 0.05
+    br.tick()
+    ok(len(br._odom.sent) == n and br.skipped_silent == 1,
+       "2 s without a byte from the board: frozen feedback is not published")
+    silent["age"] = 0.02
+    clock.t += 0.05
+    br.tick()
+    ok(len(br._odom.sent) == n + 1, "publishing resumes when the board talks again")
+    br._feedback_age = None
+
     print("\n== losing rosbridge ==")
     br._client.is_connected = False
     clock.t += 0.05

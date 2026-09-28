@@ -182,12 +182,36 @@ class GraspService:
                                 "the arm was not moved",
                         "chassis": self.chassis.status()}
         try:
+            # The 8 deg rate limit counts from the last COMMAND, not from the arm.
+            # After a restart that command is the default home (E1) wherever the
+            # arm really is, and on 2026-09-28 a home from the travel pose went
+            # out as one unlimited jump. So start every command from the encoders,
+            # and do not move an arm whose position cannot be read.
+            try:
+                deg = self._arm_deg()
+            except Exception:
+                deg = None
+            if deg is None:
+                return {"ok": False, "reason": "servo_read_failed",
+                        "hint": "the arm was not moved: without the encoders the "
+                                "rate limit would count from a guess"}
+            self._sync_rate_limit(deg)
             return fn()
         finally:
             self._arm_moved_at = time.monotonic()
             if self.chassis is not None:
                 self.chassis.set_arm_pose(self.arm_pose())
                 self.chassis.end_arm()
+
+    def _sync_rate_limit(self, deg) -> None:
+        """Point the servo rate limiter (S1-S5) at where the arm actually is.
+
+        The jaw is left alone: while holding, its last command is the squeeze
+        past contact, and resetting it to the encoder would ease the grip.
+        """
+        servo = self.controller.servo
+        last = list(getattr(servo, "_last_deg", deg))
+        servo._last_deg = [float(v) for v in deg[:5]] + [float(last[5])]
 
     def arm_pose(self) -> str:
         """'travel', 'e1' or 'other' from the encoders ('unreadable' if they fail)."""
@@ -489,8 +513,9 @@ def build_chassis_server(controller, port_text: str):
         return None
     to_motor, max_motor, watchdog_s = cs.load_motor_mapping(HERE.parents[1])
     cs.install_write_lock(device, threading.Lock())
+    rx = cs.install_rx_monitor(device)
     chassis = cs.Chassis(device, to_motor, max_motor=max_motor, watchdog_s=watchdog_s,
-                         log=lambda msg: print(msg, flush=True))
+                         log=lambda msg: print(msg, flush=True), rx_age=rx.age)
     return cs.ChassisServer(chassis, port=int(port_text),
                             log=lambda msg: print(msg, flush=True))
 
@@ -524,8 +549,11 @@ def build_odom_bridge(controller, target: str):
         ("linear_scale", "lateral_scale", "angular_left_scale", "angular_right_scale")
         if hasattr(cfg, k)), flush=True)
     reader = feedback_odom.FeedbackOdomReader(device, cfg)
+    import chassis_server as cs
+    rx = cs.install_rx_monitor(device)          # the same monitor the chassis uses
     return ob.OdomBridge(reader, ros_io, roslibpy, host=host, port=int(port),
-                         log=lambda msg: print(msg, flush=True))
+                         log=lambda msg: print(msg, flush=True),
+                         feedback_age=rx.age, feedback_stale_s=cs.RX_STALE_S)
 
 
 def main() -> int:

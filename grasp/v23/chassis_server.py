@@ -27,6 +27,12 @@ Safety rules, enforced here rather than trusted to clients:
   R3  Every write to the board goes through one lock. Rosmaster_Lib sends each
       command as a single ser.write(), so locking that call keeps arm and wheel
       packets from interleaving when they come from different threads.
+  R8  The board must be talking. Writes and reads use separate USB transfers, and
+      on 2026-09-28 a hub glitch killed only the read side: the wheels still
+      obeyed while every servo read failed and the wheel feedback froze at its
+      last value -- which odometry cannot tell from standing still. Every byte
+      the driver reads is timestamped (install_rx_monitor); after RX_STALE_S of
+      silence the wheels stop and velocity is refused.
   R7  The wheels follow the arm pose the service last verified: full speed in the
       travel pose, a creep (|vx| <= 0.10 m/s, |wz| <= 0.5 rad/s) at E1 for the
       last centimetres into the 3 cm grasp window, and nothing anywhere else --
@@ -53,6 +59,7 @@ MAX_LINE_BYTES = 4096
 CREEP_VX = 0.10
 CREEP_WZ = 0.5
 DRIVE_POSES = ("travel", "e1")
+RX_STALE_S = 0.5
 
 
 def load_motor_mapping(repo_root: Path):
@@ -81,13 +88,57 @@ def install_write_lock(device, lock) -> None:
     ser._g2_write_lock = lock
 
 
+class RxMonitor:
+    """When the board last sent this process a byte (R8).
+
+    Rosmaster_Lib's receive thread calls ser.read() once per byte, looking the
+    method up each time, so wrapping it catches every byte without touching the
+    driver. The board streams its auto-report continuously, so silence means the
+    read side is dead, not that the robot is idle.
+    """
+
+    def __init__(self, clock=time.monotonic):
+        self._clock = clock
+        self.last = clock()
+        self.bytes = 0
+
+    def age(self) -> float:
+        return self._clock() - self.last
+
+    def saw(self, n: int) -> None:
+        self.last = self._clock()
+        self.bytes += n
+
+
+def install_rx_monitor(device, clock=time.monotonic) -> RxMonitor:
+    ser = device.ser
+    mon = getattr(ser, "_g2_rx", None)
+    if mon is not None:
+        return mon
+    mon = RxMonitor(clock)
+    raw_read = ser.read
+
+    def monitored_read(*args, **kwargs):
+        data = raw_read(*args, **kwargs)
+        if data:
+            mon.saw(len(data))
+        return data
+
+    ser.read = monitored_read
+    ser._g2_rx = mon
+    return mon
+
+
 class Chassis:
     """Wheel state plus R1/R2. Every state change happens under one lock, so a
     velocity command can never slip in between the R1 check and the arm start."""
 
     def __init__(self, device, to_motor, *, max_motor: int = 60,
-                 watchdog_s: float = 0.5, clock=time.monotonic, log=print):
+                 watchdog_s: float = 0.5, clock=time.monotonic, log=print,
+                 rx_age=None):
         self.device = device
+        self._rx_age = rx_age               # R8; None only in tests that do not need it
+        self.rx_blocked = 0
         self._to_motor = to_motor
         self._max_motor = int(max_motor)
         self.watchdog_s = float(watchdog_s)
@@ -160,6 +211,13 @@ class Chassis:
                 self.dropped += 1
                 self._dropped_this_arm += 1
                 return "dropped"
+            if self._rx_stale():
+                self.rx_blocked += 1
+                self._write(ZERO)
+                if self.rx_blocked in (1, 10) or self.rx_blocked % 100 == 0:
+                    self._log("[chassis] velocity refused (%dx): no data from the board "
+                              "for %.1fs" % (self.rx_blocked, self._rx_age()))
+                return "board_silent"
             if self._arm_pose not in DRIVE_POSES:
                 self.pose_blocked += 1
                 self._write(ZERO)
@@ -183,16 +241,22 @@ class Chassis:
             self._closed = True
             self._write(ZERO)
 
+    def _rx_stale(self) -> bool:
+        return self._rx_age is not None and self._rx_age() > RX_STALE_S
+
     def watchdog_tick(self) -> bool:
-        """Stop the wheels if the client went quiet. True when it did."""
+        """Stop the wheels if the client or the board went quiet. True when it did."""
         with self._lock:
             if self._motors in (None, ZERO):
                 return False
-            if self._clock() - self._last_cmd <= self.watchdog_s:
+            if self._rx_stale():
+                why = "no data from the board for %.1fs" % self._rx_age()
+            elif self._clock() - self._last_cmd > self.watchdog_s:
+                why = "no command for %.1fs" % self.watchdog_s
+            else:
                 return False
             self._write(ZERO)
-        self._log("[chassis] watchdog: no command for %.1fs, wheels stopped"
-                  % self.watchdog_s)
+        self._log("[chassis] watchdog: %s, wheels stopped" % why)
         return True
 
     # ── arm side ───────────────────────────────────────────────────────────
@@ -242,6 +306,9 @@ class Chassis:
                     "arm_busy": self._arm_busy,
                     "arm_pose": self._arm_pose,
                     "pose_blocked_total": self.pose_blocked,
+                    "board_rx_age_s": (round(self._rx_age(), 2)
+                                       if self._rx_age is not None else None),
+                    "rx_blocked_total": self.rx_blocked,
                     "dropped_total": self.dropped,
                     "refused_total": self.refused,
                     "client": self.client}

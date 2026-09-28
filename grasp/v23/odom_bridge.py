@@ -50,8 +50,14 @@ def load_odom_modules(repo_root: Path):
 class OdomBridge:
     def __init__(self, reader, ros_io, roslibpy, *, host: str = "127.0.0.1",
                  port: int = 9090, rate_hz: float = RATE_HZ, clock=time.time,
-                 log=print):
+                 log=print, feedback_age=None, feedback_stale_s: float = 0.5):
         self.reader = reader
+        # get_motion_data() hands back the last cached values forever once the
+        # board's data stops arriving -- indistinguishable from standing still.
+        # feedback_age (seconds since the board last sent a byte) is what tells.
+        self._feedback_age = feedback_age
+        self._feedback_stale_s = float(feedback_stale_s)
+        self.skipped_silent = 0
         self._ros_io = ros_io
         self._roslibpy = roslibpy
         self.host, self.port = host, int(port)
@@ -108,6 +114,12 @@ class OdomBridge:
             self._connected = connected
             self._log("[odom] rosbridge %s" % ("connected" if connected else
                                                "lost; odometry keeps integrating"))
+        if self._feedback_age is not None and self._feedback_age() > self._feedback_stale_s:
+            self.skipped_silent += 1
+            if self.skipped_silent in (1, 20, 200) or self.skipped_silent % 2000 == 0:
+                self._log("[odom] no data from the board for %.1fs (%dx), not published"
+                          % (self._feedback_age(), self.skipped_silent))
+            return
         if not state.valid:
             self.skipped_invalid += 1
             if self.skipped_invalid in (1, 20, 200) or self.skipped_invalid % 2000 == 0:
@@ -139,7 +151,8 @@ class OdomBridge:
         with self._lock:
             st = self._state
         out = {"rosbridge": self._connected, "published": self.published,
-               "skipped_invalid": self.skipped_invalid, "failures": self.failures}
+               "skipped_invalid": self.skipped_invalid,
+               "skipped_board_silent": self.skipped_silent, "failures": self.failures}
         if st is not None:
             out.update({"valid": bool(st.valid),
                         "pose": [round(st.x, 4), round(st.y, 4), round(st.yaw, 4)],

@@ -153,6 +153,37 @@ def main():
     r = svc(c, lambda ctl, max_steps: ran.append(1) or True).cmd_grasp()
     ok(r.get("confirmed") is True and ran == [1], "from E1 it grasps as before")
 
+    print("\n== every arm command starts from the encoders ==")
+    # The robot, 2026-09-28: after a restart the rate limiter still counted from
+    # the default home (E1) while the arm sat in travel; home went out as one jump.
+    c = Ctl(TRAVEL)
+    c.servo._last_deg = list(E1)                    # what a fresh start leaves behind
+    seen = {}
+    real_move = c.move_guarded_and_verified
+
+    def spy(arm, grip, **kw):
+        seen.setdefault("first", list(c.servo._last_deg))
+        return real_move(arm, grip, **kw)
+
+    c.move_guarded_and_verified = spy
+    s = svc(c)
+    s.run_arm_command(s.cmd_home)
+    ok(seen["first"][:5] == list(TRAVEL[:5]),
+       "before the first move the rate limiter counts from the travel pose, not E1")
+    ok(seen["first"][5] == E1[5], "the jaw's last command is left as it was")
+
+    class DeadServo:
+        _last_deg = list(E1)
+
+        def read_degrees(self):
+            return type("R", (), {"valid": False, "degrees": None, "reason": "bus"})()
+
+    c = Ctl(TRAVEL)
+    c.servo = DeadServo()
+    r = svc(c).run_arm_command(svc(c).cmd_home)
+    ok(r["reason"] == "servo_read_failed" and c.moves == [],
+       "unreadable encoders: the arm command refuses without moving")
+
     print("\n== the chassis learns the arm pose after every arm command ==")
     import chassis_server as cs
     board = type("B", (), {"calls": [], "set_motor": lambda self, *v: self.calls.append(v)})()
