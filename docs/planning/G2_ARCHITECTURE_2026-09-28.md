@@ -74,7 +74,7 @@ flowchart LR
 |------|------|------|
 | TCP 7000 | 一行一個 JSON；`action: velocity` + `vx`／`wz`，或 `action: stop`；缺 action 視為 stop；0.5 s 看門狗；速度上限與死區沿用 `sugarbox_rl_motor_server.py` | **沿用，不改格式**；舊 `action/speed` 格式不收（見上） |
 | `graspctl` socket | `grasp`／`release`／`home`／`status`／`quit` | 沿用；`status` 加上底盤狀態 |
-| `/odom_setmotor` + `odom→base_footprint` TF | `FeedbackOdomReader`（linear 0.98、angular 0.501）算出，20 Hz | 改由常駐服務發 |
+| `/odom_setmotor` + `odom→base_footprint` TF | `FeedbackOdomReader`（2026-09-24 校正：linear 0.966、angular 0.986）算出，20 Hz | **已改由常駐服務發**（第 3 步） |
 | TCP 5555 | 視覺服務送物體座標 | 沿用 |
 
 odom 用 rosbridge 發（`integration/ros_io.py` 的做法）：常駐服務跑在 Python 3.8 venv，
@@ -133,6 +133,11 @@ koala915 名下。
 ---
 
 ## 實作順序
+
+> **進度（2026-09-28）**：第 1、2 步完成；第 3 步 odom 已上線，ncu 驗收第 1、2 節在架輪
+> 狀態通過，第 3 節（AMCL）待落地。數據見 `progress.md` 2026-09-28。程式：
+> `grasp/v23/chassis_server.py`、`odom_bridge.py`；開關在
+> `deploy/systemd/grasp-service.service.d/g2-chassis.conf`。
 
 1. 合併 112303577ncu 的 PR（前置條件）。
 2. 常駐服務加上 TCP 7000 與 R1–R3。**先把車架起來、輪子離地**，用幾行 Python 送

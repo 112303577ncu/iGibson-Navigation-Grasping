@@ -176,6 +176,15 @@ echo "$chs" | grep -q "all 48 checks passed" \
     && ok "48 項全過" || bad "G2 底盤測試未通過（完整輸出見上）"
 
 echo
+echo "=== 7.9 G2 里程計（需 all 20 checks passed）==="
+# 假 roslibpy + 假控制板，真的 FeedbackOdomReader 與 ros_io 訊息組法。釘住：rosbridge
+# 沒起來時不排隊、姿態照樣累積、odom 與 TF 同 stamp、永不呼叫會停掉 reactor 的 terminate()。
+odo=$(python3 test_odom_bridge.py 2>&1)
+echo "$odo" | grep -E "checks passed|FAIL|Traceback" || echo "$odo" | tail -5
+echo "$odo" | grep -q "all 20 checks passed" \
+    && ok "20 項全過" || bad "G2 里程計測試未通過（完整輸出見上）"
+
+echo
 echo "=== 8. dry-run（不驅動伺服機；需 wrist_z_offset = 0.0564）==="
 python3 x3plus_real_grasp.py \
   --model models/candidate_v23_seed23401_ckpt250000.zip \
@@ -193,7 +202,7 @@ tail -3 /tmp/v23_guard.log
 echo
 echo "═══════════════════════════════════════════════════════════════"
 echo "Gate 判準："
-echo "  · 163 / 37 / 641 / 62 / 89 / 48 一字不差"
+echo "  · 163 / 37 / 641 / 62 / 89 / 48 / 20 一字不差"
 echo "  · wrist_z_offset 必須 0.0564（純幾何，跨平台不該變；也不隨姿態變——hover 高度錨在地板不是手臂，所以 C3→E1 這個值不動）"
 echo "  · Stage 序列 0→1 → jaw close → ABORT → retreat home，exit 0"
 echo "  · 策略步數容許 ±3 浮點漂移；超過就停下來回報"

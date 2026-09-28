@@ -1,5 +1,69 @@
 # X3Plus 專題進度記錄
 
+## 2026-09-28 — G2 第 2、3 步：常駐夾取服務接手輪子與里程計
+
+架構見 `docs/planning/G2_ARCHITECTURE_2026-09-28.md`。PR #4（導航 4 個 commit）已合併，
+G2 直接 import 它的 `velocity_to_motor_values`。常駐服務用兩個環境變數開啟新功能
+（`deploy/systemd/grasp-service.service.d/g2-chassis.conf`）；兩個都不設時，行為與
+2026-09-25 驗過的純手臂服務相同。
+
+### 第 2 步：TCP 7000 底盤（`grasp/v23/chassis_server.py`），輪子離地實測
+
+| 項目 | 結果 |
+|------|------|
+| 前進 `vx=0.10` 2 秒 | 四輪 20 → 2.01 秒後 0；操作員確認四輪都往前轉、停得乾脆 |
+| 看門狗 | 只送一次指令，0.53 秒後自動停輪 |
+| R1 行駛中下 `home` | 拒絕 `chassis_moving`；停後 0.15 秒仍拒絕；約 1 秒後放行（0.82 s 到位） |
+| R2 手臂工作中送速度 | `grasp` 等辨識的 2.2 秒內 22 個速度指令全丟，輪子不動；結束後才轉 |
+| 客戶端斷線 | 斷線同一毫秒歸零 |
+| `systemctl restart` 行駛中 | 修正後 3/3：收到 SIGTERM 2–3 ms 內歸零，之後不再寫回 |
+
+實測抓到兩個問題，都已修：
+
+- **systemd 停服務送 SIGTERM，Python 預設直接結束、不跑 finally**。沒處理的話輪子會
+  照最後的速度一直轉。現在 SIGTERM 走 Ctrl+C 的關機路徑（只在底盤開啟時安裝）。
+- 修上一條後第一次實測：歸零 66 ms 後，一個已從 socket 讀進來的指令把輪子**重新寫回 20**，
+  2 ms 後才又歸零。`Chassis.shutdown()` 改成關機後只准寫零。
+- 另外：5 分鐘內重啟超過 3 次會撞到 unit 的 `StartLimitBurst=3`，服務停在
+  `start-limit-hit`。這是 9/20 刻意設的，復原指令寫進 `deploy/systemd/README.md`。
+
+單元測試 `test_chassis_server.py` 48/48（Jetson；Windows 跳過 2 項 POSIX 限定）。
+
+### 第 3 步：里程計經 rosbridge（`grasp/v23/odom_bridge.py`）
+
+- 沿用 `FeedbackOdomReader` 與 `ros_io` 的訊息組法（frame、covariance、odom/TF 同一個
+  stamp），連線自己管：roslibpy 2.0.1 的 `terminate()` 會停掉整個 process 的 twisted
+  reactor 且無法重啟，而 `RosBridgeIO` 連線失敗時正好呼叫它；服務開機時 ROS 通常還沒起，
+  照搬就永遠連不上。另外 roslibpy 在未連線時 `publish()` 會排隊，所以只在已連線時才發，
+  避免 rosbridge 一起來就灌一批舊 odom 給 AMCL。重連間隔上限從預設 1 小時壓到 5 秒。
+- ncu 驗收文件（`docs/operations/G2_ODOM_TF_AMCL_ACCEPTANCE_2026-09-28.md`）第 1、2 節，
+  車架起、ROS 全套（ncu 的 `deploy/ros/x3plus_tg30_navigation.launch`、map_server、AMCL、
+  rosbridge）在同一台 Jetson：
+
+| 項目 | 標準 | 實測 |
+|------|------|------|
+| `/odom_setmotor` 頻率（200 筆） | 18–22 Hz、空窗 < 0.15 s | 19.92 Hz、最大 0.059 s |
+| `rostopic delay`（200 筆） | 平均 ≤ 50 ms、最大 ≤ 100 ms | 平均 7 ms、最大 12 ms |
+| stamp | 單調、odom 與 TF 同 stamp | 119/119 相符、單調 |
+| `odom→base_footprint` 發布者 | 只有一個 | 30 秒 597 則全來自 `/rosbridge_websocket`；無多父框架 |
+
+  `tf_monitor` 把 rosbridge 與舊式 `tf` 靜態發布器都標成 `unknown_publisher`，分不出來源，
+  所以改用 rospy 讀每則 `/tf` 的 `callerid` 判定。
+- 輪子離地：前進 2 秒 odom x +0.29 m、左轉 2 秒 yaw +1.39 rad（逆時針為正），`home`
+  期間照常 20 Hz 發布、姿態不歸零。空轉無負載，**不能當校正數據**；證明的是控制板速度回報
+  有開、方向正確、手臂動作不中斷 odom。
+- 記憶體：服務 503 MB（+17 MB）、辨識 298 MB、ROS 全套 561 MB，剩 1.67 GB。
+- **第 3 節（AMCL）尚未做**，一定要落地、在 RViz 設好初始位置後才有意義。
+
+### 機器上的里程計校正比 repo 新（已收進 repo）
+
+Jetson 的 `integration/feedback_odom.py` 是 2026-09-24 在這台車上重新量的版本：前後
+`linear_scale=0.966309414`（正向 0.3678→0.355 m、反向 0.3597→0.348 m），左右另給
+`lateral_scale=0.65`，轉向 `0.985704578／0.985467450`（貼地標轉兩整圈，IMU 交叉比對
+720° 誤差 < 1.1°）。repo 還是 9/22 的 0.98／0.501，**轉向差了將近一倍**。G2 第 3 步就是用
+機器上這份跑的，所以原樣收進 repo；自測與 mission／safety 測試全過。誰量的沒有留下紀錄，
+請量的人補一段證據到這裡。
+
 ## 2026-09-27 — TG30 實機幾何、直行安全走廊與孤立回波濾波
 
 - 實測 LiDAR 掃描面離地約 9.5 cm；LiDAR 位於車體中心前方約 10 cm。導航／搬運姿態下，

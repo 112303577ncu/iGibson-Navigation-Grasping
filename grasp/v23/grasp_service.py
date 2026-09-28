@@ -36,6 +36,11 @@ drives the wheels over the TCP velocity protocol (chassis_server.py), so the
 robot can approach, grasp and drive away without handing /dev/myserial to
 another process. Unset, the service is exactly the arm-only one validated on
 2026-09-25.
+
+G2 step 3: with GRASP_SERVICE_ODOM_ROSBRIDGE=127.0.0.1:9090 it also publishes
+the wheel odometry (/odom_setmotor + odom->base_footprint) over rosbridge
+(odom_bridge.py). rosbridge may come up later than the service; publishing
+starts when it does.
 """
 from __future__ import annotations
 
@@ -72,12 +77,13 @@ class GraspService:
     """
 
     def __init__(self, controller, run_episode, max_steps: int, sock_path: str,
-                 chassis_server=None):
+                 chassis_server=None, odom_bridge=None):
         self.controller = controller
         self._run_episode = run_episode
         self.max_steps = max_steps
         self.sock_path = sock_path
         self.chassis_server = chassis_server
+        self.odom_bridge = odom_bridge
         self.chassis = chassis_server.chassis if chassis_server is not None else None
         self.stop_requested = False
         self.episodes = 0
@@ -131,6 +137,7 @@ class GraspService:
         return {"ok": True, "episodes": self.episodes, "last": self.last,
                 "servo_deg": jaw, "detection": self.detection(),
                 "chassis": self.chassis.status() if self.chassis else None,
+                "odom": self.odom_bridge.status() if self.odom_bridge else None,
                 "rss_mb": round(rss_mb(), 1),
                 "uptime_s": round(time.time() - self.started, 1)}
 
@@ -245,12 +252,16 @@ class GraspService:
         try:
             if self.chassis_server is not None:
                 self.chassis_server.start()
+            if self.odom_bridge is not None:
+                self.odom_bridge.start()
             print("\n[service] ready on %s — startup cost is now paid.\n"
                   "[service] commands: grasp | release | home | status | quit"
-                  "   chassis: %s   (rss %.0f MB)\n"
+                  "   chassis: %s   odom: %s   (rss %.0f MB)\n"
                   % (self.sock_path,
                      "TCP %d" % self.chassis_server.port if self.chassis_server
-                     else "off", rss_mb()), flush=True)
+                     else "off",
+                     "rosbridge %s:%d" % (self.odom_bridge.host, self.odom_bridge.port)
+                     if self.odom_bridge else "off", rss_mb()), flush=True)
             while not self.stop_requested:
                 conn, _ = srv.accept()
                 # A client that connects and never sends a line would otherwise
@@ -287,6 +298,8 @@ class GraspService:
             # will stop them.
             if self.chassis_server is not None:
                 self.chassis_server.close()
+            if self.odom_bridge is not None:
+                self.odom_bridge.close()
             srv.close()
             if os.path.exists(self.sock_path):
                 os.unlink(self.sock_path)
@@ -332,6 +345,39 @@ def build_chassis_server(controller, port_text: str):
                             log=lambda msg: print(msg, flush=True))
 
 
+def build_odom_bridge(controller, target: str):
+    """The rosbridge odometry publisher, or None when it is not asked for.
+
+    Like the chassis, it fails loudly when asked for and impossible (no
+    roslibpy, bad address). A rosbridge that is merely not running yet is not
+    a failure: the bridge connects when it comes up.
+    """
+    if not target:
+        return None
+    import odom_bridge as ob
+
+    device = controller.servo.device
+    if device is None:
+        print("[service] odometry requested but there is no Rosmaster device "
+              "(dry run) — odometry stays off", flush=True)
+        return None
+    host, _, port = target.rpartition(":")
+    if not host or not port.isdigit():
+        raise ValueError("GRASP_SERVICE_ODOM_ROSBRIDGE must be host:port, got %r" % target)
+    import roslibpy
+    feedback_odom, ros_io = ob.load_odom_modules(HERE.parents[1])
+    cfg = feedback_odom.FeedbackOdomConfig()
+    # Printed so the journal says which calibration a run used: the file on the
+    # robot is not always the one in the repo.
+    print("[service] odometry calibration: %s" % ", ".join(
+        "%s=%s" % (k, getattr(cfg, k)) for k in
+        ("linear_scale", "lateral_scale", "angular_left_scale", "angular_right_scale")
+        if hasattr(cfg, k)), flush=True)
+    reader = feedback_odom.FeedbackOdomReader(device, cfg)
+    return ob.OdomBridge(reader, ros_io, roslibpy, host=host, port=int(port),
+                         log=lambda msg: print(msg, flush=True))
+
+
 def main() -> int:
     sys.path.insert(0, str(HERE))
     import jetson_one_command_grasp as launcher   # noqa: E402
@@ -343,6 +389,7 @@ def main() -> int:
     argv = sys.argv[1:]
     sock_path = os.environ.get("GRASP_SERVICE_SOCKET", DEFAULT_SOCKET)
     chassis_port = os.environ.get("GRASP_SERVICE_CHASSIS_PORT", "").strip()
+    odom_target = os.environ.get("GRASP_SERVICE_ODOM_ROSBRIDGE", "").strip()
 
     launcher_args = launcher.parse_args_from(argv)
     ctrl_cmd = launcher.build_ctrl_cmd(launcher_args)
@@ -367,8 +414,9 @@ def main() -> int:
             return original_run(self, max_steps=max_steps)
         state["serving"] = True
         chassis_server = build_chassis_server(self, chassis_port)
+        odom_bridge = build_odom_bridge(self, odom_target)
         service = GraspService(self, original_run, max_steps, sock_path,
-                               chassis_server=chassis_server)
+                               chassis_server=chassis_server, odom_bridge=odom_bridge)
         if chassis_server is not None:
             install_sigterm_shutdown(service)
         service.serve()
