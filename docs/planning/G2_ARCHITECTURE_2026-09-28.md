@@ -135,7 +135,9 @@ koala915 名下。
 ## 實作順序
 
 > **進度（2026-09-28）**：第 1、2、3 步完成。odom 驗收三節全過，第 3 節（AMCL）落地
-> 3/3。下一步是第 4 步。數據見 `progress.md` 2026-09-28。程式：
+> 3/3。第 4 步進行中：行駛姿態 ↔ E1 轉場已模擬並上機（`stow`），新增 R7（輪子看手臂姿態）、
+> R8（控制板沒回報就停輪）與「夾取前等新畫面」；整段流程尚未跑完。數據見 `progress.md`
+> 2026-09-28。「停車 → 開始夾取」因姿態轉換約需 6 s，下面 G3 的 1 s 標準要改。程式：
 > `grasp/v23/chassis_server.py`、`odom_bridge.py`；開關在
 > `deploy/systemd/grasp-service.service.d/g2-chassis.conf`。
 
