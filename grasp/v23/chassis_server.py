@@ -149,6 +149,7 @@ class Chassis:
         self._stopped_since = -math.inf     # when the wheels last went to zero
         self._last_cmd = -math.inf
         self._arm_busy = False
+        self._maintenance = False
         # Latched by shutdown(). Without it a command already read off the socket
         # could land after the final stop: seen on the robot 2026-09-28, the
         # wheels went back to 20 for 2 ms after systemctl restart zeroed them.
@@ -211,6 +212,9 @@ class Chassis:
                 self.dropped += 1
                 self._dropped_this_arm += 1
                 return "dropped"
+            if self._maintenance:
+                self._write(ZERO)
+                return "maintenance"
             if self._rx_stale():
                 self.rx_blocked += 1
                 self._write(ZERO)
@@ -263,6 +267,8 @@ class Chassis:
     def begin_arm(self):
         """R1 + R2. Returns None when the arm may move, else the refusal reason."""
         with self._lock:
+            if self._maintenance:
+                return "maintenance"
             if self._moving_or_settling(self._clock()):
                 self.refused += 1
                 return "chassis_moving"
@@ -270,6 +276,21 @@ class Chassis:
             self._arm_busy = True
             self._dropped_this_arm = 0
             return None
+
+    def maintenance(self, enable):
+        """Atomic idle-only lock: ROS repairs cannot race a new wheel/arm command.
+
+        Failed/abandoned repairs leave the lock set. Only an explicit verified
+        unlock or service restart can clear it; never a timeout into motion.
+        """
+        with self._lock:
+            if self._closed or self._arm_busy or self.client is not None or \
+                    self._moving_or_settling(self._clock()) or self._rx_stale() or \
+                    self._arm_pose != 'travel':
+                return False
+            self._write(ZERO)
+            self._maintenance = bool(enable)
+            return True
 
     def set_arm_pose(self, pose: str) -> None:
         """R7 input: 'travel', 'e1' or anything else (which stops the wheels)."""
@@ -301,6 +322,7 @@ class Chassis:
             stopped_for = (round(now - since, 2)
                            if since is not None and math.isfinite(since) else None)
             return {"motors": list(self._motors) if self._motors else None,
+                    "maintenance": self._maintenance,
                     "moving": self._moving_or_settling(now),
                     "stopped_for_s": stopped_for,
                     "arm_busy": self._arm_busy,

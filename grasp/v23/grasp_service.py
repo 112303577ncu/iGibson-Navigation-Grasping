@@ -109,6 +109,7 @@ class GraspService:
         self.episodes = 0
         self.last = None
         self.started = time.time()
+        self.started_monotonic = time.monotonic()
         self.startup_pose = {"enabled": False, "ok": None, "reason": "not_run"}
         self.chassis_tcp_ready = False
         # Monotonic, like the detection receiver's own stamps.
@@ -146,16 +147,29 @@ class GraspService:
         by default) waiting for a detection that nobody is sending. Refusing up
         front costs nothing and leaves the arm where it is.
         """
-        deadline = time.time() + timeout_s
+        deadline = time.monotonic() + timeout_s
         while True:
             det = self.detection()
             if det is None or (det["fresh"] and self.detection_received_at() >= newer_than):
                 return det
-            if time.time() >= deadline:
+            if time.monotonic() >= deadline:
                 return None
             time.sleep(0.2)
 
     # ── commands ────────────────────────────────────────────────────────
+    def cmd_health(self) -> dict:
+        """Cached diagnostics only: never requests servo/serial transactions."""
+        return {"ok": True, "stack_version": "v23",
+                "model_path": str(self.controller.cfg.model_path),
+                "vecnorm_path": str(self.controller.cfg.vecnorm_path),
+                "holding": getattr(self.controller, "_grip_hold_rad", None) is not None,
+                "chassis": self.chassis.status() if self.chassis else None,
+                "odom": self.odom_bridge.status() if self.odom_bridge else None,
+                "startup_pose": self.startup_pose,
+                "chassis_tcp_ready": self.chassis_tcp_ready,
+                "rss_mb": round(rss_mb(), 1),
+                "uptime_s": round(time.monotonic()-self.started_monotonic, 1)}
+
     def cmd_status(self) -> dict:
         jaw = None
         read_reason = "ok"
@@ -173,7 +187,7 @@ class GraspService:
                 "chassis": self.chassis.status() if self.chassis else None,
                 "odom": self.odom_bridge.status() if self.odom_bridge else None,
                 "rss_mb": round(rss_mb(), 1),
-                "uptime_s": round(time.time() - self.started, 1)}
+                "uptime_s": round(time.monotonic() - self.started_monotonic, 1)}
 
     def run_arm_command(self, fn) -> dict:
         """R1/R2 around one arm command; a plain call when the chassis is off.
@@ -182,6 +196,21 @@ class GraspService:
         included: the grasp latches what the camera sees, so the robot has to
         stand still from that moment on, not only once the arm starts moving.
         """
+        import os
+        try:
+            minimum = float(os.environ.get('GRASP_SERVICE_MIN_AVAILABLE_MB','0'))
+        except ValueError:
+            return {"ok":False,"reason":"invalid_RAM_reserve"}
+        if not math.isfinite(minimum) or minimum < 0:
+            return {"ok":False,"reason":"invalid_RAM_reserve"}
+        if minimum:
+            try:
+                fields = dict(line.split(':',1) for line in Path('/proc/meminfo').read_text().splitlines())
+                available = int(fields['MemAvailable'].split()[0])/1024
+            except (OSError,ValueError,KeyError):
+                return {"ok":False,"reason":"RAM_telemetry_unavailable"}
+            if available < minimum:
+                return {"ok":False,"reason":"RAM_pressure","available_mb":available}
         if self.chassis is not None:
             why = self.chassis.begin_arm()
             if why is not None:
@@ -287,7 +316,7 @@ class GraspService:
                 else ctl.mapper.hw_deg_to_sim_grip(ctl.cfg.gripper_hw_open))
         # Start from the encoders, as run() does, not from the last episode's idea.
         self._sync_joint_state(deg)
-        t0 = time.time()
+        t0 = time.monotonic()
         for i, leg in enumerate(legs):
             try:
                 res = ctl.move_guarded_and_verified(
@@ -296,11 +325,11 @@ class GraspService:
                     tol_deg=3.0, grip_is_hold=holding)
             except Exception as exc:
                 return {"ok": False, "reason": "exception: %s" % exc, "leg": i,
-                        "elapsed_s": round(time.time() - t0, 2)}
+                        "elapsed_s": round(time.monotonic() - t0, 2)}
             if not res.get("reached"):
                 return {"ok": False, "reason": res.get("reason"), "leg": i,
-                        "holding": holding, "elapsed_s": round(time.time() - t0, 2)}
-        return {"ok": True, "holding": holding, "elapsed_s": round(time.time() - t0, 2)}
+                        "holding": holding, "elapsed_s": round(time.monotonic() - t0, 2)}
+        return {"ok": True, "holding": holding, "elapsed_s": round(time.monotonic() - t0, 2)}
 
     def _to_e1_from_travel(self, deg):
         """None when the arm is at E1 (or got there); otherwise a refusal reply."""
@@ -403,7 +432,7 @@ class GraspService:
                 return refused
         arm = ctl.mapper.hw_deg_to_sim_arm(list(cfg.home_deg[:5]))
         grip = ctl.mapper.hw_deg_to_sim_grip(cfg.home_deg[5])
-        t0 = time.time()
+        t0 = time.monotonic()
         try:
             res = ctl.move_guarded_and_verified(
                 arm, grip, label="service-home", run_time_ms=400, settle_s=0.35,
@@ -413,10 +442,10 @@ class GraspService:
             # holds position while powered, so reporting and staying up is safer
             # than dying and leaving no way to ask what happened.
             return {"ok": False, "reason": "exception: %s" % exc,
-                    "elapsed_s": round(time.time() - t0, 2)}
+                    "elapsed_s": round(time.monotonic() - t0, 2)}
         ctl._grip_hold_rad = None     # nothing is held any more
         return {"ok": bool(res.get("reached")), "reason": res.get("reason"),
-                "iters": res.get("iters"), "elapsed_s": round(time.time() - t0, 2)}
+                "iters": res.get("iters"), "elapsed_s": round(time.monotonic() - t0, 2)}
 
     def cmd_release(self) -> dict:
         """Stage 3 on its own: reach forward, open over the bin, come home.
@@ -437,16 +466,16 @@ class GraspService:
         if refused is not None:
             refused["outcome"] = refused.get("reason")
             return refused
-        t0 = time.time()
+        t0 = time.monotonic()
         try:
             outcome = self.controller.run_release_only()
         except Exception as exc:
             return {"ok": False, "outcome": "exception: %s" % exc,
-                    "elapsed_s": round(time.time() - t0, 2)}
+                    "elapsed_s": round(time.monotonic() - t0, 2)}
         return {"ok": outcome == "released", "outcome": outcome,
                 "rim_cm": round(self.controller.cfg.bin_rim_height * 100, 1),
                 "clearance_cm": round(self.controller.cfg.release_clearance * 100, 1),
-                "elapsed_s": round(time.time() - t0, 2),
+                "elapsed_s": round(time.monotonic() - t0, 2),
                 "rss_mb": round(rss_mb(), 1)}
 
     def cmd_grasp(self, wait_s: float = 3.0) -> dict:
@@ -480,7 +509,7 @@ class GraspService:
                             "arm was not moved. Run graspscan.sh to search with "
                             "the three-pose scan." % wait_s,
                     "episodes": self.episodes}
-        t0 = time.time()
+        t0 = time.monotonic()
         self.episodes += 1
         try:
             confirmed = bool(self._run_episode(self.controller,
@@ -488,7 +517,7 @@ class GraspService:
             reason = getattr(self.controller, "_outcome", None)
         except Exception as exc:
             confirmed, reason = False, "exception: %s" % exc
-        elapsed = time.time() - t0
+        elapsed = time.monotonic() - t0
         self.last = {"confirmed": confirmed, "outcome": reason,
                      "elapsed_s": round(elapsed, 2)}
         # Printed as well as returned: the RSS trend across episodes is the
@@ -504,7 +533,6 @@ class GraspService:
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         srv.bind(self.sock_path)
         os.chmod(self.sock_path, 0o600)
-        srv.listen(1)
         try:
             if self.chassis is not None:
                 # Initialize zero wheel commands before parking, without exposing
@@ -517,6 +545,9 @@ class GraspService:
             if self.chassis_server is not None:
                 if prepared["ok"]:
                     self.chassis.set_arm_pose(self.arm_pose())
+                    if os.environ.get("GRASP_SERVICE_BOOT_AUDIT_LOCK", "0") == "1":
+                        if not self.chassis.maintenance(True):
+                            raise RuntimeError("boot audit lock unavailable")
                     self.chassis_server.start()
                     self.chassis_tcp_ready = True
                 else:
@@ -529,6 +560,8 @@ class GraspService:
                      else "off",
                      "rosbridge %s:%d" % (self.odom_bridge.host, self.odom_bridge.port)
                      if self.odom_bridge else "off", rss_mb()), flush=True)
+            # Accept diagnostics only after startup arm motion has completed.
+            srv.listen(1)
             while not self.stop_requested:
                 conn, _ = srv.accept()
                 # A client that connects and never sends a line would otherwise
@@ -548,6 +581,11 @@ class GraspService:
                         return
                     if line == "status":
                         reply = self.cmd_status()
+                    elif line == "health":
+                        reply = self.cmd_health()
+                    elif line in ("maintenance-lock", "maintenance-unlock"):
+                        reply = {"ok": bool(self.chassis and self.chassis.maintenance(
+                            line == "maintenance-lock"))}
                     elif line in ARM_COMMANDS:
                         reply = self.run_arm_command(
                             {"home": self.cmd_home, "release": self.cmd_release,
@@ -555,6 +593,8 @@ class GraspService:
                     else:
                         reply = {"ok": False, "error": "unknown command %r" % line}
                     conn.sendall((json.dumps(reply) + "\n").encode())
+                except (BrokenPipeError, ConnectionResetError, socket.timeout):
+                    print("[service] client disconnected before reply", flush=True)
                 finally:
                     conn.close()
         except KeyboardInterrupt:
