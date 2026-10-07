@@ -81,8 +81,8 @@
   {
     "command": "python -m pytest tests/test_v23_demo.py tests/test_g2_safety_audit.py tests/test_g2_demo_supervisor.py -q",
     "exit": 0,
-    "seconds": 6.1,
+    "seconds": 1.7,
     "log": "v23_demo_pytest",
-    "note": "complete deploy fixture copied before retry"
+    "note": "50 tests including truthful demo UI arm/chassis permissions"
   }
 ]

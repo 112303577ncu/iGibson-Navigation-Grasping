@@ -148,3 +148,19 @@ def test_frame_heartbeat_is_atomic_and_checks_current_process(tmp_path):
     sample=json.loads(target.read_text())
     assert audit.vision_faults(str(target),sample['monotonic']+0.1,os.getpid())==[]
     assert list(tmp_path.glob('*.tmp'))==[]
+
+
+def test_ui_arm_preparation_never_advertises_chassis_permission():
+    from mission_status import SimpleReporter
+    reporter=SimpleReporter('127.0.0.1:8099',mode='D')
+    reporter.emitter.send=Mock()
+    try:
+        home=demo.emit_telemetry(reporter,0,'home','running')
+        assert home['arm_allowed'] is True
+        assert home['chassis_allowed'] is False
+        completed=demo.emit_telemetry(reporter,0,'home','complete')
+        # Force a new state so telemetry throttling is exercised normally.
+        stop=demo.emit_telemetry(reporter,-1,'abort','interrupted')
+        assert stop['chassis_allowed'] is False and stop['arm_allowed'] is False
+    finally:
+        reporter.close()

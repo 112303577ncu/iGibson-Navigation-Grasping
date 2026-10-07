@@ -141,6 +141,14 @@ def check_health(status, pose, holding):
         raise RuntimeError('odom is not valid and stationary')
 
 
+def emit_telemetry(telemetry,index,action,state):
+    phase = {'home':'ALIGN','grasp':'GRASP','stow':'CARRY_HOME',
+             'drive':'APPROACH','release':'PLACE','abort':'FAULT'}[action]
+    return telemetry.say(phase,action.upper(),state,step=index,
+                         chassis_allowed=action=='drive' and state=='running',
+                         arm_allowed=action in ARM_TIMEOUTS and state=='running')
+
+
 def run_plan(plan, backend, report=None):
     steps = validate_plan(plan)
     pose, holding = 'travel', False
@@ -201,9 +209,7 @@ def main(argv=None):
             temporary = target.with_suffix('.tmp')
             temporary.write_text(json.dumps(sample)+'\n');temporary.replace(target)
             print(json.dumps(sample),flush=True)
-            phase = {'home':'ALIGN','grasp':'GRASP','stow':'CARRY_HOME',
-                     'drive':'APPROACH','release':'PLACE','abort':'FAULT'}[action]
-            telemetry.say(phase,action.upper(),state,step=index)
+            emit_telemetry(telemetry,index,action,state)
         try:
             result = run_plan(plan,ResidentBackend(evidence),report)
             telemetry.say('COMPLETE','STOP','v23 plan completed')
