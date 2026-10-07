@@ -50,7 +50,8 @@ source /opt/ros/melodic/setup.bash
 - 步驟前後 RAM ≥1024 MB；導航期間低於 768 MB 中止子程序。
   grasp-service 的 arm 命令亦配置 768 MB 起動閘。
 - 只允許一個 demo runner；逾時／未知結果立即中止，不重送夾取、不自行張爪／投放，
-  不重播 checkpoint。中止時原手臂命令可能仍在完成，重新讀取狀態後再選計畫。
+  不重播未知 checkpoint。短暫故障先有限等待／修復，完成點可明確 `--resume`；
+  無法恢復時降級 parked／diagnostics，不把降級描述成完成原任務。
 - `--output` 覆寫單一狀態，不累積影像、scan 或無限事件。
 
 drive 的 JSON 格式為 `{"action":"drive","distance_m":0.15}`；plan 頂層須有
@@ -68,3 +69,9 @@ RAM 起動閘不能防止其他程序突然分配記憶體，長時與 OOM 壓�
 server 預設唯讀預覽；實機仍需以 --allow-real 啟動，並沿用既有操作台啟動條件。
 UI 停止會終止計畫／導航子程序，但已交給 service 的手臂命令可能仍在完成，
 不能把它當成伺服機的即時斷電按鈕。
+
+## 等待、恢復與降級
+
+實作與目的、部署界線見 [V23_RECOVERY_2026-10-07.md](../../docs/operations/V23_RECOVERY_2026-10-07.md)。
+`demo.py monitor` 為被動常駐監督入口；執行計畫預設啟用有限恢復。
+新 Serial transport、独立 health socket、監督單元須一起部署，不能和遠端舊版混用。

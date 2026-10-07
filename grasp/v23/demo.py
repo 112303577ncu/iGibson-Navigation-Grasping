@@ -15,6 +15,7 @@ if __name__ == '__main__':
         'map': [str(ROOT/'deploy/ros/g2_demo_mapping.py')],
         'supervise': [str(ROOT/'integration/g2_demo_supervisor.py')],
         'arm': [str(ROOT/'grasp/v23/graspctl.py')],
+        'monitor': [str(ROOT/'integration/v23_recovery.py')],
     }
     if len(sys.argv)>1 and sys.argv[1] in commands:
         raise SystemExit(subprocess.call([sys.executable]+commands[sys.argv[1]]+sys.argv[2:]))

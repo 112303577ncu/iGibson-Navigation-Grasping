@@ -159,7 +159,12 @@ class GraspService:
     # ── commands ────────────────────────────────────────────────────────
     def cmd_health(self) -> dict:
         """Cached diagnostics only: never requests servo/serial transactions."""
-        return {"ok": True, "stack_version": "v23",
+        device = getattr(self.controller.servo, 'device', None)
+        transport = getattr(device, '__dict__', {}).get('_v23_transport')
+        serial_health = transport.status() if transport else None
+        return {"ok": serial_health is None or serial_health['healthy'],
+                "serial": serial_health, "stack_version": "v23",
+                "service_pid": os.getpid(),
                 "model_path": str(self.controller.cfg.model_path),
                 "vecnorm_path": str(self.controller.cfg.vecnorm_path),
                 "holding": getattr(self.controller, "_grip_hold_rad", None) is not None,
@@ -197,6 +202,8 @@ class GraspService:
         stand still from that moment on, not only once the arm starts moving.
         """
         import os
+        if getattr(self,'recovery_diagnostics_only',False):
+            return {'ok':False,'reason':'recovery_unverified','hint':'diagnostics only; no arm replay'}
         try:
             minimum = float(os.environ.get('GRASP_SERVICE_MIN_AVAILABLE_MB','0'))
         except ValueError:
@@ -233,12 +240,22 @@ class GraspService:
                         "hint": "the arm was not moved: without the encoders the "
                                 "rate limit would count from a guess"}
             self._sync_rate_limit(deg)
-            return fn()
+            result = fn()
+            transport = getattr(getattr(self.controller.servo, 'device', None), '__dict__', {}).get('_v23_transport')
+            if transport is not None:
+                transport.require_write_ok()
+            return result
+        except OSError as exc:
+            return {'ok':False,'reason':'serial_fault','detail':str(exc)}
         finally:
             self._arm_moved_at = time.monotonic()
             if self.chassis is not None:
-                self.chassis.set_arm_pose(self.arm_pose())
-                self.chassis.end_arm()
+                try:
+                    self.chassis.set_arm_pose(self.arm_pose())
+                except OSError as exc:
+                    print('[service] pose/stop confirmation failed: %s' % exc,flush=True)
+                finally:
+                    self.chassis.end_arm()
 
     def _sync_rate_limit(self, deg) -> None:
         """Point the servo rate limiter (S1-S5) at where the arm actually is.
@@ -354,7 +371,7 @@ class GraspService:
                     "hint": "only E1 -> travel is a checked path; run home first"}
         return self._move_legs([self._waypoint(), TRAVEL_DEG], "stow", deg)
 
-    def prepare_startup_pose(self, enabled: bool) -> dict:
+    def prepare_startup_pose(self, enabled: bool, readonly=False) -> dict:
         """Opt-in boot parking, using the same guarded commands as the operator.
 
         The chassis TCP listener is started only after this succeeds. A failed
@@ -362,6 +379,24 @@ class GraspService:
         of a partly completed physical move. A closed jaw may hold an object:
         never automatically open it after losing the controller's hold state.
         """
+        if readonly:
+            # Recovery restarts must not repeat boot parking or open the jaw.
+            result = {'enabled':False,'ok':False,'reason':'recovery_unverified'}
+            try:
+                deg = self._arm_deg()
+                ch = self.chassis.status() if self.chassis else {}
+                age = ch.get('board_rx_age_s')
+                if self._near(deg,TRAVEL_DEG) and len(deg)==6 \
+                        and math.isfinite(deg[5]) and abs(deg[5]-TRAVEL_DEG[5]) <= 5 \
+                        and isinstance(age,(int,float)) \
+                        and math.isfinite(age) and 0 <= age <= 0.2:
+                    self._sync_joint_state(deg)
+                    self._sync_rate_limit(deg)
+                    result.update(ok=True,reason='recovery_travel_verified',servo_deg=deg)
+            except Exception as exc:
+                result['detail'] = str(exc)
+            self.startup_pose = result
+            return result
         if not enabled:
             self.startup_pose = {"enabled": False, "ok": True, "reason": "disabled"}
             return self.startup_pose
@@ -533,6 +568,11 @@ class GraspService:
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         srv.bind(self.sock_path)
         os.chmod(self.sock_path, 0o600)
+        from health_server import HealthServer
+        health_path = '/tmp/grasp_health.sock' if self.sock_path == '/tmp/grasp_service.sock' \
+            else self.sock_path+'.health'
+        health_server = HealthServer(self.cmd_health,health_path)
+        health_server.start()
         try:
             if self.chassis is not None:
                 # Initialize zero wheel commands before parking, without exposing
@@ -541,7 +581,10 @@ class GraspService:
             if self.odom_bridge is not None:
                 self.odom_bridge.start()
             enabled = os.environ.get("GRASP_SERVICE_STARTUP_TRAVEL", "0") == "1"
-            prepared = self.prepare_startup_pose(enabled)
+            recovery_start = restart_without_motion()
+            prepared = self.prepare_startup_pose(enabled,readonly=True) if recovery_start \
+                else self.prepare_startup_pose(enabled)
+            self.recovery_diagnostics_only = recovery_start and not prepared['ok']
             if self.chassis_server is not None:
                 if prepared["ok"]:
                     self.chassis.set_arm_pose(self.arm_pose())
@@ -586,10 +629,17 @@ class GraspService:
                     elif line in ("maintenance-lock", "maintenance-unlock"):
                         reply = {"ok": bool(self.chassis and self.chassis.maintenance(
                             line == "maintenance-lock"))}
+                    elif line == 'restart-lock':
+                        reply = {'ok':bool(self.chassis and
+                            getattr(self.controller,'_grip_hold_rad',None) is None and
+                            self.chassis.restart_lock())}
                     elif line in ARM_COMMANDS:
-                        reply = self.run_arm_command(
-                            {"home": self.cmd_home, "release": self.cmd_release,
-                             "grasp": self.cmd_grasp, "stow": self.cmd_stow}[line])
+                        try:
+                            reply = self.run_arm_command(
+                                {"home": self.cmd_home, "release": self.cmd_release,
+                                 "grasp": self.cmd_grasp, "stow": self.cmd_stow}[line])
+                        except Exception as exc:
+                            reply = {'ok':False,'reason':'arm_command_exception','detail':str(exc)}
                     else:
                         reply = {"ok": False, "error": "unknown command %r" % line}
                     conn.sendall((json.dumps(reply) + "\n").encode())
@@ -607,9 +657,22 @@ class GraspService:
                 self.chassis_server.close()
             if self.odom_bridge is not None:
                 self.odom_bridge.close()
+            health_server.close()
             srv.close()
             if os.path.exists(self.sock_path):
                 os.unlink(self.sock_path)
+
+
+def restart_without_motion(path='/tmp/v23_restart_no_motion.json',boot_id=None):
+    """A recovery marker stays active for this boot, including systemd retries."""
+    marker = Path(path)
+    if not marker.exists():return False
+    try:
+        value = json.loads(marker.read_text())
+        boot = boot_id if boot_id is not None else Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+        return value['boot_id'] == boot
+    except (OSError,ValueError,KeyError,TypeError):
+        return True  # damaged restart intent must never permit startup motion
 
 
 def install_sigterm_shutdown(service) -> None:
@@ -648,9 +711,17 @@ def build_chassis_server(controller, port_text: str):
     cs.install_write_lock(device, threading.Lock())
     rx = cs.install_rx_monitor(device)
     chassis = cs.Chassis(device, to_motor, max_motor=max_motor, watchdog_s=watchdog_s,
-                         log=lambda msg: print(msg, flush=True), rx_age=rx.age)
+                         log=lambda msg: print(msg, flush=True),
+                         rx_age=lambda: board_feedback_age(device,rx.age))
     return cs.ChassisServer(chassis, port=int(port_text),
                             log=lambda msg: print(msg, flush=True))
+
+
+def board_feedback_age(device, fallback):
+    transport = getattr(device,'__dict__',{}).get('_v23_transport')
+    if transport is None:return fallback()
+    age = transport.status()['motion_packet_age_s']
+    return age if age is not None else 1e9
 
 
 def build_odom_bridge(controller, target: str):
@@ -686,7 +757,8 @@ def build_odom_bridge(controller, target: str):
     rx = cs.install_rx_monitor(device)          # the same monitor the chassis uses
     return ob.OdomBridge(reader, ros_io, roslibpy, host=host, port=int(port),
                          log=lambda msg: print(msg, flush=True),
-                         feedback_age=rx.age, feedback_stale_s=cs.RX_STALE_S)
+                         feedback_age=lambda:board_feedback_age(device,rx.age),
+                         feedback_stale_s=cs.RX_STALE_S)
 
 
 def main() -> int:

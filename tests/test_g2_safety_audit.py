@@ -119,6 +119,8 @@ def test_boot_gate_only_unlocks_after_complete_readiness(monkeypatch,tmp_path,vi
 
 def test_disconnected_health_client_does_not_kill_service(monkeypatch,tmp_path):
     import grasp_service as gs
+    import health_server
+    monkeypatch.setattr(health_server,'HealthServer',lambda *args:Mock())
     import io
     svc=GraspService.__new__(GraspService)
     svc.sock_path=str(tmp_path/'service.sock')

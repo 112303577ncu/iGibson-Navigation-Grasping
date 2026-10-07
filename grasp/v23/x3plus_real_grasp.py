@@ -807,6 +807,8 @@ class ServoController:
         if not dry_run and _ROSMASTER_AVAILABLE:
             try:
                 self._device = _RosmasterCls(com=cfg.serial_port)
+                from serial_transport import install
+                install(self._device)
                 self._device.create_receive_threading()
                 self._has_servo = True
                 print(f"[INFO] Rosmaster_Lib ready on {cfg.serial_port}.")
@@ -923,6 +925,9 @@ class ServoController:
 
         try:
             # run_time unit: milliseconds (verified against Rosmaster_Lib docs)
+            transport = getattr(self._device, '__dict__', {}).get('_v23_transport')
+            if transport is not None and not transport.status()['healthy']:
+                raise OSError('serial_feedback_unhealthy')
             self._device.set_uart_servo_angle_array(
                 angle_s=[
                     safe_deg[0], safe_deg[1], safe_deg[2],
@@ -930,6 +935,8 @@ class ServoController:
                 ],
                 run_time=run_time_ms,
             )
+            if transport is not None:
+                transport.require_write_ok()
         except Exception as e:
             # Do NOT advance _last_deg: the command never left, so the arm is still
             # wherever it was, and the rate limiter must keep working from there.

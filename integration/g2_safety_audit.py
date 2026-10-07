@@ -91,7 +91,8 @@ def sensor_faults(samples, now, monotonic):
 def diagnostic(command='health'):
     with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as connection:
         connection.settimeout(2)
-        connection.connect('/tmp/grasp_service.sock')
+        connection.connect('/tmp/grasp_health.sock' if command == 'health'
+                           else '/tmp/grasp_service.sock')
         connection.sendall((command+'\n').encode())
         with connection.makefile('rb') as stream:
             return json.loads(stream.readline(65536))

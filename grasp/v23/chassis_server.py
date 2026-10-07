@@ -168,6 +168,9 @@ class Chassis:
         if values == self._motors:
             return
         self.device.set_motor(*values)
+        transport = getattr(self.device, '__dict__', {}).get('_v23_transport')
+        if transport is not None:
+            transport.require_write_ok()
         was_moving = self._motors not in (None, ZERO)
         self._motors = values
         if values == ZERO:
@@ -246,7 +249,9 @@ class Chassis:
             self._write(ZERO)
 
     def _rx_stale(self) -> bool:
-        return self._rx_age is not None and self._rx_age() > RX_STALE_S
+        transport = getattr(self.device, '__dict__', {}).get('_v23_transport')
+        return (transport is not None and not transport.status()['healthy']) or \
+            (self._rx_age is not None and self._rx_age() > RX_STALE_S)
 
     def watchdog_tick(self) -> bool:
         """Stop the wheels if the client or the board went quiet. True when it did."""
@@ -269,6 +274,8 @@ class Chassis:
         with self._lock:
             if self._maintenance:
                 return "maintenance"
+            if self._rx_stale():
+                return "board_silent"
             if self._moving_or_settling(self._clock()):
                 self.refused += 1
                 return "chassis_moving"
@@ -298,6 +305,17 @@ class Chassis:
             self._arm_pose = str(pose)
             if self._arm_pose not in DRIVE_POSES:
                 self._write(ZERO)
+
+    def restart_lock(self):
+        """Freeze an idle faulty owner atomically, without writing on a broken bus."""
+        with self._lock:
+            if self._closed or self._arm_busy or self.client is not None \
+                    or self._moving_or_settling(self._clock()) or self._motors != ZERO \
+                    or self._arm_pose not in ('travel','restart_pending') or not self._rx_stale():
+                return False
+            self._maintenance = True
+            self._arm_pose = 'restart_pending'
+            return True
 
     def still_since(self):
         """Clock time the wheels have been stopped since; None while they turn."""
