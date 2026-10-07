@@ -222,7 +222,8 @@ function applySnapshot(s) {
   if (s.status && s.status.state) applyStatus(s.status);
   applyProcess(s.process || {});
   applyMemory(s.memory);
-  if (!routeData) loadRoute("");
+  // The finalist arena route has not been accepted; never show the old
+  // corridor route as a verified demo route automatically.
   buildCmd();
 }
 
@@ -373,7 +374,11 @@ async function loadRoute(path) {
   el("scaleTok").textContent = `格線 ${step} m`;
   el("mapNote").textContent = `路線來源：${r.source}`;
 }
-el("reloadRoute").addEventListener("click", () => loadRoute(el("fRoute").value.trim()));
+el("reloadRoute").addEventListener("click", () => {
+  const path = el("fRoute").value.trim();
+  if (path) loadRoute(path);
+  else banner("新場地路線尚待驗收。", "warn");
+});
 
 function drawPose(pose) {
   // 路線沒載入時，用機器人自己走過的範圍撐出視野，仍然是真實座標。
@@ -466,12 +471,12 @@ el("confirmBtn").addEventListener("click", async () => {
   if (r.error) banner(r.error, "crit"); else banner(null);
 });
 
-/* ── 模式 A 設定與伺服器端驗證 ─────────────────────── */
+/* ── v23 demo 設定與伺服器端驗證 ───────────────────── */
 ["fRoute", "fClass", "fH", "fLaps", "fDeliver", "fReal", "unlockChk"]
   .forEach(id => el(id).addEventListener("input", buildCmd));
 
 const config = () => ({
-  mode: "A",
+  mode: "D",
   route: el("fRoute").value.trim(),
   cls: el("fClass").value.trim() || "sugarbox",
   height_cm: parseFloat(el("fH").value),

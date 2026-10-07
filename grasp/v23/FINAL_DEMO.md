@@ -63,4 +63,8 @@ drive 的 JSON 格式為 `{"action":"drive","distance_m":0.15}`；plan 頂層須
 車身線材量測／濾波 A/B；USB port3 根因；v23 LEFT/RIGHT 映射、搆及範圍與 8 mm margin。
 此入口沒有自主 map patrol、自動尋物／對準，短直線計畫不能代替這些驗收。
 RAM 起動閘不能防止其他程序突然分配記憶體，長時與 OOM 壓力測試未完成。
-舊 UI A/B/C 尚未接入 plan 協定，目前決賽入口是此 CLI。
+操作台正式頁面現使用 D／v23 同一 plan 後端，預設「定點夾取」，可勾選「原地投放」。
+類別與物體高度顯示部署的固定 sugarbox／6.5 cm；在 UI 不改寫 service 校正值。
+server 預設唯讀預覽；實機仍需以 --allow-real 啟動，並沿用既有操作台啟動條件。
+UI 停止會終止計畫／導航子程序，但已交給 service 的手臂命令可能仍在完成，
+不能把它當成伺服機的即時斷電按鈕。

@@ -74,8 +74,9 @@
   {
     "command": "python ui/test_server.py",
     "exit": 0,
-    "seconds": 6.8,
-    "log": "ui_test_server.txt"
+    "seconds": 4.4,
+    "log": "ui_test_server.txt",
+    "note": "v23 UI integration: 50 tests, one missing route fixture skipped"
   },
   {
     "command": "python -m pytest tests/test_v23_demo.py tests/test_g2_safety_audit.py tests/test_g2_demo_supervisor.py -q",

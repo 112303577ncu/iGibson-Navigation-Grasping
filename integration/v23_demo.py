@@ -176,6 +176,7 @@ def main(argv=None):
     mode.add_argument('--execute',action='store_true')
     mode.add_argument('--dry-run',action='store_true')
     parser.add_argument('--output',default='/tmp/v23_demo_state.json')
+    parser.add_argument('--status-udp',default=None)
     args = parser.parse_args(argv)
     plan_path = Path(args.plan).resolve()
     plan = json.loads(plan_path.read_text())
@@ -191,6 +192,8 @@ def main(argv=None):
         evidence = plan.get('orientation_evidence','')
         if evidence:
             evidence = str((plan_path.parent/evidence).resolve())
+        from mission_status import SimpleReporter
+        telemetry = SimpleReporter(args.status_udp,mode='D')
         def report(index,action,state):
             sample = dict(version='v23',index=index,action=action,state=state,
                           pid=os.getpid(),monotonic=time.monotonic())
@@ -198,11 +201,17 @@ def main(argv=None):
             temporary = target.with_suffix('.tmp')
             temporary.write_text(json.dumps(sample)+'\n');temporary.replace(target)
             print(json.dumps(sample),flush=True)
+            phase = {'home':'ALIGN','grasp':'GRASP','stow':'CARRY_HOME',
+                     'drive':'APPROACH','release':'PLACE','abort':'FAULT'}[action]
+            telemetry.say(phase,action.upper(),state,step=index)
         try:
             result = run_plan(plan,ResidentBackend(evidence),report)
+            telemetry.say('COMPLETE','STOP','v23 plan completed')
         except (Exception,KeyboardInterrupt) as exc:
             report(-1,'abort',str(exc) or 'interrupted')
             raise
+        finally:
+            telemetry.close()
         print(json.dumps(result))
     return 0
 
