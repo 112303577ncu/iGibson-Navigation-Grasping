@@ -9,6 +9,7 @@ set +u
 source /opt/ros/melodic/setup.bash
 source /home/jetson/ydlidar_ws/devel/setup.bash
 source /home/jetson/ROS/X3/yahboomcar_ws/devel/setup.bash
+export ROS_PACKAGE_PATH="/home/jetson/Documents/deploy_jetson2/deploy/ros:${ROS_PACKAGE_PATH}"
 case "$1" in
     core) exec roscore ;;
     lidar) exec roslaunch /home/jetson/Documents/deploy_jetson2/deploy/ros/x3plus_tg30_navigation.launch ;;

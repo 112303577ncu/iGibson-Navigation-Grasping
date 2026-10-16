@@ -5,6 +5,24 @@
 統一調用，不複製控制實作。v21 與 v24 保留供回歸／參考，未完成 gate 不改 true。
 舊 A/B/C 任務仍是 v21／獨立序列架構，不作決賽實機入口。
 
+## 正式展示目標與準備順序（2026-10-17）
+
+正式主線為「已建圖場地定位 → 巡航尋物 → 視覺接近/E1交接 → 夾取 → 收臂搬運 →
+導航至投放點 → 投放 → 接續任務」。定點夾取/原地投放是模組測試與備援。
+112303577ncu 的下一個現場主項是先重驗新地板/新濾波下的建圖、AMCL與巡航/投放點路線，
+不是把建圖移到完成定點展示之後；離線模組檢查可並行，但不能取代地圖定位驗收。
+完整清單及GitHub現況見[10/17核對](../../docs/planning/V23_FINAL_DEMO_REVIEW_2026-10-17.md)。
+
+目前本檔的plan後端只接受home/grasp/stow/release/短直線drive，沒有巡航或導航垃圾桶action；
+`mission_pipeline.py`仍為舊獨立序列架構且實機入口拒絕執行，不得直接拿來接替常駐owner。
+已具備建圖啟動工具不等於已完成整條v23任務鏈。
+
+10/16部署：固定自回波濾波 `/scan_raw → /scan`、獨立health相容介面、vision心跳、
+控制/視覺限定監督器已啟用；AMCL/新路線、冷開機與完整任務仍待驗證。
+現行監督器用`v23-control-vision-monitor.service`，不訂閱ROS、不自動重啟owner；
+不要直接啟用下方舊全功能monitor配置。部署說明見
+[健康介面與恢復](../../docs/operations/HEALTH_COMPAT_RECOVERY_2026-10-16.md)。
+
 ## 離線驗證
 
 ```bash
@@ -25,7 +43,7 @@ pick_place 計畫另執行 release → stow，是原地夾取／投放，不代�
 ~/grasp_venv/bin/python3 grasp/v23/demo.py check --seconds 30
 # 排障後取得 maintenance 鎖、完整驗證再解鎖
 ~/grasp_venv/bin/python3 grasp/v23/demo.py check --boot-gate --repair-ros --seconds 90
-# 原始 LiDAR／odom 唯讀探測
+# 現行 /scan（10/16起為固定濾波後）／odom 唯讀探測；原始資料在 /scan_raw
 ~/grasp_venv/bin/python3 grasp/v23/demo.py probe
 # 建圖（先 source ROS Melodic 環境）
 source /opt/ros/melodic/setup.bash
@@ -44,7 +62,7 @@ source /opt/ros/melodic/setup.bash
 - 最多 20 步、結尾 stow；不接受任意 shell 或未知 action。
 - home 張爪，只允許空夾爪；grasp 需 E1、確認夾持後才可搬運／release。
 - drive 僅巡航姿態、0.10–0.25 m 直線，須提供與 scan 相符的方向證據。
-  沿用 g2_nav_client 原始 scan 煞車、進度、偏差、時間及最終停車驗證。
+  沿用 g2_nav_client 現行 /scan 煞車、進度、偏差、時間及最終停車驗證。
 - v23 model pair、唯一 serial owner、零速、有效 odom、無 maintenance 鎖、
   本次 vision PID 的新鮮影像／推論心跳必須正常。
 - 步驟前後 RAM ≥1024 MB；導航期間低於 768 MB 中止子程序。
@@ -73,5 +91,6 @@ UI 停止會終止計畫／導航子程序，但已交給 service 的手臂命�
 ## 等待、恢復與降級
 
 實作與目的、部署界線見 [V23_RECOVERY_2026-10-07.md](../../docs/operations/V23_RECOVERY_2026-10-07.md)。
-`demo.py monitor` 為被動常駐監督入口；執行計畫預設啟用有限恢復。
-新 Serial transport、独立 health socket、監督單元須一起部署，不能和遠端舊版混用。
+`demo.py monitor`保留完整候選監督入口；本次實機只部署上述獨立版本bundle的control/vision模式，
+由`v23-control-vision-monitor.service`啟動，不直接啟用舊的全功能/owner重啟配置。
+完整Serial transport與owner升級重啟仍須另行整合，不能把相容health補丁當成全部API已具備。

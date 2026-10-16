@@ -114,12 +114,16 @@ class ResidentBackend:
             raise TransientFault('RAM reserve below 1024 MB before demo step')
         return status
 
-    def repair(self, unit):
+    def repair(self, unit, *, allow_locked=False):
         import g2_safety_audit as audit
         if unit not in ('grasp-vision','x3plus-g2-lidar','x3plus-g2-rosbridge'):
             raise RuntimeError('repair unit not allowed')
+        if allow_locked and unit != 'grasp-vision':
+            raise RuntimeError('parked repair permits vision only')
         status = self.health()
-        check_health(status,'travel',status.get('holding'))
+        preserve_lock=allow_locked and status.get('chassis',{}).get('maintenance') is True
+        preflight=dict(status,chassis=dict(status.get('chassis') or {},maintenance=False)) if preserve_lock else status
+        check_health(preflight,'travel',status.get('holding'))
         if not audit.owner_matches() or audit.available_mb() < 1024:
             raise RuntimeError('repair owner/RAM gate')
         if not service_request('maintenance-lock').get('ok'):
@@ -137,7 +141,7 @@ class ResidentBackend:
             shadow = dict(current,chassis=dict(current.get('chassis') or {},maintenance=False))
             check_health(shadow,'travel',status.get('holding'))
             if not audit.owner_matches():raise RuntimeError('owner changed during repair')
-            if not service_request('maintenance-unlock').get('ok'):
+            if not preserve_lock and not service_request('maintenance-unlock').get('ok'):
                 raise RuntimeError('repair unlock refused')
         except Exception:
             raise RuntimeError('repair verification failed; maintenance lock retained')

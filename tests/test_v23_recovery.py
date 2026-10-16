@@ -15,6 +15,7 @@ from v23_recovery import Recovery, TransientFault, Checkpoint, RestartEscalation
 from serial_transport import Transport
 from health_server import HealthServer
 import v23_demo as demo
+import v23_recovery as recovery_module
 from chassis_server import Chassis
 
 
@@ -23,6 +24,44 @@ def policy(check, repair=None, grace=3):
     r = Recovery(repair or Mock(),clock=lambda:now[0],
                  sleep=lambda s:now.__setitem__(0,now[0]+s),grace_s=grace,cooldown_s=0)
     return r.wait(check), r
+
+
+def test_control_vision_scope_refuses_owner_restart_before_backend_creation(monkeypatch):
+    monkeypatch.setattr(sys,'argv',['monitor','--control-vision-only','--restart-owner'])
+    def forbidden():
+        raise AssertionError('backend must not be created for invalid scope')
+    monkeypatch.setattr(demo,'ResidentBackend',forbidden)
+    with pytest.raises(SystemExit) as error:
+        recovery_module.main()
+    assert error.value.code==2
+
+
+def test_script_entrypoint_uses_same_exception_module_as_backend(monkeypatch):
+    import runpy
+    called=Mock()
+    monkeypatch.setattr(recovery_module,'main',called)
+    runpy.run_path(str(ROOT/'integration/v23_recovery.py'),run_name='__main__')
+    called.assert_called_once_with()
+    assert demo.TransientFault is recovery_module.TransientFault
+
+
+def test_parked_vision_repair_preserves_existing_lock(monkeypatch):
+    import g2_safety_audit as audit
+    status=repair_health();status['chassis']['maintenance']=True
+    backend=demo.ResidentBackend();backend.health=Mock(return_value=status)
+    monkeypatch.setattr(audit,'owner_matches',lambda:True)
+    monkeypatch.setattr(audit,'available_mb',lambda:1500)
+    monkeypatch.setattr(audit,'shell',lambda argv:SimpleNamespace(returncode=0))
+    request=Mock(return_value={'ok':True});monkeypatch.setattr(demo,'service_request',request)
+    backend.repair('grasp-vision',allow_locked=True)
+    assert [c.args[0] for c in request.call_args_list]==['maintenance-lock']
+    assert status['chassis']['maintenance'] is True
+
+
+def test_parked_repair_cannot_restart_ros_or_owner():
+    backend=demo.ResidentBackend()
+    with pytest.raises(RuntimeError):backend.repair('x3plus-g2-lidar',allow_locked=True)
+    with pytest.raises(RuntimeError):backend.repair('grasp-service',allow_locked=True)
 
 
 def test_transient_recovery_requires_three_good_samples():

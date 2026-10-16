@@ -31,15 +31,16 @@ HARD_YAW_DEG = 14.0
 MAX_TURN_S = 1.0
 MAX_TRANSLATION_M = 0.03
 SIDE_LIMIT_M = 0.65           # centre distance; includes ~0.12 m half-width
-SIDE_SELF_MASK_M = 0.35      # TG30 sees robot parts inside this band
+SIDE_SELF_MASK_M = 0.12      # measured chassis half-width; not a 35 cm blind band
 
 
 def side_hazard(points, cfg) -> tuple:
-    """Find persistent close side returns, not isolated TG30/self speckles.
+    """Find spatially clustered side returns, not isolated TG30 speckles.
 
-    The inner 0.35 m is not trusted as obstacle sensing because the installed
-    robot produces its own returns there. This gate supplements, rather than
-    replaces, an operator's physical all-around clearance confirmation.
+    Only the measured 0.12 m body half-width is excluded. The old 0.35 m band
+    hid a real right wall at 0.15-0.29 m while reporting farther left returns.
+    This is still a supervised probe, not a validated turning swept envelope
+    or a mechanism-specific self-return filter. Clusters are single-scan.
     """
     sides = {"left": [], "right": []}
     for angle_deg, distance in points:

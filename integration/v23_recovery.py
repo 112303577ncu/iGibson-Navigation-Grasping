@@ -154,10 +154,15 @@ def main():
     parser.add_argument('--output',default='/tmp/v23_monitor.json')
     parser.add_argument('--restart-owner',action='store_true',
                         help='one diagnostic-only Serial owner restart per boot after 15 s persistent fault')
+    parser.add_argument('--control-vision-only',action='store_true',
+                        help='no ROS subscriptions or ROS repairs; compatible with legacy independent health')
     args = parser.parse_args()
+    if args.control_vision_only and args.restart_owner:
+        parser.error('control/vision scope cannot restart the Serial owner')
     backend = ResidentBackend()
-    sensors = audit.Sensors()
-    recovery = Recovery(backend.repair)
+    sensors = None if args.control_vision_only else audit.Sensors()
+    repair=(lambda unit:backend.repair(unit,allow_locked=True)) if args.control_vision_only else backend.repair
+    recovery = Recovery(repair,cooldown_s=20 if args.control_vision_only else 10)
     escalation = RestartEscalation(Path('/proc/sys/kernel/random/boot_id').read_text().strip())
     stable = 0
     # One monitor, no accumulating processes/threads/history.
@@ -166,9 +171,12 @@ def main():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         try:
             while True:
-                sample = dict(state='diagnostics',monotonic=time.monotonic(),pid=os.getpid())
+                sample = dict(state='diagnostics',monotonic=time.monotonic(),pid=os.getpid(),
+                              scope='control_vision' if args.control_vision_only else 'full',
+                              owner_restart_enabled=args.restart_owner)
                 try:
                     health = backend.health()
+                    sample['service_pid']=health.get('service_pid')
                     sample['serial'] = health.get('serial')
                     ch = health.get('chassis') or {}
                     if not health.get('ok'):
@@ -185,17 +193,27 @@ def main():
                         # Moving tasks own their stop policy; no service repair race.
                         sample['state'] = 'task_active'
                     else:
-                        check_health(health,ch.get('arm_pose'),health.get('holding'))
+                        parked=args.control_vision_only and ch.get('maintenance') is True
+                        preflight=dict(health,chassis=dict(ch,maintenance=False)) if parked else health
+                        check_health(preflight,ch.get('arm_pose'),health.get('holding'))
                         if audit.available_mb() < 1024:
                             sample['state'] = 'reduced_RAM'
                         else:
-                            latest,_ = sensors.snapshot()
-                            faults = audit.sensor_faults(latest,time.time(),time.monotonic())
+                            if sensors is None:
+                                faults=[]
+                            else:
+                                latest,_ = sensors.snapshot()
+                                faults = audit.sensor_faults(latest,time.time(),time.monotonic())
                             unit = None
                             if any('/scan' in f for f in faults):unit='x3plus-g2-lidar'
                             elif faults:unit='x3plus-g2-rosbridge'
                             try:
-                                backend.guard(ch.get('arm_pose'),health.get('holding'))
+                                if parked:
+                                    vision_pid=int(audit.shell(['systemctl','show','grasp-vision','-p','MainPID','--value']).stdout.strip())
+                                    if audit.vision_faults('/tmp/x3plus_vision_health.json',time.monotonic(),vision_pid):
+                                        raise TransientFault('vision frames/inference missing or stale','grasp-vision')
+                                else:
+                                    backend.guard(ch.get('arm_pose'),health.get('holding'))
                             except TransientFault as exc:
                                 unit = exc.unit or unit
                                 faults.append(str(exc))
@@ -210,22 +228,28 @@ def main():
                                         fcntl.flock(demo_lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                                         recovery.attempts[unit]=count+1
                                         recovery.last_repair=time.monotonic()
-                                        backend.repair(unit)
+                                        repair(unit)
                                     sample['state']='repairing'
                                 elif unit and count >= recovery.max_repairs:
                                     sample['state']='degraded'
                             else:
                                 stable += 1
-                                sample['state']='ready' if stable >= 3 else 'waiting'
+                                sample['state']='parked' if parked else ('ready' if stable >= 3 else 'waiting')
+                                if parked:sample['reason']='maintenance lock retained; no automatic unlock'
                 except Exception as exc:
                     sample.update(state='diagnostics',reason=str(exc))
                 if sample['state'] not in ('ready','waiting') or sample.get('faults'):
                     stable = 0
+                sample['repairs']=dict(recovery.attempts)
                 atomic_status(args.output,sample)
                 time.sleep(1)
         finally:
-            sensors.close()
+            if sensors is not None:
+                sensors.close()
 
 
 if __name__ == '__main__':
-    main()
+    # Backend imports this module by name. Run that same module so its
+    # TransientFault is the exact class caught by the monitor's except block.
+    import v23_recovery
+    v23_recovery.main()
