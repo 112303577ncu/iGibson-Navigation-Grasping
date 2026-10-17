@@ -1,0 +1,5 @@
+{
+  "integration/g2_patrol_policy.py": "9a64b7810664f0d421b75ab745e016aeb60eb1b2e3c7f4e46bbaf1a3e38d0b9b",
+  "deploy/ros/g2_map_patrol.py": "57aa11b82d42556f649ef90f520d30cc6f6ced17979ad80cc7274f86d952255e",
+  "deploy/ros/g2_scene_localization.launch": "8a4ae996638afcef888616dccb186499eef7e5ec2310bb8f7b4f9392676d838e"
+}

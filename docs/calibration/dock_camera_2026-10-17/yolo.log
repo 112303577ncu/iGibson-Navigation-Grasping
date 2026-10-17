@@ -1,0 +1,6 @@
+Started /bin/bash -c trap "systemctl start grasp-vision v23-control-vision-monitor" EXIT; systemctl stop v23-control-vision-monitor grasp-vision; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; /home/jetson/grasp_venv/bin/python3 /tmp/rear_frame_yolo_probe.py.
+Warning: The unit file, source configuration file or drop-ins of grasp-vision.service changed on disk. Run 'systemctl daemon-reload' to reload units.
+Creating new Ultralytics Settings v0.0.6 file ✅
+View Ultralytics Settings with 'yolo settings' or at '/root/.config/Ultralytics/settings.json'
+Update Settings with 'yolo settings key=value', i.e. 'yolo settings runs_dir=path/to/dir'. For help see https://docs.ultralytics.com/quickstart/#ultralytics-settings.
+Warning: The unit file, source configuration file or drop-ins of grasp-vision.service changed on disk. Run 'systemctl daemon-reload' to reload units.

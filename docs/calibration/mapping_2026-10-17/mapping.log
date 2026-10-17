@@ -1,0 +1,15 @@
+-- Logs begin at Fri 2021-12-10 17:15:50 CST, end at Sat 2026-10-17 15:10:15 CST. --
+10月 17 15:08:53 yahboom systemd[1]: Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python3 deploy/ros/g2_demo_mapping.py --seconds 180.
+10月 17 15:09:02 yahboom bash[16726]: [ INFO] [1792220942.110591715]: Laser is mounted upwards.
+10月 17 15:09:02 yahboom bash[16726]:  -maxUrange 3 -maxUrange 3 -sigma     0.05 -kernelSize 1 -lstep 0.05 -lobsGain 3 -astep 0.05
+10月 17 15:09:02 yahboom bash[16726]:  -srr 0.1 -srt 0.2 -str 0.1 -stt 0.2
+10月 17 15:09:02 yahboom bash[16726]:  -linearUpdate 0.05 -angularUpdate 0.05 -resampleThreshold 0.5
+10月 17 15:09:02 yahboom bash[16726]:  -xmin -2 -xmax 2 -ymin -2 -ymax 2 -delta 0.02 -particles 10
+10月 17 15:09:02 yahboom bash[16726]: [ INFO] [1792220942.124502487]: Initialization complete
+10月 17 15:09:02 yahboom bash[16726]: update frame 0
+10月 17 15:09:02 yahboom bash[16726]: update ld=0 ad=0
+10月 17 15:09:02 yahboom bash[16726]: Laser Pose= 0.13 0 3.14159
+10月 17 15:09:02 yahboom bash[16726]: m_count 0
+10月 17 15:09:02 yahboom bash[16726]: Registering First Scan
+10月 17 15:10:14 yahboom systemd[1]: Stopping /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python3 deploy/ros/g2_demo_mapping.py --seconds 180...
+10月 17 15:10:15 yahboom systemd[1]: Stopped /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python3 deploy/ros/g2_demo_mapping.py --seconds 180.

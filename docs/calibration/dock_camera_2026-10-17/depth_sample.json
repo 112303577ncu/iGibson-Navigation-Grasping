@@ -1,0 +1,88 @@
+{
+  "frames": [
+    {
+      "encoding": "16UC1", 
+      "stamp": 1792227010.0842292, 
+      "height": 240, 
+      "width": 320, 
+      "depth_mm_percentiles": [
+        710.0, 
+        1723.0, 
+        2959.0
+      ], 
+      "valid_fraction": 0.5643489583333333
+    }, 
+    {
+      "encoding": "16UC1", 
+      "stamp": 1792227010.3244386, 
+      "height": 240, 
+      "width": 320, 
+      "depth_mm_percentiles": [
+        973.0, 
+        1813.0, 
+        3036.0
+      ], 
+      "valid_fraction": 0.5562239583333334
+    }, 
+    {
+      "encoding": "16UC1", 
+      "stamp": 1792227010.5424874, 
+      "height": 240, 
+      "width": 320, 
+      "depth_mm_percentiles": [
+        962.0, 
+        1776.0, 
+        3091.0
+      ], 
+      "valid_fraction": 0.5450130208333334
+    }, 
+    {
+      "encoding": "16UC1", 
+      "stamp": 1792227010.748659, 
+      "height": 240, 
+      "width": 320, 
+      "depth_mm_percentiles": [
+        717.0, 
+        1740.0, 
+        3091.0
+      ], 
+      "valid_fraction": 0.5675520833333333
+    }, 
+    {
+      "encoding": "16UC1", 
+      "stamp": 1792227010.9732773, 
+      "height": 240, 
+      "width": 320, 
+      "depth_mm_percentiles": [
+        949.0, 
+        1804.0, 
+        3091.0
+      ], 
+      "valid_fraction": 0.5605078125
+    }
+  ], 
+  "ok": true, 
+  "camera_info": {
+    "width": 320, 
+    "K": [
+      288.8544616699219, 
+      0.0, 
+      156.85366821289062, 
+      0.0, 
+      288.8544616699219, 
+      118.80935668945312, 
+      0.0, 
+      0.0, 
+      1.0
+    ], 
+    "D": [
+      0.0, 
+      0.0, 
+      0.0, 
+      0.0, 
+      0.0
+    ], 
+    "frame": "rear_depth_probe_depth_optical_frame", 
+    "height": 240
+  }
+}

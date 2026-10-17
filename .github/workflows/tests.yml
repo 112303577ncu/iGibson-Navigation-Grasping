@@ -101,5 +101,8 @@ jobs:
       - name: G2 navigation TCP safety client
         run: python tests/test_g2_nav_client.py
 
+      - name: G2 mapping, patrol geometry and empty release preview
+        run: python -m pytest tests/test_g2_quarter_turn_calibration.py tests/test_g2_mapping_route.py tests/test_g2_patrol_policy.py tests/test_v23_release_preview.py -q
+
       - name: Vision grasp pipeline selftest
         run: python integration/vision_grasp_pipeline.py --selftest

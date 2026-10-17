@@ -1,0 +1,48 @@
+{
+  "map": "demo_box.yaml",
+  "map_pgm_sha256": "00d5ec32b01ffd299b5626eb4ccfeb93af7c62a70bc43e986e7bded6dd6b269b",
+  "pose_map": [
+    1.3096433981950129,
+    0.7760871813481001,
+    0.19371492425441295
+  ],
+  "owner_pid": 27713,
+  "odom_pose": [
+    1.2762,
+    0.7409,
+    0.3012
+  ],
+  "valid_only_if_robot_not_moved_and_reference_unchanged": true,
+  "source": "dock approach stopped before candidate; map/odom estimate, not verified against physical box; unmoved-only seed",
+  "geometry_revalidation_required": true,
+  "source_lidar_forward_m": 0.13,
+  "current_lidar_forward_m": 0.1,
+  "stationary_probe_10cm": {
+    "tf_age": -0.34425997734069824,
+    "front": 0.33477080747430554,
+    "odom_stamp": 1792228513.0305364,
+    "odom": [
+      1.2761694343808598,
+      0.7408932618044777,
+      0.30121980488003347
+    ],
+    "scan_age": 0.15574002265930176,
+    "vx": 0.0,
+    "pose": [
+      1.333610108844647,
+      0.8081784129070774,
+      0.20376947548355906
+    ],
+    "wz": 0.0,
+    "cov": [
+      0.006566703154300112,
+      0.007546440406707404,
+      0.007559348665523882
+    ]
+  },
+  "stationary_probe_only_not_motion_validation": true,
+  "valid": false,
+  "invalid_reason": "resident restarted for release preview; odom origin reset; reinitialize map/odom before navigation",
+  "current_owner_pid": 4505,
+  "owner_restarted_for_release_preview": true
+}

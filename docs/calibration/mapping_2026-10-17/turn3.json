@@ -1,0 +1,260 @@
+{
+  "step": "left",
+  "real": true,
+  "ok": true,
+  "confirmed_self_returns": true,
+  "initial_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 22.03,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 12325,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        -0.2045,
+        1.0361,
+        -3.0644
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 503.1,
+    "uptime_s": 620.1
+  },
+  "origin": {
+    "x": -0.20449619085599746,
+    "y": 1.0361089596088864,
+    "yaw": -3.0643809409319025,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 1320.795825107293,
+    "stamp": 1792221844.6829584,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "front_m": 0.3804079374153076,
+  "pulses": [
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 7.480696384691979
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 13.957843695893956
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 20.235501160648607
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 26.243066398220314
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 32.27356516089111
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 38.69050949086568
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 44.52386278310211
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 52.302017085427934
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 59.51292133457434
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 66.38271728106676
+    },
+    {
+      "duration_s": 0.2,
+      "yaw_deg": 73.92493692534423
+    },
+    {
+      "duration_s": 0.1,
+      "yaw_deg": 76.98628208175593
+    },
+    {
+      "duration_s": 0.1,
+      "yaw_deg": 79.00565098951786
+    },
+    {
+      "duration_s": 0.1,
+      "yaw_deg": 80.61732144096852
+    },
+    {
+      "duration_s": 0.1,
+      "yaw_deg": 82.90828456329061
+    },
+    {
+      "duration_s": 0.1,
+      "yaw_deg": 85.66542929430551
+    },
+    {
+      "duration_s": 0.08,
+      "yaw_deg": 87.68238454343314
+    },
+    {
+      "duration_s": 0.06,
+      "yaw_deg": 89.63636354557329
+    }
+  ],
+  "swept_observations": 54,
+  "yaw_deg": 89.63636354557329,
+  "final_odom": {
+    "x": -0.20380947572445893,
+    "y": 1.0060881179410237,
+    "yaw": -1.4999312675470307,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 1338.377083525476,
+    "stamp": 1792221862.2565653,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "final_front_m": 1.4284723659615528,
+  "final_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 0.86,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 12683,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        -0.2038,
+        1.0061,
+        -1.4999
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 503.1,
+    "uptime_s": 638.1
+  }
+}

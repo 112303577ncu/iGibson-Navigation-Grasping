@@ -1,0 +1,27 @@
+{
+  "turns_deg": [
+    90.71296613544077,
+    90.96503751597685,
+    89.63636354557329,
+    89.92998933466518
+  ],
+  "final_odom": {
+    "x": -0.12709211172997992,
+    "y": 0.033580137419265806,
+    "yaw": 0.052211007950706094,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 1421.242714409266,
+    "stamp": 1792221945.134455,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "distance_from_initial_odom_m": 0.1314535297855576,
+  "heading_error_deg": 2.9914703996994443,
+  "map_resolution_m": 0.02,
+  "map_grid_size_cells": [
+    704,
+    704
+  ],
+  "note": "first edge and turn were before successful GMapping startup; remaining motion mapped. No physical tape measurement of closure."
+}

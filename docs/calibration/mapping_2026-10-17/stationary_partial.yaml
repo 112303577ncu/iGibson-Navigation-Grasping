@@ -1,0 +1,7 @@
+image: /home/jetson/mapping_20261017/stationary_partial.pgm
+resolution: 0.020000
+origin: [-2.000000, -2.000000, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

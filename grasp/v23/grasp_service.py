@@ -55,7 +55,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_SOCKET = "/tmp/grasp_service.sock"
-ARM_COMMANDS = ("grasp", "home", "release", "stow")
+ARM_COMMANDS = ("grasp", "home", "release", "release-preview", "stow")
 
 # The travel pose the robot drives in (docs/calibration/arm_pose.md) and the one
 # path between it and E1 that has been checked: S2 swings to WAYPOINT_S2 with
@@ -188,6 +188,7 @@ class GraspService:
         return {"ok": True, "episodes": self.episodes, "last": self.last,
                 "servo_deg": jaw, "detection": self.detection(),
                 "servo_read_reason": read_reason, "startup_pose": self.startup_pose,
+                "bin_rim_height_m": getattr(self.controller.cfg,'bin_rim_height',None),
                 "chassis_tcp_ready": self.chassis_tcp_ready,
                 "chassis": self.chassis.status() if self.chassis else None,
                 "odom": self.odom_bridge.status() if self.odom_bridge else None,
@@ -482,6 +483,42 @@ class GraspService:
         return {"ok": bool(res.get("reached")), "reason": res.get("reason"),
                 "iters": res.get("iters"), "elapsed_s": round(time.monotonic() - t0, 2)}
 
+    def cmd_release_preview(self) -> dict:
+        """Explicit empty-jaw rehearsal; never reports an object delivery."""
+        ctl=self.controller;deg=self._arm_deg()
+        if deg is None:return {'ok':False,'reason':'servo_read_failed'}
+        if getattr(ctl,'_grip_hold_rad',None) is not None or abs(deg[5]-ctl.cfg.gripper_hw_open)>POSE_TOL_DEG:
+            return {'ok':False,'reason':'preview_requires_empty_open_jaw'}
+        if self.chassis is not None:
+            ch=self.chassis.status()
+            if not ch.get('arm_busy') or ch.get('moving') or ch.get('motors')!=[0,0,0,0]:
+                return {'ok':False,'reason':'preview_requires_claimed_stopped_chassis'}
+        refused=self._to_e1_from_travel(deg)
+        if refused is not None:return refused
+        deg=self._arm_deg()
+        if deg is None:return {'ok':False,'reason':'servo_read_failed'}
+        self._sync_joint_state(deg)
+        closed=ctl.mapper.hw_deg_to_sim_grip(ctl.cfg.gripper_hw_closed)
+        close=ctl.move_guarded_and_verified(
+            ctl._current_arm_rads,closed,label='preview-close-empty',run_time_ms=ctl.cfg.close_run_time_ms,
+            settle_s=ctl.cfg.close_settle_s,max_iters=ctl.cfg.close_max_iters,tol_deg=3.0)
+        if not close.get('reached'):return {'ok':False,'reason':'preview_empty_close_not_confirmed','detail':close}
+        deg=self._arm_deg()
+        if deg is None:return {'ok':False,'reason':'servo_read_failed'}
+        if abs(deg[5]-ctl.cfg.gripper_hw_closed)>3:
+            return {'ok':False,'reason':'preview_jaw_not_fully_closed'}
+        self._sync_joint_state(deg)
+        outcome=ctl._scripted_release()
+        ctl._outcome='release_preview_completed' if outcome=='released' else 'release_preview_failed'
+        result={'ok':False,'preview':True,'object_delivery_verified':False,
+                'outcome':ctl._outcome,'motion_outcome':outcome,'rim_cm':ctl.cfg.bin_rim_height*100,
+                'clearance_cm':ctl.cfg.release_clearance*100}
+        if outcome=='released':
+            result['stow']=self.cmd_stow();result['ok']=bool(result['stow'].get('ok'))
+            if not result['ok']:
+                ctl._outcome='release_preview_stow_failed';result['outcome']=ctl._outcome
+        return result
+
     def cmd_release(self) -> dict:
         """Stage 3 on its own: reach forward, open over the bin, come home.
 
@@ -596,7 +633,7 @@ class GraspService:
                 else:
                     print("[startup-pose] chassis TCP remains disabled", flush=True)
             print("\n[service] ready on %s — startup cost is now paid.\n"
-                  "[service] commands: grasp | release | home | stow | status | quit"
+                  "[service] commands: grasp | release | release-preview | home | stow | status | quit"
                   "   chassis: %s   odom: %s   (rss %.0f MB)\n"
                   % (self.sock_path,
                      "TCP %d" % self.chassis_server.port if self.chassis_tcp_ready
@@ -637,6 +674,7 @@ class GraspService:
                         try:
                             reply = self.run_arm_command(
                                 {"home": self.cmd_home, "release": self.cmd_release,
+                                 "release-preview": self.cmd_release_preview,
                                  "grasp": self.cmd_grasp, "stow": self.cmd_stow}[line])
                         except Exception as exc:
                             reply = {'ok':False,'reason':'arm_command_exception','detail':str(exc)}

@@ -1,0 +1,6 @@
+{
+  "deploy/ros/g2_map_patrol.py": "8a27cdef6c63fae9c679aa42bfb5b5fcf6351ffaa434f8b6be865041119823ac",
+  "deploy/ros/g2_dock_probe.py": "c03f9a300310149d3052d9a0bea8a8b4fe646804245783756cdcb9737ee53af1",
+  "deploy/ros/g2_rear_depth_probe.launch": "661ac08db6276d93308252de54667f21d26e60ce136dca29135d807dc9b62c09",
+  "integration/g2_rear_camera_audit.py": "e07a742612b0b05e122fbbb0b6e6da3de17a69053ef21417b535838d9d59c2d0"
+}

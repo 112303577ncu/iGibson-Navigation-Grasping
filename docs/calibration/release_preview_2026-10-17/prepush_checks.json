@@ -1,0 +1,17 @@
+{
+  "observed_result": "147 passed, 1 skipped",
+  "pytest_command": "python -m pytest tests/test_g2_quarter_turn_calibration.py tests/test_g2_mapping_route.py tests/test_g2_patrol_policy.py tests/test_v23_release_preview.py tests/test_g2_safety_audit.py tests/test_g2_demo_supervisor.py tests/test_v23_demo.py tests/test_v23_recovery.py -q",
+  "fsm_command": "python integration/mission_fsm.py --selftest",
+  "fsm_result": "SELFTEST PASSED",
+  "git_diff_check": "passed",
+  "note": "Local no-hardware checks; not a robot validation of new geometry or moved box. Subsequent source edit changed command-list help text only.",
+  "source_sha256": {
+    "integration/g2_quarter_turn_calibration.py": "d9499a2495197b38353dc3653276023dfd8edda4b671683281a156cd749a75c2",
+    "integration/g2_mapping_route.py": "556d42d7013af747c0c8e74276229ce085ac309a2739634ba7b0c4b2a316040b",
+    "integration/g2_patrol_policy.py": "b1a661d1eada9919ee2f84f4ebd7e99f0c3c3292c463c443b6426c2a35408ee1",
+    "deploy/ros/g2_map_patrol.py": "eac437a4d0a4f3a09098175053938874dc7534a43313980888abc890aa9f093d",
+    "grasp/v23/grasp_service.py": "12ec3a6a66f538ea620a4327c0f9b9ae956c91abb7eb94158c638b507ab7e115",
+    "grasp/v23/graspctl.py": "2f56db4ac3aca1635729eeb9e1fd3d6dd26cd5d27c96929b60490df54670ded1",
+    "grasp/v23/x3plus_real_grasp.py": "b7e848846e3c80e08d5e502590bd10a084b9bd6f832cfababf56755c21f8538c"
+  }
+}

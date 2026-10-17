@@ -1,16 +1,18 @@
 <launch>
   <arg name="self_filter_profile" default="/home/jetson/Documents/deploy_jetson2/deploy/ros/lidar_self_returns_2026-10-16.json"/>
   <!--
-    X3Plus TG30 navigation launch, measured on the real robot on 2026-09-27.
+    X3Plus TG30 navigation launch, corrected geometry on 2026-10-17.
 
     Measurements from the laser rotation centre:
       floor to scan plane: 0.095 m
-      chassis front/rear: 0.05 / 0.25 m
+      cruise envelope front/rear: 0.10 / 0.23 m
       chassis left/right: 0.12 / 0.12 m
 
     The X3 URDF places base_link 0.0815 m above base_footprint, so the
     remaining laser height relative to base_link is 0.0135 m.  The laser is
-    about 0.10 m ahead of the chassis centre.  A board placed physically in
+    0.10 m ahead of the chassis centre (operator correction 2026-10-17).
+    Cruise envelope from chassis centre: front20/rear13/left12/right12 cm.
+    A board placed physically in
     front was observed at raw scan angle 180 degrees, hence the pi yaw.
   -->
   <node name="ydlidar_lidar_publisher"

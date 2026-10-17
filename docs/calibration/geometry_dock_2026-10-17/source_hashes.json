@@ -1,0 +1,9 @@
+{
+  "integration/g2_geometry.py": "da7caf2abc9fa3f5e06678516acd45fa1c70d82c9424dba5c4c79aa4f37980f0",
+  "integration/g2_patrol_policy.py": "bbb01a5e36412b5ddb400e12b04c5293a7dfe3f6e95fb4409d9938540badec36",
+  "integration/g2_mapping_route.py": "556d42d7013af747c0c8e74276229ce085ac309a2739634ba7b0c4b2a316040b",
+  "integration/g2_build_dock_mask.py": "fd9a206d5628c670931da00078c64288206caf6d7eea2be84ad24189230e4571",
+  "deploy/ros/g2_map_patrol.py": "8d2e2848146f9aa2203a80dae34f3336ee40caa0b55d86b049d56a0a86eb3a08",
+  "deploy/ros/g2_dock_probe.py": "a91f943bc68149f60c0356d49188ef168099177d6b82db2819fe7e36c1bb4928",
+  "deploy/ros/x3plus_tg30_navigation.launch": "81bad8c1a13698f3a0862a323d1c0f477fee6c6e91f342955d0ca8e907ce887d"
+}

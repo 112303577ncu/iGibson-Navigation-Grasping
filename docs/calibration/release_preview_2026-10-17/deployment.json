@@ -1,0 +1,20 @@
+{
+  "grasp/v23/grasp_service.py": {
+    "before_sha256": "d0b250de501842b404c06034c15edfc0d1d88a16e19f363f2d051a1200a1e003",
+    "after_sha256": "ba32ea386362f2771e859c8f851776cc24fb70c266418a24282f808740105372",
+    "backup": "/home/jetson/Documents/deploy_jetson2/grasp/v23/grasp_service.py.before_release_preview_20261017",
+    "final_sha256": "321db9686b2c0e1be69e1aeb319d53c73cf759b5e3e2cf5682eb8507773b9e25"
+  },
+  "grasp/v23/x3plus_real_grasp.py": {
+    "before_sha256": "7bdc25530d0a705818d9906ad1bf6c65db80610bdeef351c367ccd0adc19b389",
+    "after_sha256": "29360871313d1b50d186c07f9df96182dcec5f76fd925cbfa008978c4b6df66a",
+    "backup": "/home/jetson/Documents/deploy_jetson2/grasp/v23/x3plus_real_grasp.py.before_release_preview_20261017",
+    "final_sha256": "29360871313d1b50d186c07f9df96182dcec5f76fd925cbfa008978c4b6df66a"
+  },
+  "grasp/v23/graspctl.py": {
+    "before_sha256": "d84272286773f09e710dbc46549a6d232c07ecad247c42c90778a7cb0f3b83aa",
+    "after_sha256": "fd8f7e961a7c549963be420ba786a99dc457dca0ca32b50642d122b6e44bf200",
+    "backup": "/home/jetson/Documents/deploy_jetson2/grasp/v23/graspctl.py.before_release_preview_20261017",
+    "final_sha256": "fd8f7e961a7c549963be420ba786a99dc457dca0ca32b50642d122b6e44bf200"
+  }
+}

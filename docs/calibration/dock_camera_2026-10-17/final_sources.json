@@ -1,0 +1,7 @@
+{
+  "note": "adds physical-alignment refusal after hardware tests; refusal verified offline, no further motion",
+  "sha256": {
+    "deploy/ros/g2_dock_probe.py": "a7309463bfd2214113b5266d18d551cc1c06665074b82303ce26b731d2306ac9",
+    "maps/demo_box_20261017/scene_layout.json": "d109c1c3aad6974b64e707fed4a7b4218b85b55fceedcd00439a3a11d8b49c0e"
+  }
+}

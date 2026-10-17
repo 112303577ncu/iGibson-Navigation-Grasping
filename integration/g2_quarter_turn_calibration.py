@@ -13,21 +13,29 @@ import time
 from pathlib import Path
 
 try:
+    from .g2_geometry import LIDAR_FORWARD_M
     from . import g2_turn_probe as turn
     from .g2_filtered_turn_calibration import rpc, available_mb
 except ImportError:
+    from g2_geometry import LIDAR_FORWARD_M
     import g2_turn_probe as turn
     from g2_filtered_turn_calibration import rpc, available_mb
 
 
-def swept_hazard(points):
+def swept_hazard(points, confirmed_rear_structure=False):
     candidates = []
     for angle, distance in points:
         theta = math.radians(angle + 180)
-        x, y = .13 + distance*math.cos(theta), distance*math.sin(theta)
+        x, y = LIDAR_FORWARD_M + distance*math.cos(theta), distance*math.sin(theta)
         if -.15 <= x <= .22 and abs(y) <= .14:
             continue
-        if math.hypot(x, y) <= math.hypot(.20, .12)+.02:
+        # Session-only confirmation, 2026-10-17: fixed rear-right structure.
+        # Observed rear-right clusters x [-.16,-.07], y [-.21,-.14]m.
+        if confirmed_rear_structure and -.18 <= x <= -.06 and -.22 <= y <= -.13:
+            continue
+        if confirmed_rear_structure and -.20 <= x <= -.15 and .10 <= y <= .14:
+            continue
+        if math.hypot(x, y) <= math.hypot(.20, .12)+.05:
             candidates.append((angle, x, y))
     candidates.sort()
     cluster = []
@@ -42,7 +50,8 @@ def swept_hazard(points):
 
 
 class EnvelopeGate:
-    def __init__(self):
+    def __init__(self, confirmed_rear_structure=False):
+        self.confirmed_rear_structure = confirmed_rear_structure
         self.last = None
         self.count = 0
 
@@ -51,7 +60,7 @@ class EnvelopeGate:
         # 10Hz scanner this adds ~0.2s; bounded pulses stop independently.
         if scan.stamp != self.last:
             self.last = scan.stamp
-            self.count = self.count+1 if swept_hazard(scan.points) else 0
+            self.count = self.count+1 if swept_hazard(scan.points, self.confirmed_rear_structure) else 0
         return self.count >= 3
 
 
@@ -68,8 +77,8 @@ def directed_yaw(origin, current, direction):
 
 
 def target_limits(target):
-    if target not in (5,10,90):
-        raise ValueError('supported calibration targets: 5, 10, 90 degrees')
+    if target not in (5,10,30,90):
+        raise ValueError('supported calibration targets: 5, 10, 30, 90 degrees')
     return (89.2,91.5,95) if target==90 else (target-.4,target+.8,target+3)
 
 
@@ -80,7 +89,10 @@ def main():
     parser.add_argument('--resume-report', help='verify and continue from last settled pulse; retain original origin')
     parser.add_argument('--real', action='store_true')
     parser.add_argument('--direction', choices=('left','right'), default='left')
-    parser.add_argument('--target-deg', type=int, choices=(5,10,90), default=90)
+    parser.add_argument('--target-deg', type=int, choices=(5,10,30,90), default=90)
+    parser.add_argument('--native-snapshot')
+    parser.add_argument('--confirmed-rear-structure', action='store_true',
+                        help='exclude only confirmed rear-right body rectangle x [-.18,-.06], y [-.22,-.13]m')
     parser.add_argument('--operator-confirmed-self-returns', action='store_true',
                         help='supervised clear-floor calibration only; record swept returns without gating')
     args = parser.parse_args()
@@ -101,6 +113,7 @@ def main():
     report = {'target_accumulated_deg':args.target_deg, 'pulses':[], 'ok':False,
               'reference_odom':origin, 'real':args.real,
               'direction':args.direction,
+              'confirmed_rear_structure':args.confirmed_rear_structure,
               'operator_confirmed_self_returns':args.operator_confirmed_self_returns,
               'swept_gate_observations':0}
     sensors = None
@@ -109,10 +122,16 @@ def main():
         turn.check_one_serial_owner()
         if available_mb() < 1024:
             raise RuntimeError('RAM below 1GB before new test')
-        sensors = turn.RosNavSensors()
+        if args.native_snapshot:
+            try:from .g2_mapping_route import NativeSensors
+            except ImportError:from g2_mapping_route import NativeSensors
+            sensors=NativeSensors(args.native_snapshot)
+        else:sensors = turn.RosNavSensors()
         sensors.wait_ready()
         cfg = turn.nr.NavRLConfig(lidar_yaw_offset_deg=180,
-                                 lidar_forward_offset_m=.13,safety_brake_dist=.42)
+                                 lidar_forward_offset_m=LIDAR_FORWARD_M,safety_brake_dist=0)
+        # No translation: the whole-circle swept gate replaces the straight
+        # forward brake, with 3cm drift plus 2cm measurement allowance.
         scan,start,_,error=sensors.snapshot()
         if abs(turn.yaw_delta(expected['yaw'],start.yaw)) > math.radians(1) or math.hypot(start.x-expected['x'],start.y-expected['y']) > .02:
             raise RuntimeError('robot moved or odom reset since measured reference')
@@ -129,7 +148,7 @@ def main():
             if not -1.5 <= angle <= hard_max or drift > (.05 if args.target_deg==90 else .03):
                 raise RuntimeError('accumulated yaw or translation limit')
             return scan,odom,angle
-        gate=EnvelopeGate()
+        gate=EnvelopeGate(args.confirmed_rear_structure)
         def envelope_blocked(scan):
             found=gate.check(scan)
             if found:
@@ -202,7 +221,15 @@ def main():
     finally:
         if args.real:
             try:
+                # A stopped command needs fresh board feedback before locking.
+                for _ in range(20):
+                    status=rpc('status')
+                    chassis=status.get('chassis',{})
+                    if not chassis.get('moving') and chassis.get('stopped_for_s',0) is not None and chassis.get('stopped_for_s',0)>=.5:
+                        break
+                    time.sleep(.1)
                 report['lock']=rpc('maintenance-lock')
+                if not report['lock'].get('ok'):raise RuntimeError('maintenance lock refused')
                 report['final_status']=rpc('status')
             except Exception as exc:
                 report['cleanup_error']=str(exc)

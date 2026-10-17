@@ -209,7 +209,7 @@ class DeployConfig:
     release_enable: bool = False
     release_extend_steps: int = 6
     release_extend_rad_per_step: float = 0.05
-    bin_rim_height: float = 0.05      # m, bin rim above the floor -- MEASURE YOURS
+    bin_rim_height: float = 0.06      # m, measured demo paper-box rim
     release_clearance: float = 0.03   # m, pad bottom must clear the rim by this much
     release_settle_s: float = 0.5     # pause after opening, before retracting
     # The jaw travels open→closed = 150 hw deg, and send_degrees moves at most

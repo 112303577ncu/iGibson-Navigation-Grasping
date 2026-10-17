@@ -1,0 +1,15 @@
+{
+  "quarter_angles_deg": [
+    90.13970696331327,
+    89.91635368662263,
+    89.51696347209426,
+    91.52771949109012
+  ],
+  "total_odom_deg": 361.10074361312024,
+  "drift_m": 0.045625439359084294,
+  "last_quarter_ok": false,
+  "last_quarter_error": "settled yaw outside 89.2..91.5 degrees",
+  "mapping": "separate new SLAM session; previous map preserved",
+  "fixed_keepout_deployed": false,
+  "quality_decision": "reject new spin map for navigation; retain previous perimeter map"
+}

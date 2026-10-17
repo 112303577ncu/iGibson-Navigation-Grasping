@@ -8,8 +8,8 @@ from integration.g2_quarter_turn_calibration import swept_hazard, EnvelopeGate, 
 
 
 def points(x,y):
-    a=math.degrees(math.atan2(y,x-.13))-180
-    r=math.hypot(x-.13,y)
+    a=math.degrees(math.atan2(y,x-.10))-180
+    r=math.hypot(x-.10,y)
     return [(a+d,r) for d in [-.2,0,.2]]
 
 
@@ -28,6 +28,16 @@ def test_approximate_body_dimensions_allow_two_cm_tolerance():
 
 def test_single_speckle_not_cluster():
     assert not swept_hazard(points(0,.20)[:1])
+
+
+def test_confirmed_structure_is_opt_in_and_spatially_limited():
+    structure = points(-.154,-.156)
+    assert swept_hazard(structure)
+    assert not swept_hazard(structure, confirmed_rear_structure=True)
+    assert not swept_hazard(points(-.13,-.20), confirmed_rear_structure=True)
+    assert not swept_hazard(points(-.08,-.15), confirmed_rear_structure=True)
+    for x,y in [(-.20,-.16),(-.154,.156),(0,-.20)]:
+        assert swept_hazard(points(x,y), confirmed_rear_structure=True)
 
 
 def test_gate_requires_distinct_frames_and_resets():
@@ -54,4 +64,5 @@ def test_right_turn_across_wrap():
 def test_small_targets_have_tighter_stop_and_hard_limits():
     assert target_limits(5)==(4.6,5.8,8)
     assert target_limits(10)==(9.6,10.8,13)
+    assert target_limits(30)==(29.6,30.8,33)
     assert target_limits(90)==(89.2,91.5,95)

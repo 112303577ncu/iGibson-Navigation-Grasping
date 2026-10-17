@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "status": "draft_only_requires_geometry_and_physical_registration",
+  "image": "navigation_dock_zone_candidate.pgm",
+  "resolution": 0.02,
+  "origin": [
+    -2.0,
+    -2.0,
+    0.0
+  ],
+  "center_wall_margin_m": 0.3,
+  "corridor_along_m": [
+    -0.28,
+    0.12
+  ],
+  "corridor_half_width_m": 0.12,
+  "box_keepout_m": 0.283238075793812,
+  "added_cells": 34,
+  "sha256": "a6f1d380909e680a94cc301e78b81719472421b1823f12aebb6fe6200f94cc95"
+}

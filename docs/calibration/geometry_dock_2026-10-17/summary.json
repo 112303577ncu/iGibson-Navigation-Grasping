@@ -1,0 +1,12 @@
+{
+  "lidar_forward_m": 0.1,
+  "map_built_lidar_forward_m": 0.13,
+  "geometry_validation_required": true,
+  "igibson_navigation_policy_used": false,
+  "patrol_entry": "deploy/ros/g2_map_patrol.py",
+  "draft_dock_zone_added_cells": 34,
+  "draft_dock_zone_enabled": false,
+  "last_stop_fit_wall_clearance_m": 0.4309733698928556,
+  "last_stop_box_clearance_m": 0.2783201402598337,
+  "box_keepout_m": 0.283238075793812
+}

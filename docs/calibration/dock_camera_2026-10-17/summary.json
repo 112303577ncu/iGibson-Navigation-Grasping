@@ -1,0 +1,50 @@
+{
+  "patrol_ok": true,
+  "patrol_arrival_errors_cm": [
+    4.320679946469161,
+    3.6575315351702504,
+    4.374288929032464,
+    4.419756192944149,
+    4.391997051462104
+  ],
+  "patrol_recoveries": [],
+  "min_ram_mb": 1504.39453125,
+  "reference_calibrated_patch_fraction_of_arena_grid": 0.6889937106918239,
+  "reference_source": "koala/codex/approach-lidar-frame d06bba3 detection/rear_ground_homography.json",
+  "reference_base_x_conversion": "measured x camera ground -0.215 +0.15; not deployed",
+  "publisher_x_conversion": "x camera ground -0.20, differs by 0.135m if measurement description is correct",
+  "warning": "Calibration patch coverage is not full optical FOV or YOLO detection recall. Camera mounting consistency and coordinate reference need physical verification; no runtime coordinates changed.",
+  "dock_result": {
+    "ok": false,
+    "error": "predicted stop crosses mask",
+    "final_pose_map": [
+      1.3096433981950129,
+      0.7760871813481001,
+      0.19371492425441295
+    ],
+    "candidate_pose_map": [
+      1.3594108926938875,
+      0.7802359212928558
+    ],
+    "error_to_candidate_cm": 4.994011966169813,
+    "front_wall_center_distance_cm": 37.72756316427174,
+    "physical_front_to_box_near_edge_cm": 30,
+    "operator_correction_suggestion": "vehicle forward ~35cm and right ~15..30deg; not executed; lateral measurement pending",
+    "release_tested": false,
+    "departure_tested": false
+  },
+  "physical_validation": {
+    "robot_pose_map_estimate": [
+      1.3096433981950129,
+      0.7760871813481001,
+      0.19371492425441295
+    ],
+    "front_edge_to_box_near_edge_m": 0.3,
+    "box_bearing_left_deg_approx": 20,
+    "map_predicted_box_bearing_left_deg": 1.4933577205807698,
+    "map_predicted_box_near_face_forward_gap_m": 0.151635020678885,
+    "source": "operator tape/visual feedback; latest left20 supersedes earlier right15..30 suggestion",
+    "status": "physical alignment mismatch; box map registration/localization not validated",
+    "motion_correction_executed": false
+  }
+}

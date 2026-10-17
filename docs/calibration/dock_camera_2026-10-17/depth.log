@@ -1,0 +1,171 @@
+Started /bin/bash -c source /home/jetson/yahboomcar_ws/devel/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec roslaunch deploy/ros/g2_rear_depth_probe.launch.
+[31m[ERROR] [1792226888.154791232]: Failed to load nodelet [/rear_depth_probe] of type [astra_camera/AstraDriverNodelet] even after refreshing the cache: According to the loaded plugin descriptions the class astra_camera/AstraDriverNodelet with base class type nodelet::Nodelet does not exist. Declared types are  RobotLocalization/EkfNodelet RobotLocalization/NavSatTransformNodelet RobotLocalization/UkfNodelet SlamGMappingNodelet adding_images/adding_images apriltag_ros/ContinuousDetector camshift/camshift contour_moments/contour_moments convex_hull/convex_hull corner_harris/corner_harris depth_image_proc/convert_metric depth_image_proc/crop_foremost depth_image_proc/disparity depth_image_proc/point_cloud_xyz depth_image_proc/point_cloud_xyz_radial depth_image_proc/point_cloud_xyzi depth_image_proc/point_cloud_xyzi_radial depth_image_proc/point_cloud_xyzrgb depth_image_proc/register depthimage_to_laserscan/DepthImageToLaserScanNodelet discrete_fourier_transform/discrete_fourier_transform edge_detection/edge_detection face_detection/face_detection face_recognition/face_recognition fback_flow/fback_flow find_contours/find_contours general_contours/general_contours goodfeature_track/goodfeature_track hls_color_filter/hls_color_filter hough_circles/hough_circles hough_lines/hough_lines hsv_color_filter/hsv_color_filter image_proc/crop_decimate image_proc/crop_nonZero image_proc/crop_non_zero image_proc/debayer image_proc/rectify image_proc/resize image_publisher/image_publisher image_rotate/image_rotate image_view/disparity image_view/image imu_filter_madgwick/ImuFilterNodelet laser_filters/scan_to_cloud_filter_chain laser_proc/LaserProcNodelet libuvc_camera/driver lk_flow/lk_flow mesh_filter/DepthSelfFiltering nodelet_tutorial_math/Plus octomap_color_server/OctomapServerNodelet octomap_server/OctomapServerNodelet opencv_apps/adding_images opencv_apps/camshift opencv_apps/contour_moments opencv_apps/convex_hull opencv_apps/corner_harris opencv_apps/discrete_fourier_transform opencv_apps/edge_detection opencv_apps/face_detection opencv_apps/face_recognition opencv_apps/fback_flow opencv_apps/find_contours opencv_apps/general_contours opencv_apps/goodfeature_track opencv_apps/hls_color_filter opencv_apps/hough_circles opencv_apps/hough_lines opencv_apps/hsv_color_filter opencv_apps/lk_flow opencv_apps/people_detect opencv_apps/phase_corr opencv_apps/pyramids opencv_apps/rgb_color_filter opencv_apps/segment_objects opencv_apps/simple_compressed_example opencv_apps/simple_example opencv_apps/simple_flow opencv_apps/smoothing opencv_apps/threshold opencv_apps/watershed_segmentation pcl/BAGReader pcl/BoundaryEstimation pcl/ConvexHull2D pcl/CropBox pcl/EuclideanClusterExtraction pcl/ExtractIndices pcl/ExtractPolygonalPrismData pcl/FPFHEstimation pcl/FPFHEstimationOMP pcl/MomentInvariantsEstimation pcl/MovingLeastSquares pcl/NodeletDEMUX pcl/NodeletMUX pcl/NormalEstimation pcl/NormalEstimationOMP pcl/NormalEstimationTBB pcl/PCDReader pcl/PCDWriter pcl/PFHEstimation pcl/PassThrough pcl/PointCloudConcatenateDataSynchronizer pcl/PointCloudConcatenateFieldsSynchronizer pcl/PrincipalCurvaturesEstimation pcl/ProjectInliers pcl/RadiusOutlierRemoval pcl/SACSegmentation pcl/SACSegmentationFromNormals pcl/SHOTEstimation pcl/SHOTEstimationOMP pcl/SegmentDifferences pcl/StatisticalOutlierRemoval pcl/VFHEstimation pcl/VoxelGrid people_detect/people_detect phase_corr/phase_corr pointcloud_to_laserscan/laserscan_to_pointcloud_nodelet pointcloud_to_laserscan/pointcloud_to_laserscan_nodelet pyramids/pyramids rgb_color_filter/rgb_color_filter rtabmap_ros/data_odom_sync rtabmap_ros/data_throttle rtabmap_ros/disparity_to_depth rtabmap_ros/icp_odometry rtabmap_ros/imu_to_tf rtabmap_ros/obstacles_detection rtabmap_ros/obstacles_detection_old rtabmap_ros/point_cloud_aggregator rtabmap_ros/point_cloud_assembler rtabmap_ros/point_cloud_xyz rtabmap_ros/point_cloud_xyzrgb rtabmap_ros/pointcloud_to_depthimage rtabmap_ros/rgb_sync rtabmap_ros/rgbd_odometry rtabmap_ros/rgbd_relay rtabmap_ros/rgbd_sync rtabmap_ros/rgbdicp_odometry rtabmap_ros/rgbdx_sync rtabmap_ros/rtabmap rtabmap_ros/stereo_odometry rtabmap_ros/stereo_sync rtabmap_ros/stereo_throttle rtabmap_ros/undistort_depth segment_objects/segment_objects simple_compressed_example/simple_compressed_example simple_example/simple_example simple_flow/simple_flow smoothing/smoothing stereo_image_proc/disparity stereo_image_proc/point_cloud2 threshold/threshold uvc_camera/CameraNodelet uvc_camera/StereoNodelet watershed_segmentation/watershed_segmentation[0m
+[31m[ERROR] [1792226888.162266928]: The error before refreshing the cache was: According to the loaded plugin descriptions the class astra_camera/AstraDriverNodelet with base class type nodelet::Nodelet does not exist. Declared types are  RobotLocalization/EkfNodelet RobotLocalization/NavSatTransformNodelet RobotLocalization/UkfNodelet SlamGMappingNodelet adding_images/adding_images apriltag_ros/ContinuousDetector camshift/camshift contour_moments/contour_moments convex_hull/convex_hull corner_harris/corner_harris depth_image_proc/convert_metric depth_image_proc/crop_foremost depth_image_proc/disparity depth_image_proc/point_cloud_xyz depth_image_proc/point_cloud_xyz_radial depth_image_proc/point_cloud_xyzi depth_image_proc/point_cloud_xyzi_radial depth_image_proc/point_cloud_xyzrgb depth_image_proc/register depthimage_to_laserscan/DepthImageToLaserScanNodelet discrete_fourier_transform/discrete_fourier_transform edge_detection/edge_detection face_detection/face_detection face_recognition/face_recognition fback_flow/fback_flow find_contours/find_contours general_contours/general_contours goodfeature_track/goodfeature_track hls_color_filter/hls_color_filter hough_circles/hough_circles hough_lines/hough_lines hsv_color_filter/hsv_color_filter image_proc/crop_decimate image_proc/crop_nonZero image_proc/crop_non_zero image_proc/debayer image_proc/rectify image_proc/resize image_publisher/image_publisher image_rotate/image_rotate image_view/disparity image_view/image imu_filter_madgwick/ImuFilterNodelet laser_filters/scan_to_cloud_filter_chain laser_proc/LaserProcNodelet libuvc_camera/driver lk_flow/lk_flow mesh_filter/DepthSelfFiltering nodelet_tutorial_math/Plus octomap_color_server/OctomapServerNodelet octomap_server/OctomapServerNodelet opencv_apps/adding_images opencv_apps/camshift opencv_apps/contour_moments opencv_apps/convex_hull opencv_apps/corner_harris opencv_apps/discrete_fourier_transform opencv_apps/edge_detection opencv_apps/face_detection opencv_apps/face_recognition opencv_apps/fback_flow opencv_apps/find_contours opencv_apps/general_contours opencv_apps/goodfeature_track opencv_apps/hls_color_filter opencv_apps/hough_circles opencv_apps/hough_lines opencv_apps/hsv_color_filter opencv_apps/lk_flow opencv_apps/people_detect opencv_apps/phase_corr opencv_apps/pyramids opencv_apps/rgb_color_filter opencv_apps/segment_objects opencv_apps/simple_compressed_example opencv_apps/simple_example opencv_apps/simple_flow opencv_apps/smoothing opencv_apps/threshold opencv_apps/watershed_segmentation pcl/BAGReader pcl/BoundaryEstimation pcl/ConvexHull2D pcl/CropBox pcl/EuclideanClusterExtraction pcl/ExtractIndices pcl/ExtractPolygonalPrismData pcl/FPFHEstimation pcl/FPFHEstimationOMP pcl/MomentInvariantsEstimation pcl/MovingLeastSquares pcl/NodeletDEMUX pcl/NodeletMUX pcl/NormalEstimation pcl/NormalEstimationOMP pcl/NormalEstimationTBB pcl/PCDReader pcl/PCDWriter pcl/PFHEstimation pcl/PassThrough pcl/PointCloudConcatenateDataSynchronizer pcl/PointCloudConcatenateFieldsSynchronizer pcl/PrincipalCurvaturesEstimation pcl/ProjectInliers pcl/RadiusOutlierRemoval pcl/SACSegmentation pcl/SACSegmentationFromNormals pcl/SHOTEstimation pcl/SHOTEstimationOMP pcl/SegmentDifferences pcl/StatisticalOutlierRemoval pcl/VFHEstimation pcl/VoxelGrid people_detect/people_detect phase_corr/phase_corr pointcloud_to_laserscan/laserscan_to_pointcloud_nodelet pointcloud_to_laserscan/pointcloud_to_laserscan_nodelet pyramids/pyramids rgb_color_filter/rgb_color_filter rtabmap_ros/data_odom_sync rtabmap_ros/data_throttle rtabmap_ros/disparity_to_depth rtabmap_ros/icp_odometry rtabmap_ros/imu_to_tf rtabmap_ros/obstacles_detection rtabmap_ros/obstacles_detection_old rtabmap_ros/point_cloud_aggregator rtabmap_ros/point_cloud_assembler rtabmap_ros/point_cloud_xyz rtabmap_ros/point_cloud_xyzrgb rtabmap_ros/pointcloud_to_depthimage rtabmap_ros/rgb_sync rtabmap_ros/rgbd_odometry rtabmap_ros/rgbd_relay rtabmap_ros/rgbd_sync rtabmap_ros/rgbdicp_odometry rtabmap_ros/rgbdx_sync rtabmap_ros/rtabmap rtabmap_ros/stereo_odometry rtabmap_ros/stereo_sync rtabmap_ros/stereo_throttle rtabmap_ros/undistort_depth segment_objects/segment_objects simple_compressed_example/simple_compressed_example simple_example/simple_example simple_flow/simple_flow smoothing/smoothing stereo_image_proc/disparity stereo_image_proc/point_cloud2 threshold/threshold uvc_camera/CameraNodelet uvc_camera/StereoNodelet watershed_segmentation/watershed_segmentation[0m
+type is astra_camera/AstraDriverNodelet
+[31m[rear_depth_probe-1] process has died [pid 14264, exit code 255, cmd /opt/ros/melodic/lib/nodelet/nodelet standalone astra_camera/AstraDriverNodelet depth/image:=/rear_depth_probe/image_raw depth/camera_info:=/rear_depth_probe/camera_info __name:=rear_depth_probe __log:=/root/.ros/log/0ca9e62e-c978-11f1-b742-a351e656551e/rear_depth_probe-1.log].
+log file: /root/.ros/log/0ca9e62e-c978-11f1-b742-a351e656551e/rear_depth_probe-1*.log[0m
+... logging to /root/.ros/log/0ca9e62e-c978-11f1-b742-a351e656551e/roslaunch-yahboom-14033.log
+Checking log directory for disk usage. This may take a while.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;deploy/ros/g2_rear_depth_probe.launch
+[1mstarted roslaunch server http://127.0.0.1:46375/[0m
+SUMMARY
+========
+PARAMETERS
+ * /rear_depth_probe/bootorder: 0
+ * /rear_depth_probe/color_depth_synchronization: False
+ * /rear_depth_probe/depth_frame_id: rear_probe_depth_...
+ * /rear_depth_probe/depth_mode: 42
+ * /rear_depth_probe/depth_registration: False
+ * /rear_depth_probe/device_id: #1
+ * /rear_depth_probe/devnums: 1
+ * /rear_depth_probe/rgb_frame_id: rear_probe_rgb_op...
+ * /rosdistro: melodic
+ * /rosversion: 1.14.13
+NODES
+  /
+    rear_depth_probe (nodelet/nodelet)
+[1mROS_MASTER_URI=http://127.0.0.1:11311[0m
+]2;deploy/ros/g2_rear_depth_probe.launch http://127.0.0.1:11311
+[1mprocess[rear_depth_probe-1]: started with pid [14264][0m
+all processes on machine have died, roslaunch will exit
+shutting down processing monitor...
+... shutting down processing monitor complete
+[1mdone[0m
+Started /bin/bash -c source /home/jetson/yahboomcar_ws/devel/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec roslaunch deploy/ros/g2_rear_depth_probe.launch.
+[33m[ WARN] [1792226986.070439674]: Camera calibration file /camera_info/ir_camera.yaml not found.[0m
+[0m[ INFO] [1792226984.145842652]: Starting camera node...[0m
+[0m[ INFO] [1792226984.175740422]: Creating camera node...[0m
+[0m[ INFO] [1792226984.183511271]: OBCameraNodeFactory::OBCameraNodeFactory[0m
+[0m[ INFO] [1792226984.183574870]: Initializing OBCameraNodeFactory...[0m
+[0m[ INFO] [1792226985.469011858]: init Done[0m
+[0m[ INFO] [1792226985.469084625]: Creating camera node done...[0m
+[0m[ INFO] [1792226985.470031741]: Query device[0m
+[0m[ INFO] [1792226985.470136646]: Found 1 devices[0m
+[0m[ INFO] [1792226985.470350676]: Device connected: (name, Astra) (uri, 2bc5/060f@1/11) (vendor, Orbbec)[0m
+[0m[ INFO] [1792226985.470400784]: Trying to open device: 2bc5/060f@1/11[0m
+[0m[ INFO] [1792226985.570564182]: OBCameraNodeFactory::onDeviceConnected Open device start[0m
+[0m[ INFO] [1792226985.655937721]: OBCameraNodeFactory::onDeviceConnected Open device done, STATUS 0[0m
+[0m[ INFO] [1792226985.656051117]: Device connected: Astra serial number: ACRH843001X[0m
+[0m[ INFO] [1792226985.656093673]: Start device [0m
+[0m[ INFO] [1792226985.968629418]: Stream ir is disabled[0m
+[0m[ INFO] [1792226985.968708643]: Stream color is disabled[0m
+[0m[ INFO] [1792226986.062263478]: set depth video mode Resolution :320x240@30Hz
+format PIXEL_FORMAT_DEPTH_1_MM[0m
+[0m[ INFO] [1792226986.070096727]: using default calibration URL[0m
+[0m[ INFO] [1792226986.070213821]: camera calibration URL: file:///camera_info/ir_camera.yaml[0m
+[0m[ INFO] [1792226986.070386544]: Unable to open camera calibration file [/camera_info/ir_camera.yaml][0m
+[0m[ INFO] [1792226986.070581041]: OBCameraNode initialized[0m
+[0m[ INFO] [1792226986.070620732]: Start device  done[0m
+[0m[ INFO] [1792227009.208420982]: Image stream depth subscribed[0m
+[0m[ INFO] [1792227009.208499687]: Start depth stream.[0m
+[0m[ INFO] [1792227009.228668621]: depth is started[0m
+[0m[ INFO] [1792227010.089658506]: Image stream depth unsubscribed[0m
+[0m[ INFO] [1792227010.089754868]: Stop depth stream.[0m
+[0m[ INFO] [1792227010.089797007]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.103293383]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.103383808]: Stop stream depth done.[0m
+[0m[ INFO] [1792227010.163249144]: Image stream depth subscribed[0m
+[0m[ INFO] [1792227010.163324411]: Start depth stream.[0m
+[0m[ INFO] [1792227010.188034517]: depth is started[0m
+[0m[ INFO] [1792227010.333496999]: Image stream depth unsubscribed[0m
+[0m[ INFO] [1792227010.333578881]: Stop depth stream.[0m
+[0m[ INFO] [1792227010.333615551]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.358265913]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.358342847]: Stop stream depth done.[0m
+[0m[ INFO] [1792227010.390232846]: Image stream depth subscribed[0m
+[0m[ INFO] [1792227010.390314363]: Start depth stream.[0m
+[0m[ INFO] [1792227010.407022684]: depth is started[0m
+[0m[ INFO] [1792227010.544479108]: Image stream depth unsubscribed[0m
+[0m[ INFO] [1792227010.544564532]: Stop depth stream.[0m
+[0m[ INFO] [1792227010.544607400]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.583923979]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.584003882]: Stop stream depth done.[0m
+[0m[ INFO] [1792227010.593937085]: Image stream depth subscribed[0m
+[0m[ INFO] [1792227010.594014644]: Start depth stream.[0m
+[0m[ INFO] [1792227010.613416427]: depth is started[0m
+[0m[ INFO] [1792227010.756482243]: Image stream depth unsubscribed[0m
+[0m[ INFO] [1792227010.756570376]: Stop depth stream.[0m
+[0m[ INFO] [1792227010.756606420]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.792805646]: OBCameraNode::stopStream stop[0m
+[0m[ INFO] [1792227010.792888466]: Stop stream depth done.[0m
+[0m[ INFO] [1792227010.815276497]: Image stream depth subscribed[0m
+[0m[ INFO] [1792227010.815345669]: Start depth stream.[0m
+[0m[ INFO] [1792227010.838091856]: depth is started[0m
+[0m[ INFO] [1792227010.981666154]: Image stream depth unsubscribed[0m
+x3plus-rear-depth-native.service: Service reached runtime time limit. Stopping.
+[0m[ INFO] [1792227010.981741629]: Stop depth stream... logging to /root/.ros/log/0ca9e62e-c978-11f1-b742-a351e656551e/roslaunch-yahboom-17605.log
+Checking log directory for disk usage. This may take a while.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;deploy/ros/g2_rear_depth_probe.launch
+[1mstarted roslaunch server http://127.0.0.1:38357/[0m
+SUMMARY
+========
+PARAMETERS
+ * /rear_depth_probe/camera/camera_name: rear_depth_probe
+ * /rear_depth_probe/camera/color_depth_synchronization: False
+ * /rear_depth_probe/camera/color_format: RGB
+ * /rear_depth_probe/camera/color_fps: 30
+ * /rear_depth_probe/camera/color_height: 480
+ * /rear_depth_probe/camera/color_info_uri:
+ * /rear_depth_probe/camera/color_roi_height: -1
+ * /rear_depth_probe/camera/color_roi_width: -1
+ * /rear_depth_probe/camera/color_roi_x: -1
+ * /rear_depth_probe/camera/color_roi_y: -1
+ * /rear_depth_probe/camera/color_width: 640
+ * /rear_depth_probe/camera/connection_delay: 100
+ * /rear_depth_probe/camera/depth_align: False
+ * /rear_depth_probe/camera/depth_format: Y11
+ * /rear_depth_probe/camera/depth_fps: 30
+ * /rear_depth_probe/camera/depth_height: 240
+ * /rear_depth_probe/camera/depth_roi_height: -1
+ * /rear_depth_probe/camera/depth_roi_width: -1
+ * /rear_depth_probe/camera/depth_roi_x: -1
+ * /rear_depth_probe/camera/depth_roi_y: -1
+ * /rear_depth_probe/camera/depth_scale: 1
+ * /rear_depth_probe/camera/depth_width: 320
+ * /rear_depth_probe/camera/device_num: 1
+ * /rear_depth_probe/camera/enable_color: False
+ * /rear_depth_probe/camera/enable_d2c_viewer: False
+ * /rear_depth_probe/camera/enable_depth: True
+ * /rear_depth_probe/camera/enable_ir: False
+ * /rear_depth_probe/camera/enable_point_cloud: False
+ * /rear_depth_probe/camera/enable_point_cloud_xyzrgb: False
+ * /rear_depth_probe/camera/enable_publish_extrinsic: False
+ * /rear_depth_probe/camera/flip_color: False
+ * /rear_depth_probe/camera/flip_depth: False
+ * /rear_depth_probe/camera/flip_ir: False
+ * /rear_depth_probe/camera/ir_format: Y10
+ * /rear_depth_probe/camera/ir_fps: 30
+ * /rear_depth_probe/camera/ir_height: 480
+ * /rear_depth_probe/camera/ir_info_uri:
+ * /rear_depth_probe/camera/ir_width: 640
+ * /rear_depth_probe/camera/oni_log_level: verbose
+ * /rear_depth_probe/camera/oni_log_to_console: False
+ * /rear_depth_probe/camera/oni_log_to_file: False
+ * /rear_depth_probe/camera/product_id: rgb
+ * /rear_depth_probe/camera/publish_tf: False
+ * /rear_depth_probe/camera/serial_number:
+ * /rear_depth_probe/camera/tf_publish_rate: 10.0
+ * /rear_depth_probe/camera/use_uvc_camera: False
+ * /rear_depth_probe/camera/uvc_camera_format: mjpeg
+ * /rear_depth_probe/camera/uvc_flip: False
+ * /rear_depth_probe/camera/uvc_product_id: 0x050f
+ * /rear_depth_probe/camera/uvc_retry_count: 100
+ * /rear_depth_probe/camera/uvc_vendor_id: 0x2bc5
+ * /rear_depth_probe/camera/vendor_id: 0x2bc5
+ * /rosdistro: melodic
+ * /rosversion: 1.14.13
+NODES
+  /rear_depth_probe/
+    camera (astra_camera/astra_camera_node)
+[1mROS_MASTER_URI=http://127.0.0.1:11311[0m
+]2;deploy/ros/g2_rear_depth_probe.launch http://127.0.0.1:11311
+[1mprocess[rear_depth_probe/camera-1]: started with pid [17818][0m
+[rear_depth_probe/camera-1] killing on exit
+shutting down processing monitor...
+... shutting down processing monitor complete
+[1mdone[0m
+x3plus-rear-depth-native.service: Failed with result 'timeout'.

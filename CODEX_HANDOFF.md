@@ -1,36 +1,40 @@
-# Codex 下一步（2026-10-17）
+# 接續入口（2026-10-17）
 
-正式分支是112303577ncu/iGibson-Navigation-Grasping的v23-grasp-test。機器人已依要求關機；最後IP為172.20.10.3，下次開機先確認實際IP。不要為本次GitHub推送重連/開機。
+決賽目標：定位 → 巡航辨識 → 接近夾取 → 收臂運送 → 紙盒投放 → 返回巡航。
+分支：`112303577ncu/iGibson-Navigation-Grasping` 的 `v23-grasp-test`。
 
-## 正式目標與下一次現場順序
+## 先讀這份
 
-正式展示：已建圖場地定位 → 巡航尋物 → 視覺接近/E1交接 → 夾取 → 收臂搬運 → 投放點導航 → 投放 → 接續任務。
-112303577ncu先做基本冷開機確認，再做雷射座標/濾波對照 → 新地板/新濾波建圖與尺度 → AMCL → 巡航/投放點短路線，最後接全隊流程。定點夾取是模組測試/備援，不能取代導航主線。
-詳見[10/17 GitHub與決賽目標核對](docs/planning/V23_FINAL_DEMO_REVIEW_2026-10-17.md)、[正式優先順序](docs/planning/V23_FINAL_DEMO_PRIORITIES.md)。只讀所需檔案，不重新掃描整個專案。
+[導航成果、限制與接手命令](docs/handoff/NAVIGATION_2026-10-17.md)。只按下一步讀相關檔案，無須重掃專案。
 
-## 10/16成果與部署界線
+## 最近實機狀態
 
-- 直線odom合計88.85cm、尺量約88–89.5cm；左89.94°/右89.23°均現場確認約90°，保留倍率。微動實際0.6–1.0cm；左5°第1輪odom5.75°僅目測相近，使用者無量角器，精密量測暫緩。一般停止距離/超轉仍須處理。
-- LiDAR左右方向已做紙板A/B確認。固定自回波profile已接到/scan；原始資料在/scan_raw，開機不自動學習。外物漏檢對照仍未驗收。車體前20/後13/左12/右12cm含線材；雷射實測前13cm，但正式TF/一般客戶端仍10cm，建圖前要核對統一，不直接套舊地圖。
-- 實機原稿以最小補丁新增獨立/tmp/grasp_health.sock與推論心跳/tmp/x3plus_vision_health.json。手臂忙碌時73次健康查詢全成功、最慢10.9ms；home/stow時原生odom/TF最大間隔約65ms。
-- v23-control-vision-monitor.service已enabled；限定控制/視覺、無ROS訂閱、無owner自動重啟。相機故障約12–15秒可自行恢復。最後維護鎖保留、底盤零速、巡航位、holding=false。冷開機尚未驗證。
-- 部署重啟owner一次，PID30006→2518，odom原點已重置；所有後續動作重建reference，不能續用舊量測座標。完整Serial transport與owner故障恢復尚未部署。
-- 監督器使用/home/jetson/health_compat_20261016/recovery四模組bundle；原稿備份/manifest在同目錄。vision有效argv已保存為zz-preserve-deployed-20261016.conf，保留組員allow-top-clipped/frame-report等參數。未覆寫組員校正。
-- 曾發現ROS背景記錄影響rosbridge，已改預設RAM-only。RAM記錄依使用者要求停止：23分19秒、685筆，最低1749MB；complete=false代表提前停止，非滿30分鐘驗收，期間重啟程序不能證明無洩漏。所有結果已取回本機。
-- 相關105項通過、skip1，五組回歸通過；controller/floor仍需測試程序相對URDF路徑轉接，Windows中文絕對路徑問題未修復。
+- 最近 SSH 位址 `172.20.10.3`、帳號 `jetson`；部署目錄 `/home/jetson/Documents/deploy_jetson2`。
+- resident 最近 PID4505，唯一 Serial owner；輪零、maintenance=true、手臂 travel、空夾爪。這是最後量測紀錄，接手須唯讀重查。
+- owner 為投放預演重啟，odom 原點重設；`maps/demo_box_20261017/last_pose_seed.json` 已 `valid=false`，禁止重用舊 map→odom。
+- LiDAR 前移量已由13改10 cm；舊圖僅做新幾何靜止定位探測，尚待移動驗證。
+- 紙盒18×13.5×6 cm，距原兩面牆各20–25 cm；新 map 註冊與遮罩未完成。幾何／盒位旗標維持 false，局部30 cm停靠區未啟用。
+- 右轉30°只完成12.14°；最後 odom 約[-0.0037,-0.0067,-0.2119]，不是 map 座標。操作者確認近回波均為固定機構／線材。未自動續轉，濾波尚未完成外物對照；不得再次從零轉30°。
+- 盒高6 cm空夾爪投放預演成功，返回travel；無實物投放驗收。見[預演與部分轉向](docs/operations/RELEASE_PREVIEW_2026-10-17.md)。
+- 暫時 AMCL／快照已停；vision／monitor最近恢復active。機器上的 service/controller 含相容性差異，部署前比對，不整份覆蓋組員修正。
 
-## GitHub核對與操作限制
+## 下一次執行順序
 
-10/17核對：自己的origin在本次推送前為e980fa8；koala v23為3eb79ec，最新接近分支為d06bba3（新增10/12實測）；enoch獨立快照仍ebad46e。只fetch/review，未合併owner/隊友分支。
-現行v23 plan只有home/grasp/stow/release/短直線drive；完整地圖巡航/投放導航入口仍待接通。舊mission_pipeline是獨立Serial且拒絕實機，不得直接啟動取代常駐owner。
-不要再問已授權的現場安全；僅量距/量角/擺放物件時提示配合。保留真實資料/狀態閘，不偽造通過，不重播未知夾取/投放。不開第二Serial owner，不覆寫組員，不自行合併owner。
+1. 唯讀確認服務、唯一Serial、輪零、手臂姿態、板回傳、RAM、scan／odom／TF；導航仍走resident TCP7000。
+2. 根據現場確認比對固定機構回波，僅建立有證據的局部濾波，完成外物漏檢對照。
+3. 用新的可信map初值重開定位，驗證10 cm幾何；必要才重建地圖，不直接把旗標改true。
+4. 註冊新紙盒位置、重建限制圖／可達停靠點，驗證靠近、投放與退出。
+5. 重跑一圈、home及合法任意點，再接視覺夾取／負載運送／投放／續巡航。
+6. ArUco列印後量黑框、固定支架、量map位置並驗相機參數；再驗相機覆蓋與故障恢復。
 
-## 記錄入口
+一般中心牆距40 cm、巡航選點內縮60 cm、直行前牆煞車50 cm；局部30 cm僅草案。
+新步驟約需1 GB可用RAM，導航低於768 MB退出子程序。例行安全確認已由使用者授權，不重問；量測、擺物或實際故障資訊才詢問。
 
-- [新地板里程計](docs/operations/ODOM_NEW_FLOOR_2026-10-16.md)
-- [左右90°](docs/operations/ODOM_LEFT_90_2026-10-16.md)、[小角度](docs/operations/ODOM_SMALL_ANGLE_2026-10-16.md)
-- [LiDAR固定濾波](docs/operations/LIDAR_SELF_FILTER_2026-10-16.md)
-- [健康相容介面/自動修復/關機結果](docs/operations/HEALTH_COMPAT_RECOVERY_2026-10-16.md)
-- [開機穩定性測試](docs/operations/BOOT_STABILITY_TEST_2026-10-16.md)
-- JSON與有限log：docs/calibration/odom_new_floor_2026-10-16/。
-- 10/16逐段舊交接已保存在[封存](docs/handoff/CODEX_HANDOFF_2026-10-16_ARCHIVE.md)，其中「等待回覆/未部署/正在記錄」為當時狀態，以本檔為準。
+## 已有證據與界線
+
+此前配置下逆時鐘巡航與自訂A→B→home通過；修正後到點估計約3.5–4.6 cm，停穩樣本最大偏線約4.0 cm，非尺量／連續保證。
+巡航未使用iGibson PPO，尚未接通完整v23任務；冷開機重定位、動態繞障、全場辨識與實物落盒仍待驗證。
+最新測試及列印檢查見導航交接與 `docs/calibration/`；原始失敗報告不改成成功。
+
+ArUco列印檔與檢查見[列印審查](docs/calibration/aruco_2026-10-17/PRINT_REVIEW_2026-10-17.md)。
+先前逐段紀錄保留於[封存歷程](docs/handoff/CODEX_HISTORY_2026-10-17.md)，不作最新狀態。

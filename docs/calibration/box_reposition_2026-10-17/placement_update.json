@@ -1,0 +1,29 @@
+{
+  "moved": true,
+  "wall_clearance_range_m": {
+    "photo_back_wall": [
+      0.2,
+      0.25
+    ],
+    "photo_left_wall": [
+      0.2,
+      0.25
+    ]
+  },
+  "long_edge_parallel_to": "photo_back_wall",
+  "source": "operator confirmation; same original corner moved inward",
+  "midpoint_pose_map_candidate": {
+    "x": 1.5599413405605012,
+    "y": 0.8333281945387369,
+    "yaw": 1.1209907364126621
+  },
+  "coordinate_status": "candidate_only; photo-map correspondence and physical alignment still unverified",
+  "position_uncertainty_from_wall_ranges_m": 0.03535533905932738,
+  "current_relative_alignment": {
+    "turn_right_deg_approx": 30,
+    "distance_adequate_for_placement_operator_confirmed": true,
+    "front_edge_distance_m": null,
+    "numeric_distance_not_requested_again": true,
+    "base_or_arm_motion_executed": false
+  }
+}

@@ -1,5 +1,16 @@
 # X3Plus 專題進度記錄
 
+## 2026-10-17 — 112303577ncu 導航／巡航交付
+
+約2×2m場地完成建圖、兩圈移動AMCL巡航、沿線修正與自訂A→B→home；修正後到點估計3.54–4.55cm，巡航停穩樣本最大偏線6.86→4.02cm，非尺量或連續精度保證。後RGB同時巡航成功，深度與全場辨識無死角仍未驗收。地圖、原始成功／失敗JSON、來源hash、影像與回歸log一併保存。
+
+後續將LiDAR中心修正為車體前10cm、紙盒移至兩牆各20–25cm，並為6cm盒高空投放預演重啟resident：owner4505、odom重設。舊map種子失效，幾何／盒註冊／限制圖驗證旗標保持false，不能直接重跑舊巡航。空投放預演成功、最低RAM1654.15MB，尚無實物落盒。右轉30°只完成12.14°；操作者確認近回波為機構／線材，本輪交付未續轉。
+
+導航、轉向、預演及既有恢復相關pytest最新147通過／1略過，FSM selftest通過；既有controller／servo／floor／UI回歸證據附於當日資料夾，新四組測試加入GitHub CI。
+ArUco原合併檔黑框約80mm；另提供[同頁兩張120mm A4向量PDF](output/pdf/aruco_120mm_A4_two_markers.pdf)，ID0／1解碼及尺寸通過，尚待實體列印／相機測試。
+
+接手主文件：[導航交接](docs/handoff/NAVIGATION_2026-10-17.md)、[最新狀態](CODEX_HANDOFF.md)、[空投放與部分轉向](docs/operations/RELEASE_PREVIEW_2026-10-17.md)。下一步先完成固定回波對照、新幾何重定位與紙盒註冊，再重跑巡航並接全任務循環。
+
 ## 2026-09-28 — G2 相容導航端第一階段（112303577ncu）
 
 新增 `integration/g2_nav_client.py`：Jetson Python 3.8 從 rosbridge 訂閱

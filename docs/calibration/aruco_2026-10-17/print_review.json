@@ -1,0 +1,53 @@
+{
+  "original_pdf_black_mm_approx": 80,
+  "corrected_pdf": "output/pdf/aruco_120mm_A4_two_markers.pdf",
+  "page_count": 1,
+  "page_mm": [
+    210.00000333333335,
+    297.0000127777778
+  ],
+  "dictionary": "DICT_4X4_50",
+  "markers": [
+    {
+      "id": 0,
+      "black_mm": [
+        119.99997519444443,
+        120.0000104722222
+      ],
+      "left_mm": 45.00001583333333,
+      "top_mm": 18.500015916666687
+    },
+    {
+      "id": 1,
+      "black_mm": [
+        119.99997519444443,
+        120.0000104722222
+      ],
+      "left_mm": 45.00001583333333,
+      "top_mm": 159.50000202777778
+    }
+  ],
+  "horizontal_white_margin_mm": 45,
+  "outer_vertical_white_margin_mm": 18.5,
+  "between_black_squares_mm": 21,
+  "native_vectors": true,
+  "opencv_decode": [
+    {
+      "page": 1,
+      "id": 1,
+      "raster_check_mm": [
+        120.06203703703703,
+        120.06203703703703
+      ]
+    },
+    {
+      "page": 1,
+      "id": 0,
+      "raster_check_mm": [
+        120.06203703703703,
+        119.94444444444444
+      ]
+    }
+  ],
+  "sha256": "5cef7edbf90fc58a28453729242c4e56b4c8e4bea3e932c9157c65a5b9179c8f"
+}

@@ -1,0 +1,55 @@
+{
+  "scene": "demo_box_20261017",
+  "fixed_scene_supervised_patrol_verified": true,
+  "full_pick_place_mission_verified": false,
+  "runs": [
+    {
+      "run": 1,
+      "vision_enabled": false,
+      "ok": true,
+      "pulses": 102,
+      "arrivals": 5,
+      "arrival_error_range_m": [
+        0.06645696914717802,
+        0.08674386634605767
+      ],
+      "transient_recoveries": 0,
+      "settled_pose_samples": 103,
+      "all_recorded_centres_allowed": true,
+      "min_recorded_occupied_clearance_m": 0.4024922359499622,
+      "max_recorded_scan_age_s": 0.21115612983703613,
+      "min_available_mb": null,
+      "park_facing": null,
+      "revision_note": "earlier same-session version; no final facing or RAM-min counter"
+    },
+    {
+      "run": 2,
+      "vision_enabled": true,
+      "ok": true,
+      "pulses": 124,
+      "arrivals": 5,
+      "arrival_error_range_m": [
+        0.07005856547246925,
+        0.07799234990560355
+      ],
+      "transient_recoveries": 0,
+      "settled_pose_samples": 125,
+      "all_recorded_centres_allowed": true,
+      "min_recorded_occupied_clearance_m": 0.5280151512977634,
+      "max_recorded_scan_age_s": 0.22655105590820312,
+      "min_available_mb": 1593.8984375,
+      "park_facing": "room_centre"
+    }
+  ],
+  "final_map_pose": [
+    0.12537679718420064,
+    0.39395953257706845,
+    0.15490739849260127
+  ],
+  "final_primary_point_error_m": 0.08911604358906162,
+  "final_yaw_error_deg": 4.000641625094356,
+  "final_run_source_sha256": {
+    "deploy/ros/g2_map_patrol.py": "b2a54cfe83cff006421741d28e3f9c95ad0cd0523b0aa8375aa71c116e19a55d",
+    "integration/g2_patrol_policy.py": "171103acfbaae039c71b8fcf409f9f2e5173b283af2c386fc2d592b5989d4ce1"
+  }
+}

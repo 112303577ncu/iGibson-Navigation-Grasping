@@ -1,0 +1,53 @@
+{
+  "Before": {
+    "ok": true,
+    "pulses": 124,
+    "recoveries": 0,
+    "arrival_errors_cm": [
+      7.6332398021922545,
+      7.799234990560356,
+      7.112047485116728,
+      7.1350200666839365,
+      7.005856547246925
+    ],
+    "stopped_sample_nearest_route_cm": {
+      "median": 0.8220518839852127,
+      "p95": 3.963480733914812,
+      "max": 6.8634744940533094
+    },
+    "min_available_mb": 1593.8984375,
+    "patrol_after_first_arrival": {
+      "first_trace_index": 0,
+      "samples": 124,
+      "median_cm": 0.8220518839852127,
+      "p95_cm": 3.963480733914812,
+      "max_cm": 6.8634744940533094
+    }
+  },
+  "After": {
+    "ok": true,
+    "pulses": 183,
+    "recoveries": 0,
+    "arrival_errors_cm": [
+      4.549708218069963,
+      3.872520380597326,
+      3.5375927427356673,
+      4.335232049670196,
+      4.0888038481305085
+    ],
+    "stopped_sample_nearest_route_cm": {
+      "median": 0.8980137598223359,
+      "p95": 6.315122701203219,
+      "max": 7.284952827243487
+    },
+    "min_available_mb": 1594.4921875,
+    "patrol_after_first_arrival": {
+      "first_trace_index": 28,
+      "samples": 155,
+      "median_cm": 0.8346255423687875,
+      "p95_cm": 2.6685424964411633,
+      "max_cm": 4.017846137487354
+    }
+  },
+  "scope": "Map/odom estimates at stopped samples, excluding ingress for patrol-only metric; not physical accuracy or continuous-motion bound. Different starts; one comparison, not statistical acceptance."
+}

@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "result": {
+    "ok": true,
+    "preview": true,
+    "object_delivery_verified": false,
+    "outcome": "release_preview_completed",
+    "motion_outcome": "released",
+    "rim_cm": 6.0,
+    "clearance_cm": 3.0,
+    "stow": {
+      "ok": true,
+      "holding": false,
+      "elapsed_s": 3.47
+    }
+  },
+  "elapsed_s": 15.57092547416687,
+  "min_available_mb": 1654.15234375,
+  "samples": 152,
+  "max_board_rx_age_s": 0.02,
+  "all_motors_zero": true,
+  "all_odom_zero": true,
+  "new_owner_pid": 4505
+}

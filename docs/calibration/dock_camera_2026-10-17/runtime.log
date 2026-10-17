@@ -1,0 +1,18 @@
+Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python deploy/ros/g2_dock_probe.py --scene maps/demo_box_20261017 --output /tmp/dock_camera_run.json --real.
+/dev/ttyUSB0:
+the rosdep view is empty: call 'sudo rosdep init' and 'rosdep update'
+{"pulses": 36, "ok": false, "final": {"tf_age": -0.3526761531829834, "front": 0.4807359427426149, "odom_stamp": 1792226803.5697868, "odom": [1.1581446896204328, 0.6994345461050514, 0.37670554188010336], "scan_age": 0.1473238468170166, "vx": 0.0, "pose": [1.1864119006211393, 0.740626661062713, 0.26716092990743734], "wz": 0.0, "cov": [4.0883310660017555e-05, 0.00010119584311339397, 4.924310912458227e-05]}, "arrivals": [{"error_m": 0.04002641019922637, "pose": [1.1462629724222113, 0.7259827380860112, 0.3453732805490093], "goal": [1.1844151592101384, 0.7380874543873482], "cov": [7.179621218757308e-05, 0.00010375070697729604, 6.0601031174719346e-05], "label": "box_staging"}], "error": "recovery budget exhausted"}
+x3plus-dock-camera-run.service: Main process exited, code=exited, status=1/FAILURE
+x3plus-dock-camera-run.service: Failed with result 'exit-code'.
+Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python deploy/ros/g2_dock_probe.py --scene maps/demo_box_20261017 --output /tmp/dock_short_run.json --real --short-final-approach.
+/dev/ttyUSB0:
+the rosdep view is empty: call 'sudo rosdep init' and 'rosdep update'
+{"pulses": 21, "ok": false, "final": {"tf_age": -0.2914719581604004, "front": 0.3851803573121604, "odom_stamp": 1792226924.1408389, "odom": [1.2713546068735562, 0.7402140661697685, 0.302260740384889], "scan_age": 0.2085280418395996, "vx": 0.0, "pose": [1.3045789046367775, 0.7749566037235963, 0.1943324992449309], "wz": 0.0, "cov": [3.1395373410912725e-05, 0.00010432972395261388, 3.3856135724239995e-05]}, "arrivals": [{"error_m": 0.003309240017127629, "pose": [1.186495144825187, 0.7406613093428867, 0.2669561135200036], "goal": [1.1844151592101384, 0.7380874543873482], "cov": [3.865075052618491e-05, 0.00010001465857152585, 4.8955273072431666e-05], "label": "box_staging"}], "error": "turn drift reserve outside mask"}
+x3plus-dock-short-run.service: Main process exited, code=exited, status=1/FAILURE
+x3plus-dock-short-run.service: Failed with result 'exit-code'.
+Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python deploy/ros/g2_dock_probe.py --scene maps/demo_box_20261017 --output /tmp/dock_final_resume.json --real --short-final-approach --resume-final.
+/dev/ttyUSB0:
+the rosdep view is empty: call 'sudo rosdep init' and 'rosdep update'
+{"pulses": 3, "ok": false, "final": {"tf_age": -0.3015739917755127, "front": 0.37727563164271744, "odom_stamp": 1792227034.0522478, "odom": [1.2761694343808598, 0.7408932618044777, 0.30121980488003347], "scan_age": 0.1984260082244873, "vx": 0.0, "pose": [1.3096433981950129, 0.7760871813481001, 0.19371492425441295], "wz": 0.0, "cov": [2.803999068210055e-05, 9.427971544438799e-05, 2.9637664963481662e-05]}, "arrivals": [], "error": "predicted stop crosses mask"}
+x3plus-dock-final-resume.service: Main process exited, code=exited, status=1/FAILURE
+x3plus-dock-final-resume.service: Failed with result 'exit-code'.

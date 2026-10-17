@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "classes": {
+    "0": "sugarbox"
+  },
+  "items": [
+    {
+      "file": "frame_000.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.842851459980011,
+          "xyxy": [
+            307.67669677734375,
+            408.0772705078125,
+            391.80767822265625,
+            480.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "frame_032.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.3261454403400421,
+          "xyxy": [
+            309.1112060546875,
+            407.5069274902344,
+            393.3819580078125,
+            480.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "frame_064.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.889333188533783,
+          "xyxy": [
+            308.06610107421875,
+            407.5665283203125,
+            392.39190673828125,
+            480.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "frame_096.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.37809351086616516,
+          "xyxy": [
+            0.05511474609375,
+            237.2537384033203,
+            131.09854125976562,
+            480.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "frame_128.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.46237999200820923,
+          "xyxy": [
+            0.0,
+            287.91632080078125,
+            43.227901458740234,
+            480.0
+          ]
+        }
+      ]
+    },
+    {
+      "file": "frame_164.jpg",
+      "detections": [
+        {
+          "class": "sugarbox",
+          "confidence": 0.5126990079879761,
+          "xyxy": [
+            0.0,
+            290.41192626953125,
+            40.351749420166016,
+            480.0
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": "RGB snapshots only; paper collection box is not a trained class; no field detection recall claimed"
+}

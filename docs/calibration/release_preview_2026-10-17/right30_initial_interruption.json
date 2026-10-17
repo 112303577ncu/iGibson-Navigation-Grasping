@@ -1,0 +1,113 @@
+{
+  "target_accumulated_deg": 30,
+  "pulses": [],
+  "ok": false,
+  "reference_odom": {
+    "x": 0.0,
+    "y": 0.0,
+    "yaw": 0.0,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 9352.548917307024,
+    "stamp": 1792229876.420415,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "real": true,
+  "direction": "right",
+  "confirmed_rear_structure": true,
+  "operator_confirmed_self_returns": false,
+  "swept_gate_observations": 1,
+  "initial_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      139.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "bin_rim_height_m": 0.06,
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": null,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 9840,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 506.9,
+    "uptime_s": 494.9
+  },
+  "start_odom": {
+    "x": 0.0,
+    "y": 0.0,
+    "yaw": 0.0,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 9621.397910339341,
+    "stamp": 1792230145.3080745,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "initial_accumulated_deg": -0.0,
+  "error": "swept-envelope gate",
+  "cleanup_error": "RPC failed: {'ok': False}"
+}

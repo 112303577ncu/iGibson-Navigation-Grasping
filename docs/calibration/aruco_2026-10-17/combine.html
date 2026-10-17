@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>ArUco Markers 120mm</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 20mm; /* 兩個 Marker 之間的間距 */
+            margin: 0;
+            padding-top: 10mm;
+        }
+        .marker {
+            width: 120mm;
+            height: 120mm;
+            /* 確保比例強制鎖定在 1:1，不變形 */
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <!-- 確保檔名與您的原始檔案完全一致 -->
+    <img class="marker" src="marker_0_120mm.svg" alt="Marker 0">
+    <img class="marker" src="marker_1_120mm.svg" alt="Marker 1">
+</body>
+</html>

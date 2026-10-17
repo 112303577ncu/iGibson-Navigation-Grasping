@@ -1,0 +1,53 @@
+-- Logs begin at Fri 2021-12-10 17:15:50 CST, end at Sat 2026-10-17 16:09:25 CST. --
+10月 17 16:02:49 yahboom systemd[1]: Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec prlimit --as=805306368 -- roslaunch /home/jetson/mapping_box_20261017/verify_amcl.launch.
+10月 17 16:03:51 yahboom systemd[1]: Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python deploy/ros/g2_map_patrol.py --scene maps/demo_box_20261017 --real --loops 1 --seconds 300 --output /home/jetson/patrol_20261017/loop1.json.
+10月 17 16:03:52 yahboom bash[25313]: /dev/ttyUSB0:
+10月 17 16:05:16 yahboom bash[25313]: {"pulses": 102, "recoveries": [], "ok": true, "arrivals": [{"error_m": 0.08674386634605767, "pose": [0.019859949279241954, 0.2774119442812557, -0.24294105641626196], "goal": [0.1009327917987374, 0.3082614589366244], "cov": [0.004515790559066931, 0.003629872109566432, 0.00366537724681405], "label": "diagonal_start"}, {"error_m": 0.0674933542551701, "pose": [0.7437137027480387, 0.004617075455536936, -0.45803075519222736], "goal": [0.8016268829291383, -0.030044379071435534], "cov": [0.0012634340656066455, 0.0006593041811726842, 0.0021087964995962385], "label": "loop1_point1"}, {"error_m": 0.07771555544114375, "pose": [1.1319555566254023, 0.637558511024234, 1.1515003329691362], "goal": [1.1591125751236837, 0.7103747448173209], "cov": [9.944361537622508e-05, 0.0001450884466924631, 0.001848329092909017], "label": "loop1_point2"}, {"error_m": 0.06645696914717802, "pose": [0.5219740953589578, 1.0292586104187413, 2.739305863662585], "goal": [0.4584184839932829, 1.048680582825381], "cov": [0.0005458201237675363, 0.00019598710960356305, 0.0016166565608368136], "label": "loop1_point3"}, {"error_m": 0.07877938861324055, "pose": [0.12089808439310629, 0.384468933385639, -1.9068870005347627], "goal": [0.1009327917987374, 0.3082614589366244], "cov": [0.00011048630984767546, 0.0006942595404143043, 0.0015712124279145569], "label": "loop1_point0"}], "error": null}
+10月 17 16:06:26 yahboom systemd[1]: Started /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec /usr/bin/python deploy/ros/g2_map_patrol.py --scene maps/demo_box_20261017 --real --loops 1 --seconds 300 --output /home/jetson/patrol_20261017/loop2_vision.json.
+10月 17 16:06:27 yahboom bash[31050]: /dev/ttyUSB0:
+10月 17 16:08:08 yahboom bash[31050]: {"pulses": 124, "recoveries": [], "ok": true, "arrivals": [{"error_m": 0.07633239802192254, "pose": [0.12100534341107684, 0.3819074205336269, -1.9027579749398167], "goal": [0.1009327917987374, 0.3082614589366244], "cov": [0.00011110494653395659, 0.0005682140264579845, 0.0012843080271756997], "label": "diagonal_start"}, {"error_m": 0.07799234990560355, "pose": [0.7304465263922388, 0.0018329402493287555, -0.5109495484709474], "goal": [0.8016268829291383, -0.030044379071435534], "cov": [0.00019645250429849902, 6.721805693749714e-05, 0.001367469253054145], "label": "loop1_point1"}, {"error_m": 0.07112047485116728, "pose": [1.1325158098021844, 0.6444146506884568, 1.0877598833819135], "goal": [1.1591125751236837, 0.7103747448173209], "cov": [0.0002011397302894571, 6.787875023975844e-05, 0.0001038080316754124], "label": "loop1_point2"}, {"error_m": 0.07135020066683936, "pose": [0.5267244844539639, 1.0280616246493797, 2.7319147626450704], "goal": [0.4584184839932829, 1.048680582825381], "cov": [0.00046690422147948463, 5.005629884816341e-05, 0.0001635124230355616], "label": "loop1_point3"}, {"error_m": 0.07005856547246925, "pose": [0.12260373055391602, 0.37488407528820245, -1.9473950284926627], "goal": [0.1009327917987374, 0.3082614589366244], "cov": [0.00022932668396835856, 6.79823487632944e-05, 0.00013142904560512524], "label": "loop1_point0"}], "error": null}
+10月 17 16:09:25 yahboom systemd[1]: Stopping /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec prlimit --as=805306368 -- roslaunch /home/jetson/mapping_box_20261017/verify_amcl.launch...
+10月 17 16:09:25 yahboom bash[22680]: ... logging to /home/jetson/.ros/log/0ca9e62e-c978-11f1-b742-a351e656551e/roslaunch-yahboom-22680.log
+10月 17 16:09:25 yahboom bash[22680]: Checking log directory for disk usage. This may take a while.
+10月 17 16:09:25 yahboom bash[22680]: Press Ctrl-C to interrupt
+10月 17 16:09:25 yahboom bash[22680]: Done checking log file disk usage. Usage is <1GB.
+10月 17 16:09:25 yahboom bash[22680]: [57B blob data]
+10月 17 16:09:25 yahboom bash[22680]: started roslaunch server http://127.0.0.1:44547/
+10月 17 16:09:25 yahboom bash[22680]: SUMMARY
+10月 17 16:09:25 yahboom bash[22680]: ========
+10月 17 16:09:25 yahboom bash[22680]: PARAMETERS
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/base_frame_id: base_footprint
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/global_frame_id: map
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_cov_aa: 0.0076
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_cov_xx: 0.01
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_cov_yy: 0.01
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_pose_a: -0.345165672395
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_pose_x: -0.0621152241562
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/initial_pose_y: 0.309090547677
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/laser_max_beams: 60
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/laser_max_range: 3.0
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/max_particles: 1000
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/min_particles: 300
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/odom_frame_id: odom
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/odom_model_type: omni
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/resample_interval: 1
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/transform_tolerance: 0.5
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/update_min_a: 0.05
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/update_min_d: 0.05
+10月 17 16:09:25 yahboom bash[22680]:  * /amcl/use_map_topic: True
+10月 17 16:09:25 yahboom bash[22680]:  * /rosdistro: melodic
+10月 17 16:09:25 yahboom bash[22680]:  * /rosversion: 1.14.13
+10月 17 16:09:25 yahboom bash[22680]: NODES
+10月 17 16:09:25 yahboom bash[22680]:   /
+10月 17 16:09:25 yahboom bash[22680]:     amcl (amcl/amcl)
+10月 17 16:09:25 yahboom bash[22680]:     box_map_server (map_server/map_server)
+10月 17 16:09:25 yahboom bash[22680]: ROS_MASTER_URI=http://127.0.0.1:11311
+10月 17 16:09:25 yahboom bash[22680]: [80B blob data]
+10月 17 16:09:25 yahboom bash[22680]: process[box_map_server-1]: started with pid [22914]
+10月 17 16:09:25 yahboom bash[22680]: process[amcl-2]: started with pid [22915]
+10月 17 16:09:25 yahboom bash[22680]: [amcl-2] killing on exit
+10月 17 16:09:25 yahboom bash[22680]: [box_map_server-1] killing on exit
+10月 17 16:09:25 yahboom bash[22680]: shutting down processing monitor...
+10月 17 16:09:25 yahboom bash[22680]: ... shutting down processing monitor complete
+10月 17 16:09:25 yahboom bash[22680]: done
+10月 17 16:09:25 yahboom systemd[1]: Stopped /bin/bash -c source /opt/ros/melodic/setup.bash; export ROS_MASTER_URI=http://127.0.0.1:11311 ROS_IP=127.0.0.1; exec prlimit --as=805306368 -- roslaunch /home/jetson/mapping_box_20261017/verify_amcl.launch.

@@ -1,0 +1,330 @@
+[DetectionReceiver] New detection from ('127.0.0.1', 49286): pos=[0.26969999074935913, -0.01889999955892563, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49294): pos=[0.2696000039577484, -0.019600000232458115, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49296): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49298): pos=[0.26989999413490295, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49300): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49302): pos=[0.2694000005722046, -0.021199999377131462, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49306): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49310): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49312): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49314): pos=[0.26969999074935913, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49316): pos=[0.2696000039577484, -0.019500000402331352, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49318): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49322): pos=[0.2696000039577484, -0.01860000006854534, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49324): pos=[0.2696000039577484, -0.018799999728798866, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49326): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49328): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49330): pos=[0.26980000734329224, -0.01889999955892563, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49336): pos=[0.26969999074935913, -0.019600000232458115, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49340): pos=[0.27000001072883606, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49342): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49344): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49346): pos=[0.26989999413490295, -0.018699999898672104, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49348): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49350): pos=[0.26980000734329224, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49352): pos=[0.27000001072883606, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49354): pos=[0.27000001072883606, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49356): pos=[0.26980000734329224, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49358): pos=[0.2694999873638153, -0.019200000911951065, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49360): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49364): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49366): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49368): pos=[0.26980000734329224, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49372): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49376): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49382): pos=[0.2696000039577484, -0.020800000056624413, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49386): pos=[0.2694999873638153, -0.020899999886751175, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49388): pos=[0.26980000734329224, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49390): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49392): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49394): pos=[0.2694999873638153, -0.019899999722838402, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49396): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49398): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49400): pos=[0.2696000039577484, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49402): pos=[0.2696000039577484, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49404): pos=[0.2694999873638153, -0.01850000023841858, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49406): pos=[0.26980000734329224, -0.01850000023841858, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49410): pos=[0.2696000039577484, -0.019200000911951065, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49412): pos=[0.27000001072883606, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49414): pos=[0.2696000039577484, -0.019300000742077827, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49416): pos=[0.2694000005722046, -0.018699999898672104, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49418): pos=[0.2694000005722046, -0.019700000062584877, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49424): pos=[0.26969999074935913, -0.01899999938905239, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49428): pos=[0.2694999873638153, -0.020999999716877937, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49430): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49432): pos=[0.2694999873638153, -0.01899999938905239, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49434): pos=[0.2696000039577484, -0.01899999938905239, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49436): pos=[0.2694000005722046, -0.021800000220537186, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49438): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49442): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49446): pos=[0.2696000039577484, -0.020899999886751175, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49448): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49450): pos=[0.26930001378059387, -0.020999999716877937, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49452): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49456): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49458): pos=[0.26980000734329224, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49460): pos=[0.26980000734329224, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49462): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49464): pos=[0.2696000039577484, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49470): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49474): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49476): pos=[0.2694000005722046, -0.02160000056028366, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49478): pos=[0.26980000734329224, -0.01860000006854534, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49480): pos=[0.27000001072883606, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49482): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49484): pos=[0.26989999413490295, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49486): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49488): pos=[0.26969999074935913, -0.019200000911951065, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49490): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49492): pos=[0.2696000039577484, -0.019899999722838402, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49496): pos=[0.2696000039577484, -0.02019999921321869, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49498): pos=[0.2694000005722046, -0.0203000009059906, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49500): pos=[0.2696000039577484, -0.01850000023841858, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49502): pos=[0.2696000039577484, -0.01899999938905239, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49506): pos=[0.2696000039577484, -0.020899999886751175, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49510): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49516): pos=[0.27000001072883606, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49520): pos=[0.26980000734329224, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49522): pos=[0.26969999074935913, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49524): pos=[0.26969999074935913, -0.01940000057220459, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49526): pos=[0.2694000005722046, -0.020400000736117363, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49528): pos=[0.2696000039577484, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49530): pos=[0.2696000039577484, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49532): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49534): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49536): pos=[0.26980000734329224, -0.020600000396370888, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49538): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49542): pos=[0.2696000039577484, -0.019500000402331352, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49544): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49546): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49548): pos=[0.26989999413490295, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49550): pos=[0.26969999074935913, -0.01850000023841858, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49552): pos=[0.2694999873638153, -0.0215000007301569, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49560): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49562): pos=[0.26980000734329224, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49564): pos=[0.2696000039577484, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49566): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49568): pos=[0.26980000734329224, -0.017799999564886093, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49570): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49574): pos=[0.2694999873638153, -0.02019999921321869, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49578): pos=[0.2694999873638153, -0.018699999898672104, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49580): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49582): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49584): pos=[0.2694000005722046, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49588): pos=[0.27000001072883606, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49590): pos=[0.2696000039577484, -0.01889999955892563, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49592): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49594): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49596): pos=[0.26980000734329224, -0.017799999564886093, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49598): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49606): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49608): pos=[0.2694999873638153, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49610): pos=[0.2694999873638153, -0.019300000742077827, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49612): pos=[0.27000001072883606, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49614): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49616): pos=[0.26969999074935913, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49618): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49620): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49622): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49624): pos=[0.26969999074935913, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49626): pos=[0.26969999074935913, -0.01940000057220459, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49630): pos=[0.2694999873638153, -0.020400000736117363, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49632): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49634): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49638): pos=[0.26980000734329224, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49640): pos=[0.2694999873638153, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49648): pos=[0.2694999873638153, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49652): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49654): pos=[0.2696000039577484, -0.01889999955892563, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49656): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49658): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49660): pos=[0.2694999873638153, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49662): pos=[0.26919999718666077, -0.01860000006854534, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49664): pos=[0.2694999873638153, -0.019500000402331352, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49666): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49668): pos=[0.26980000734329224, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49670): pos=[0.26969999074935913, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49672): pos=[0.2694000005722046, -0.020500000566244125, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49676): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49678): pos=[0.2694999873638153, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49680): pos=[0.2694000005722046, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49682): pos=[0.2694999873638153, -0.019099999219179153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49684): pos=[0.2694000005722046, -0.01810000091791153, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49692): pos=[0.2696000039577484, -0.02019999921321869, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49694): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49696): pos=[0.2696000039577484, -0.0215000007301569, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49698): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49700): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49702): pos=[0.26969999074935913, -0.019300000742077827, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49706): pos=[0.2694999873638153, -0.0203000009059906, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49708): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49712): pos=[0.26980000734329224, -0.018699999898672104, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49714): pos=[0.26980000734329224, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49716): pos=[0.2694999873638153, -0.018699999898672104, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49720): pos=[0.2696000039577484, -0.01940000057220459, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49722): pos=[0.26989999413490295, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49724): pos=[0.26969999074935913, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49726): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49728): pos=[0.2694999873638153, -0.020500000566244125, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49734): pos=[0.26989999413490295, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49738): pos=[0.26980000734329224, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49740): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49742): pos=[0.2696000039577484, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49744): pos=[0.26969999074935913, -0.018200000748038292, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49746): pos=[0.26969999074935913, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49748): pos=[0.26969999074935913, -0.01850000023841858, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49750): pos=[0.26989999413490295, -0.018400000408291817, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49752): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49754): pos=[0.2696000039577484, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49756): pos=[0.26969999074935913, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49758): pos=[0.2696000039577484, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49762): pos=[0.26989999413490295, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49764): pos=[0.2696000039577484, -0.018799999728798866, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49766): pos=[0.26969999074935913, -0.017899999395012856, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49770): pos=[0.26969999074935913, -0.017999999225139618, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[DetectionReceiver] New detection from ('127.0.0.1', 49772): pos=[0.26969999074935913, -0.018300000578165054, 0.032499998807907104] height=0.065 cam_pose=v23_e1_grasp_home
+[service] interrupted — handing back to the controller's own shutdown path
+Stopping X3Plus resident grasp service (v23)...
+[Bus] servo reads: no failures
+Exception in thread task_serial_receive:
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/threading.py", line 932, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.8/threading.py", line 870, in run
+Stopped X3Plus resident grasp service (v23).
+Starting X3Plus resident grasp service (v23)...
+serial device is free: /dev/myserial
+Started X3Plus resident grasp service (v23).
+[WARN] 沒有偵測到 VIRTUAL_ENV。若下面的 import 檢查失敗，先執行 source ~/grasp_venv/bin/activate
+pybullet build time: Apr 24 2026 11:06:03
+[service] controller flags (from the launcher, unmodified):
+[service]   --real --socket --latch-obj --i-confirm-external-frame --unlock-candidate-real --port /dev/myserial --model /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip --vecnorm /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl --contract obs_28_incremental --pose-tol-deg 3.0 --entry-xy-mm 10.0 --floor-finger-error-mm 15.0 --tcp-forward-error-mm 20.0 --jaw-track-fraction 0.5 --s6-stall-grasp-steps 2 --latch-wait 120.0 --stale-timeout 1.0 --max-steps 300
+[Init] Stage-0 close gate requires XY < 10.0mm (training/default gate 22mm).
+[Init] Stage-0 S6 contact: 2 consecutive blocked readings confirm contact; hold bias 1 deg.
+[Init] Stage-0 slow-tracking detector enabled: encoder must consume at least 0.50 of the prior outstanding S6 command; otherwise the jaw parks and lifts.
+[Init] Floor guard uses finger-pad correction +15.0mm. The guard now believes the pads are where the ruler says they are — verify clearance visually on the first descent.
+[Init] TCP landing correction: FK/control TCP X 20.0mm toward the robot; policy and close gate will travel that much farther in base +X. Object coordinates and floor FK stay unchanged.
+[Init] TCP depth correction: FK/control TCP Z 15.0mm up; policy and close gate will descend that much farther. Floor FK and the floor guard stay unchanged.
+[UNLOCKED] status='candidate' overridden by --unlock-candidate-real. Integrity and contract verified. Supervised experiment — hand on power.
+[Init] Contract: obs_28_incremental (obs 28D, arm action incremental)
+[Init] Loading model: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip
+[Init] Loading VecNormalize: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_footprintb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+imu_link[FK] PyBullet DIRECT ready (yahboomcar_deploy.urdf). tcp=gripper_center(14,17) arm=[8, 9, 10, 11, 12] grip_linkage=[13, 14, 15, 16, 17, 18]
+Rosmaster Serial Opened! Baudrate=115200
+----------------create receive threading--------------
+[INFO] Rosmaster_Lib ready on /dev/myserial.
+[DetectionReceiver] Listening on 0.0.0.0:5555 | default=[0.26, 0.0, 0.02]
+[Init] All systems ready.
+/home/jetson/grasp_venv/lib/python3.8/site-packages/OpenSSL/SSL.py:16: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography import x509
+[service] odometry calibration: linear_scale=0.966309414, lateral_scale=0.65, angular_left_scale=0.985704578, angular_right_scale=0.98546745
+[chassis] m1=0 m2=0 m3=0 m4=0
+[odom] rosbridge connected[odom] publishing /odom_setmotor + odom->base_footprint at 20 Hz via rosbridge 127.0.0.1:9090
+[odom] feedback invalid (1x), not published: first sample (no integration)
+[startup-pose] {"enabled": true, "ok": true, "reason": "travel_verified", "servo_deg": [90.0, 140.0, 0.0, 0.0, 90.0, 30.0]}
+[chassis] TCP 7000 ready (velocity protocol, 0.5s watchdog)
+[service] ready on /tmp/grasp_service.sock — startup cost is now paid.
+[service] commands: grasp | release | home | stow | status | quit   chassis: TCP 7000   odom: rosbridge 127.0.0.1:9090   (rss 503 MB)
+[service] interrupted — handing back to the controller's own shutdown path
+Stopping X3Plus resident grasp service (v23)...
+[Bus] servo reads: no failures
+Stopped X3Plus resident grasp service (v23).
+Starting X3Plus resident grasp service (v23)...
+serial device is free: /dev/myserial
+Started X3Plus resident grasp service (v23).
+[WARN] 沒有偵測到 VIRTUAL_ENV。若下面的 import 檢查失敗，先執行 source ~/grasp_venv/bin/activate
+pybullet build time: Apr 24 2026 11:06:03
+[service] controller flags (from the launcher, unmodified):
+[service]   --real --socket --latch-obj --i-confirm-external-frame --unlock-candidate-real --port /dev/myserial --model /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip --vecnorm /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl --contract obs_28_incremental --pose-tol-deg 3.0 --entry-xy-mm 10.0 --floor-finger-error-mm 15.0 --tcp-forward-error-mm 20.0 --jaw-track-fraction 0.5 --s6-stall-grasp-steps 2 --latch-wait 120.0 --stale-timeout 1.0 --max-steps 300
+[Init] Stage-0 close gate requires XY < 10.0mm (training/default gate 22mm).
+[Init] Stage-0 S6 contact: 2 consecutive blocked readings confirm contact; hold bias 1 deg.
+[Init] Stage-0 slow-tracking detector enabled: encoder must consume at least 0.50 of the prior outstanding S6 command; otherwise the jaw parks and lifts.
+[Init] Floor guard uses finger-pad correction +15.0mm. The guard now believes the pads are where the ruler says they are — verify clearance visually on the first descent.
+[Init] TCP landing correction: FK/control TCP X 20.0mm toward the robot; policy and close gate will travel that much farther in base +X. Object coordinates and floor FK stay unchanged.
+[Init] TCP depth correction: FK/control TCP Z 15.0mm up; policy and close gate will descend that much farther. Floor FK and the floor guard stay unchanged.
+[UNLOCKED] status='candidate' overridden by --unlock-candidate-real. Integrity and contract verified. Supervised experiment — hand on power.
+[Init] Contract: obs_28_incremental (obs 28D, arm action incremental)
+[Init] Loading model: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip
+[Init] Loading VecNormalize: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_footprintb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+imu_link[FK] PyBullet DIRECT ready (yahboomcar_deploy.urdf). tcp=gripper_center(14,17) arm=[8, 9, 10, 11, 12] grip_linkage=[13, 14, 15, 16, 17, 18]
+Rosmaster Serial Opened! Baudrate=115200
+----------------create receive threading--------------
+[INFO] Rosmaster_Lib ready on /dev/myserial.
+[DetectionReceiver] Listening on 0.0.0.0:5555 | default=[0.26, 0.0, 0.02]
+[Init] All systems ready.
+/home/jetson/grasp_venv/lib/python3.8/site-packages/OpenSSL/SSL.py:16: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography import x509
+[service] odometry calibration: linear_scale=0.966309414, lateral_scale=0.65, angular_left_scale=0.985704578, angular_right_scale=0.98546745
+[chassis] m1=0 m2=0 m3=0 m4=0
+[odom] publishing /odom_setmotor + odom->base_footprint at 20 Hz via rosbridge 127.0.0.1:9090
+[odom] rosbridge connected
+[odom] feedback invalid (1x), not published: first sample (no integration)
+[startup-pose] {"enabled": true, "ok": true, "reason": "travel_verified", "servo_deg": [90.0, 140.0, 0.0, 0.0, 90.0, 30.0]}
+[chassis] TCP 7000 ready (velocity protocol, 0.5s watchdog)
+[service] ready on /tmp/grasp_service.sock — startup cost is now paid.
+[service] commands: grasp | release | home | stow | status | quit   chassis: TCP 7000   odom: rosbridge 127.0.0.1:9090   (rss 510 MB)
+[service] client disconnected before reply
+[service] client disconnected before reply
+[service] client disconnected before reply
+Stopping X3Plus resident grasp service (v23)...
+[service] interrupted — handing back to the controller's own shutdown path
+[Bus] servo reads: no failures
+Stopped X3Plus resident grasp service (v23).
+Starting X3Plus resident grasp service (v23)...
+serial device is free: /dev/myserial
+Started X3Plus resident grasp service (v23).
+[WARN] 沒有偵測到 VIRTUAL_ENV。若下面的 import 檢查失敗，先執行 source ~/grasp_venv/bin/activate
+pybullet build time: Apr 24 2026 11:06:03
+[service] controller flags (from the launcher, unmodified):
+[service]   --real --socket --latch-obj --i-confirm-external-frame --unlock-candidate-real --port /dev/myserial --model /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip --vecnorm /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl --contract obs_28_incremental --pose-tol-deg 3.0 --entry-xy-mm 10.0 --floor-finger-error-mm 15.0 --tcp-forward-error-mm 20.0 --jaw-track-fraction 0.5 --s6-stall-grasp-steps 2 --latch-wait 120.0 --stale-timeout 1.0 --max-steps 300
+[Init] Stage-0 close gate requires XY < 10.0mm (training/default gate 22mm).
+[Init] Stage-0 S6 contact: 2 consecutive blocked readings confirm contact; hold bias 1 deg.
+[Init] Stage-0 slow-tracking detector enabled: encoder must consume at least 0.50 of the prior outstanding S6 command; otherwise the jaw parks and lifts.
+[Init] Floor guard uses finger-pad correction +15.0mm. The guard now believes the pads are where the ruler says they are — verify clearance visually on the first descent.
+[Init] TCP landing correction: FK/control TCP X 20.0mm toward the robot; policy and close gate will travel that much farther in base +X. Object coordinates and floor FK stay unchanged.
+[Init] TCP depth correction: FK/control TCP Z 15.0mm up; policy and close gate will descend that much farther. Floor FK and the floor guard stay unchanged.
+[UNLOCKED] status='candidate' overridden by --unlock-candidate-real. Integrity and contract verified. Supervised experiment — hand on power.
+[Init] Contract: obs_28_incremental (obs 28D, arm action incremental)
+[Init] Loading model: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip
+[Init] Loading VecNormalize: /home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_footprintb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+imu_link[FK] PyBullet DIRECT ready (yahboomcar_deploy.urdf). tcp=gripper_center(14,17) arm=[8, 9, 10, 11, 12] grip_linkage=[13, 14, 15, 16, 17, 18]
+Rosmaster Serial Opened! Baudrate=115200
+----------------create receive threading--------------
+[INFO] Rosmaster_Lib ready on /dev/myserial.
+[DetectionReceiver] Listening on 0.0.0.0:5555 | default=[0.26, 0.0, 0.02]
+[Init] All systems ready.
+/home/jetson/grasp_venv/lib/python3.8/site-packages/OpenSSL/SSL.py:16: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography import x509
+[service] odometry calibration: linear_scale=0.966309414, lateral_scale=0.65, angular_left_scale=0.985704578, angular_right_scale=0.98546745
+[chassis] m1=0 m2=0 m3=0 m4=0
+[odom] rosbridge connected[odom] publishing /odom_setmotor + odom->base_footprint at 20 Hz via rosbridge 127.0.0.1:9090
+[odom] feedback invalid (1x), not published: first sample (no integration)
+[startup-pose] {"enabled": true, "ok": true, "reason": "travel_verified", "servo_deg": [90.0, 140.0, 0.0, 0.0, 90.0, 30.0]}
+[chassis] TCP 7000 ready (velocity protocol, 0.5s watchdog)
+[service] ready on /tmp/grasp_service.sock — startup cost is now paid.
+[service] commands: grasp | release | home | stow | status | quit   chassis: TCP 7000   odom: rosbridge 127.0.0.1:9090   (rss 507 MB)
+[Stage 3] reach direction: S2 +0.05 rad extends forward (23.0cm vs 22.1cm)
+[Stage 3] reach 1/6: reached=True (arrived) guard={'pass'}
+[Stage 3] reach 2/6: reached=True (arrived) guard={'pass'}
+[Stage 3] reach 3/6: reached=True (arrived) guard={'pass'}
+[Stage 3] reach 4/6: reached=True (arrived) guard={'pass'}
+[Stage 3] reach 5/6: reached=True (arrived) guard={'pass'}
+[Stage 3] reach 6/6: reached=True (arrived) guard={'pass'}
+[Stage 3] releasing at x=23.9cm (+1.3cm forward of the post-lift pose), pad bottom 11.4cm vs rim 6cm
+[Stage 3] open jaw: reached=True (arrived, 19 steps)
+[Stage 3] return home: reached=True (arrived)
+[Done] Release motion complete (the drop itself is not sensed).
+[service] client disconnected before reply
+[service] client disconnected before reply

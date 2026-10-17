@@ -86,3 +86,16 @@ build/
 # The v23 delivery package is 205 MB of meshes and a copy of the controller --
 # it is built from the tree, not authored here. Ship it out of band.
 grasp/deploy_v23/
+
+# Finite hardware evidence from the supervised mapping session.
+/tmp/
+!/docs/calibration/mapping_2026-10-17/*.log
+!/docs/calibration/patrol_2026-10-17/*.log
+
+!/docs/calibration/nav_review_2026-10-17/*.log
+
+!/docs/calibration/dock_camera_2026-10-17/*.log
+
+!/docs/calibration/geometry_dock_2026-10-17/*.log
+
+!/docs/calibration/release_preview_2026-10-17/*.log

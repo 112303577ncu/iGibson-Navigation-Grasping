@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="610" viewBox="0 0 700 610">
+<rect width="700" height="610" fill="white"/>
+<style>text{font-family:Arial,"Microsoft JhengHei",sans-serif;font-size:19px}</style>
+<rect x="130" y="110" width="400" height="400" fill="#f4f6fa" stroke="#666" stroke-width="5"/>
+<rect x="150" y="135" width="65" height="45" fill="#bc986b"/><text x="145" y="210">投放紙盒</text>
+<rect x="115" y="85" width="40" height="40" fill="#185da9"/><text x="175" y="75">ID 0：投放區固定支架</text>
+<path d="M155 125 L225 195" stroke="#185da9" stroke-width="4"/>
+<rect x="510" y="490" width="40" height="40" fill="#bd4b22"/><text x="275" y="565">ID 1：對角固定支架</text>
+<path d="M510 490 L440 420" stroke="#bd4b22" stroke-width="4"/>
+<circle cx="460" cy="440" r="14" fill="#40976b"/><text x="365" y="400">主巡航點附近</text>
+<text x="125" y="35">約 2 × 2 m 場地俯視：位置示意，非施工座標</text>
+<text x="65" y="600">兩張朝場內；直立且約與廣視野鏡頭同高，避開手臂與車道</text>
+</svg>

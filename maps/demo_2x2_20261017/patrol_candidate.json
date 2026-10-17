@@ -1,0 +1,46 @@
+{
+  "status": "candidate_not_localization_or_patrol_validated",
+  "frame_id": "map",
+  "direction": "counterclockwise",
+  "map": "demo_2x2.yaml",
+  "waypoints": [
+    {
+      "x": -0.13185391106708205,
+      "y": 0.044158456352476796,
+      "yaw": -0.003687255160438109
+    },
+    {
+      "x": 0.9796913342191483,
+      "y": 0.0400598868362049,
+      "yaw": 1.6451498313384325
+    },
+    {
+      "x": 0.8984774960821043,
+      "y": 1.1303127458442115,
+      "yaw": -3.0662399160841463
+    },
+    {
+      "x": -0.2107822942810204,
+      "y": 1.0465684229377499,
+      "yaw": -1.4922198188955067
+    },
+    {
+      "x": -0.13185391106708205,
+      "y": 0.044158456352476796,
+      "yaw": 0.05373155690986995
+    }
+  ],
+  "map_transform_record": "docs\\calibration\\mapping_2026-10-17\\map_transform.json",
+  "static_checks": {
+    "minimum_center_clearance_m": 0.38,
+    "nonfree_center_samples": 0,
+    "sample_count": 404,
+    "body_corner_radius_m": 0.233238075793812
+  },
+  "required_before_real_patrol": [
+    "AMCL initial pose and repeatability",
+    "footprint clearance including stopping margin",
+    "explicit keep-in boundary for corner gaps",
+    "resident-owner waypoint execution and repeated loop test"
+  ]
+}

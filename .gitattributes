@@ -1,0 +1,8 @@
+# Preserve printable documents and occupancy rasters byte-for-byte.
+*.pdf binary
+*.pgm binary
+
+# Imported robot evidence retains its original whitespace and source hashes.
+docs/calibration/**/*.json -whitespace
+docs/calibration/**/*.log -whitespace
+docs/calibration/**/*.yaml -whitespace

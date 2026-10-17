@@ -1,0 +1,83 @@
+{
+  "health": {
+    "service_pid": 27713, 
+    "rss_mb": 504.1, 
+    "uptime_s": 6783.9, 
+    "ok": true, 
+    "startup_pose": {
+      "ok": true, 
+      "reason": "travel_verified", 
+      "servo_deg": [
+        90.0, 
+        140.0, 
+        0.0, 
+        0.0, 
+        90.0, 
+        30.0
+      ], 
+      "enabled": true
+    }, 
+    "capabilities": {
+      "owner_restart": false, 
+      "independent_health": true, 
+      "serial_transport_diagnostics": false
+    }, 
+    "stack_version": "v23", 
+    "chassis": {
+      "board_rx_age_s": 0.0, 
+      "arm_pose": "travel", 
+      "stopped_for_s": 975.14, 
+      "rx_blocked_total": 0, 
+      "motors": [
+        0, 
+        0, 
+        0, 
+        0
+      ], 
+      "refused_total": 0, 
+      "client": null, 
+      "moving": false, 
+      "maintenance": true, 
+      "pose_blocked_total": 0, 
+      "dropped_total": 0, 
+      "arm_busy": false
+    }, 
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip", 
+    "holding": false, 
+    "chassis_tcp_ready": true, 
+    "serial": null, 
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl", 
+    "odom": {
+      "pose": [
+        1.2762, 
+        0.7409, 
+        0.3012
+      ], 
+      "rosbridge": true, 
+      "skipped_invalid": 1, 
+      "twist": [
+        0.0, 
+        0.0, 
+        0.0
+      ], 
+      "reason": "", 
+      "valid": true, 
+      "published": 134952, 
+      "failures": 0, 
+      "skipped_board_silent": 0
+    }
+  }, 
+  "scan_frame": "laser", 
+  "rotation_xyzw": [
+    0.0, 
+    0.0, 
+    1.0, 
+    6.123233995736766e-17
+  ], 
+  "base_footprint_to_laser_translation": [
+    0.1, 
+    0.0, 
+    0.095
+  ], 
+  "scan_age_s": 0.12597894668579102
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "interior_a",
+    "point": [
+      0.65,
+      0.45
+    ]
+  },
+  {
+    "name": "interior_b",
+    "point": [
+      0.4,
+      0.65
+    ]
+  },
+  "home"
+]
