@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "real": true,
+  "task": "patrol",
+  "stages": [
+    {
+      "name": "MAP_NAVIGATION",
+      "state": "passed",
+      "report": "/tmp/g2_aruco_patrol.json.navigation.json"
+    }
+  ],
+  "arm_or_release_executed": false,
+  "release_ready": false,
+  "mission_complete": false,
+  "started_at": 1792318197.9339154,
+  "navigation_ok": true,
+  "next_stage": "PATROL_RECOGNITION",
+  "finished_at": 1792318369.18641
+}

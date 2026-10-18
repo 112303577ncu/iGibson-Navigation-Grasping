@@ -1,5 +1,5 @@
 <launch>
-  <arg name="self_filter_profile" default="/home/jetson/Documents/deploy_jetson2/deploy/ros/lidar_self_returns_2026-10-16.json"/>
+  <arg name="self_filter_profile" default="/home/jetson/Documents/deploy_jetson2/deploy/ros/lidar_self_returns_2026-10-18.json"/>
   <!--
     X3Plus TG30 navigation launch, corrected geometry on 2026-10-17.
 

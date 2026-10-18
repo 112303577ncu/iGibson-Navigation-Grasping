@@ -1,0 +1,58 @@
+[
+  {
+    "file": "turn_frame_000.jpg",
+    "ids": []
+  },
+  {
+    "file": "turn_frame_001.jpg",
+    "ids": []
+  },
+  {
+    "file": "turn_frame_002.jpg",
+    "ids": [
+      0
+    ]
+  },
+  {
+    "file": "turn_frame_003.jpg",
+    "ids": [
+      0
+    ]
+  },
+  {
+    "file": "turn_frame_004.jpg",
+    "ids": [
+      0
+    ]
+  },
+  {
+    "file": "turn_frame_005.jpg",
+    "ids": [
+      0
+    ]
+  },
+  {
+    "file": "turn_frame_006.jpg",
+    "ids": [
+      2
+    ]
+  },
+  {
+    "file": "turn_frame_007.jpg",
+    "ids": [
+      2
+    ]
+  },
+  {
+    "file": "turn_frame_008.jpg",
+    "ids": [
+      2
+    ]
+  },
+  {
+    "file": "turn_frame_009.jpg",
+    "ids": [
+      2
+    ]
+  }
+]

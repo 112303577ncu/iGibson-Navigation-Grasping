@@ -1,0 +1,55 @@
+{
+  "map_navigation_ok": true,
+  "full_dropoff_complete": false,
+  "next_stage": "WAIT_VISUAL_TARGET",
+  "duration_s": 34.138715982437134,
+  "pulses": 40,
+  "recoveries": [],
+  "amcl_estimated_goal_error_m": 0.04291537887429513,
+  "minimum_available_mb": 1436.5859375,
+  "random_start_reference": "ID2 front-left and ID7 front-right plus independent LiDAR hypothesis; supervised, no calibrated ArUco metric pose",
+  "profile": "deploy/ros/lidar_self_returns_2026-10-18.json",
+  "profile_body_rectangles": 6,
+  "profile_is_boot_default": true,
+  "filter_replay": [
+    {
+      "snapshot": "before_scan.json",
+      "valid_body_rays_masked": 46,
+      "valid_outside32cm_rays": 1489,
+      "outside32cm_rays_removed": 0
+    },
+    {
+      "snapshot": "after_scan.json",
+      "valid_body_rays_masked": 43,
+      "valid_outside32cm_rays": 1474,
+      "outside32cm_rays_removed": 0
+    },
+    {
+      "snapshot": "final_scan.json",
+      "valid_body_rays_masked": 37,
+      "valid_outside32cm_rays": 1450,
+      "outside32cm_rays_removed": 0
+    }
+  ],
+  "tests": {
+    "filter_and_localization_pytest": 42,
+    "controller": 138,
+    "servo": 37,
+    "floor_guard": 641,
+    "ui": 50,
+    "ui_skipped": 1,
+    "fsm": "passed"
+  },
+  "final_ready": true,
+  "final_turn_clear": true,
+  "final_motors": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "owner_pid": 8117,
+  "seed_age_policy_fixed": true,
+  "live_supervisor_restart_recovered": true,
+  "no_hardware_dynamic_obstacle_test": true
+}

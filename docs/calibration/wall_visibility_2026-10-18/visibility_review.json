@@ -1,0 +1,429 @@
+{
+  "frames_reviewed": 50,
+  "relative_yaw_span_deg": [
+    0.0,
+    369.2475388134115
+  ],
+  "largest_heading_sample_gap_deg": 21.892717351948747,
+  "detected_ids": [],
+  "minimum_available_mb": 1394.5703125,
+  "actual_marker_coverage_verified": false,
+  "note": "Camera heading coverage does not prove that a complete marker is visible at every mounting position; physical markers and calibration required.",
+  "frames": [
+    {
+      "time": 1792315353.5147095,
+      "image": "partial_frame_000.jpg",
+      "yaw": 1.7201,
+      "aruco_ids": [],
+      "available_mb": 1432.87109375,
+      "relative_yaw_deg": 0.0
+    },
+    {
+      "time": 1792315356.5564523,
+      "image": "partial_frame_001.jpg",
+      "yaw": 1.8084,
+      "aruco_ids": [],
+      "available_mb": 1414.0625,
+      "relative_yaw_deg": 5.0592173310051844
+    },
+    {
+      "time": 1792315359.5929382,
+      "image": "partial_frame_002.jpg",
+      "yaw": 2.1918,
+      "aruco_ids": [],
+      "available_mb": 1414.59375,
+      "relative_yaw_deg": 27.026419196320944
+    },
+    {
+      "time": 1792315362.6411762,
+      "image": "partial_frame_003.jpg",
+      "yaw": 2.4577,
+      "aruco_ids": [],
+      "available_mb": 1416.44140625,
+      "relative_yaw_deg": 42.26136696884952
+    },
+    {
+      "time": 1792315365.6659539,
+      "image": "partial_frame_004.jpg",
+      "yaw": 2.8213,
+      "aruco_ids": [],
+      "available_mb": 1412.95703125,
+      "relative_yaw_deg": 63.09411239980625
+    },
+    {
+      "time": 1792315689.4000194,
+      "image": "middle_frame_000.jpg",
+      "yaw": 2.9917,
+      "aruco_ids": [],
+      "available_mb": 1435.765625,
+      "relative_yaw_deg": 72.85731322883547
+    },
+    {
+      "time": 1792315692.4287577,
+      "image": "middle_frame_001.jpg",
+      "yaw": 3.0676,
+      "aruco_ids": [],
+      "available_mb": 1416.17578125,
+      "relative_yaw_deg": 77.20606289387844
+    },
+    {
+      "time": 1792315695.4601896,
+      "image": "middle_frame_002.jpg",
+      "yaw": -2.836,
+      "aruco_ids": [],
+      "available_mb": 1413.3359375,
+      "relative_yaw_deg": 98.95469896044564
+    },
+    {
+      "time": 1792315698.4977918,
+      "image": "middle_frame_003.jpg",
+      "yaw": -2.556,
+      "aruco_ids": [],
+      "available_mb": 1411.3125,
+      "relative_yaw_deg": 114.99751722410868
+    },
+    {
+      "time": 1792315701.5124254,
+      "image": "middle_frame_004.jpg",
+      "yaw": -2.1739,
+      "aruco_ids": [],
+      "available_mb": 1414.43359375,
+      "relative_yaw_deg": 136.89023457605742
+    },
+    {
+      "time": 1792315704.5266337,
+      "image": "middle_frame_005.jpg",
+      "yaw": -1.9928,
+      "aruco_ids": [],
+      "available_mb": 1410.98046875,
+      "relative_yaw_deg": 147.26650024587664
+    },
+    {
+      "time": 1792315707.563885,
+      "image": "middle_frame_006.jpg",
+      "yaw": -1.8994,
+      "aruco_ids": [],
+      "available_mb": 1412.07421875,
+      "relative_yaw_deg": 152.61792605239853
+    },
+    {
+      "time": 1792315710.6008964,
+      "image": "middle_frame_007.jpg",
+      "yaw": -1.816,
+      "aruco_ids": [],
+      "available_mb": 1409.078125,
+      "relative_yaw_deg": 157.39639406378961
+    },
+    {
+      "time": 1792315713.643065,
+      "image": "middle_frame_008.jpg",
+      "yaw": -1.7392,
+      "aruco_ids": [],
+      "available_mb": 1412.30078125,
+      "relative_yaw_deg": 161.79670993039434
+    },
+    {
+      "time": 1792315716.6765685,
+      "image": "middle_frame_009.jpg",
+      "yaw": -1.7327,
+      "aruco_ids": [],
+      "available_mb": 1424.56640625,
+      "relative_yaw_deg": 162.16913249722936
+    },
+    {
+      "time": 1792315719.7159064,
+      "image": "middle_frame_010.jpg",
+      "yaw": -1.6008,
+      "aruco_ids": [],
+      "available_mb": 1408.1796875,
+      "relative_yaw_deg": 169.72644581500492
+    },
+    {
+      "time": 1792315722.7587655,
+      "image": "middle_frame_011.jpg",
+      "yaw": -1.2691,
+      "aruco_ids": [],
+      "available_mb": 1407.16015625,
+      "relative_yaw_deg": 188.73145587949432
+    },
+    {
+      "time": 1792315725.7951798,
+      "image": "middle_frame_012.jpg",
+      "yaw": -0.9715,
+      "aruco_ids": [],
+      "available_mb": 1412.16796875,
+      "relative_yaw_deg": 205.78267986258763
+    },
+    {
+      "time": 1792315728.8332603,
+      "image": "middle_frame_013.jpg",
+      "yaw": -0.635,
+      "aruco_ids": [],
+      "available_mb": 1412.3828125,
+      "relative_yaw_deg": 225.06270966873984
+    },
+    {
+      "time": 1792315731.8682816,
+      "image": "middle_frame_014.jpg",
+      "yaw": -0.4,
+      "aruco_ids": [],
+      "available_mb": 1412.015625,
+      "relative_yaw_deg": 238.52721785431416
+    },
+    {
+      "time": 1792315734.9086843,
+      "image": "middle_frame_015.jpg",
+      "yaw": -0.2644,
+      "aruco_ids": [],
+      "available_mb": 1411.484375,
+      "relative_yaw_deg": 246.29652555628815
+    },
+    {
+      "time": 1792315737.9165535,
+      "image": "middle_frame_016.jpg",
+      "yaw": -0.2096,
+      "aruco_ids": [],
+      "available_mb": 1411.9375,
+      "relative_yaw_deg": 249.43633427360507
+    },
+    {
+      "time": 1792315740.949197,
+      "image": "middle_frame_017.jpg",
+      "yaw": -0.1997,
+      "aruco_ids": [],
+      "available_mb": 1411.7734375,
+      "relative_yaw_deg": 250.0035624907846
+    },
+    {
+      "time": 1792315743.9776711,
+      "image": "middle_frame_018.jpg",
+      "yaw": -0.1909,
+      "aruco_ids": [],
+      "available_mb": 1412.08203125,
+      "relative_yaw_deg": 250.5077653504997
+    },
+    {
+      "time": 1792315874.9045894,
+      "image": "final_frame_000.jpg",
+      "yaw": -0.1862,
+      "aruco_ids": [],
+      "available_mb": 1431.28515625,
+      "relative_yaw_deg": 250.77705551421118
+    },
+    {
+      "time": 1792315877.923212,
+      "image": "final_frame_001.jpg",
+      "yaw": -0.1221,
+      "aruco_ids": [],
+      "available_mb": 1411.56640625,
+      "relative_yaw_deg": 254.44971498099974
+    },
+    {
+      "time": 1792315880.9373891,
+      "image": "final_frame_002.jpg",
+      "yaw": 0.0674,
+      "aruco_ids": [],
+      "available_mb": 1413.91796875,
+      "relative_yaw_deg": 265.3072651987288
+    },
+    {
+      "time": 1792315883.955341,
+      "image": "final_frame_003.jpg",
+      "yaw": 0.1312,
+      "aruco_ids": [],
+      "available_mb": 1405.1875,
+      "relative_yaw_deg": 268.9627359316635
+    },
+    {
+      "time": 1792315886.988397,
+      "image": "final_frame_004.jpg",
+      "yaw": 0.1837,
+      "aruco_ids": [],
+      "available_mb": 1402.83984375,
+      "relative_yaw_deg": 271.9707643561003
+    },
+    {
+      "time": 1792315890.027895,
+      "image": "final_frame_005.jpg",
+      "yaw": 0.2619,
+      "aruco_ids": [],
+      "available_mb": 1397.83203125,
+      "relative_yaw_deg": 276.4512943140233
+    },
+    {
+      "time": 1792315893.0824325,
+      "image": "final_frame_006.jpg",
+      "yaw": 0.3057,
+      "aruco_ids": [],
+      "available_mb": 1401.40234375,
+      "relative_yaw_deg": 278.96084945669634
+    },
+    {
+      "time": 1792315896.104011,
+      "image": "final_frame_007.jpg",
+      "yaw": 0.3065,
+      "aruco_ids": [],
+      "available_mb": 1403.83203125,
+      "relative_yaw_deg": 279.0066860803068
+    },
+    {
+      "time": 1792315899.1401875,
+      "image": "final_frame_008.jpg",
+      "yaw": 0.3235,
+      "aruco_ids": [],
+      "available_mb": 1404.69140625,
+      "relative_yaw_deg": 279.98071433202915
+    },
+    {
+      "time": 1792315902.1973834,
+      "image": "final_frame_009.jpg",
+      "yaw": 0.3306,
+      "aruco_ids": [],
+      "available_mb": 1415.59375,
+      "relative_yaw_deg": 280.387514366572
+    },
+    {
+      "time": 1792315905.2302315,
+      "image": "final_frame_010.jpg",
+      "yaw": 0.4606,
+      "aruco_ids": [],
+      "available_mb": 1401.36328125,
+      "relative_yaw_deg": 287.83596570327273
+    },
+    {
+      "time": 1792315908.255643,
+      "image": "final_frame_011.jpg",
+      "yaw": 0.6293,
+      "aruco_ids": [],
+      "available_mb": 1402.03515625,
+      "relative_yaw_deg": 297.5017637071297
+    },
+    {
+      "time": 1792315911.2927637,
+      "image": "final_frame_012.jpg",
+      "yaw": 0.7351,
+      "aruco_ids": [],
+      "available_mb": 1401.8984375,
+      "relative_yaw_deg": 303.56365717961387
+    },
+    {
+      "time": 1792315914.3319733,
+      "image": "final_frame_013.jpg",
+      "yaw": 0.8311,
+      "aruco_ids": [],
+      "available_mb": 1402.79296875,
+      "relative_yaw_deg": 309.06405201286975
+    },
+    {
+      "time": 1792315917.374153,
+      "image": "final_frame_014.jpg",
+      "yaw": 0.8522,
+      "aruco_ids": [],
+      "available_mb": 1404.4375,
+      "relative_yaw_deg": 310.27299296059584
+    },
+    {
+      "time": 1792315920.4131086,
+      "image": "final_frame_015.jpg",
+      "yaw": 0.8522,
+      "aruco_ids": [],
+      "available_mb": 1397.91015625,
+      "relative_yaw_deg": 310.27299296059584
+    },
+    {
+      "time": 1792315923.4578328,
+      "image": "final_frame_016.jpg",
+      "yaw": 1.0506,
+      "aruco_ids": [],
+      "available_mb": 1398.66015625,
+      "relative_yaw_deg": 321.6404756159913
+    },
+    {
+      "time": 1792315926.4944956,
+      "image": "final_frame_017.jpg",
+      "yaw": 1.1281,
+      "aruco_ids": [],
+      "available_mb": 1398.65625,
+      "relative_yaw_deg": 326.08089852825526
+    },
+    {
+      "time": 1792315929.5240085,
+      "image": "final_frame_018.jpg",
+      "yaw": 1.2398,
+      "aruco_ids": [],
+      "available_mb": 1394.5703125,
+      "relative_yaw_deg": 332.4808370998665
+    },
+    {
+      "time": 1792315932.5595405,
+      "image": "final_frame_019.jpg",
+      "yaw": 1.3398,
+      "aruco_ids": [],
+      "available_mb": 1396.69140625,
+      "relative_yaw_deg": 338.2104150511748
+    },
+    {
+      "time": 1792315935.6034877,
+      "image": "final_frame_020.jpg",
+      "yaw": 1.3621,
+      "aruco_ids": [],
+      "available_mb": 1397.4140625,
+      "relative_yaw_deg": 339.4881109343165
+    },
+    {
+      "time": 1792315938.648337,
+      "image": "final_frame_021.jpg",
+      "yaw": 1.3709,
+      "aruco_ids": [],
+      "available_mb": 1415.12109375,
+      "relative_yaw_deg": 339.9923137940316
+    },
+    {
+      "time": 1792315941.6791267,
+      "image": "final_frame_022.jpg",
+      "yaw": 1.4473,
+      "aruco_ids": [],
+      "available_mb": 1396.48046875,
+      "relative_yaw_deg": 344.3697113488311
+    },
+    {
+      "time": 1792315944.711924,
+      "image": "final_frame_023.jpg",
+      "yaw": 1.7085,
+      "aruco_ids": [],
+      "available_mb": 1401.2265625,
+      "relative_yaw_deg": 359.3353689576482
+    },
+    {
+      "time": 1792315947.7171307,
+      "image": "final_frame_024.jpg",
+      "yaw": 1.7986,
+      "aruco_ids": [],
+      "available_mb": 1402.35546875,
+      "relative_yaw_deg": 364.497718691777
+    },
+    {
+      "time": 1792315950.740932,
+      "image": "final_frame_025.jpg",
+      "yaw": 1.8815,
+      "aruco_ids": [],
+      "available_mb": 1404.109375,
+      "relative_yaw_deg": 369.2475388134115
+    }
+  ],
+  "contact_sheet": "wall_survey_contact.jpg",
+  "minimum_available_mb_all_samples": 1391.44140625,
+  "visual_wall_review": "all four white wall panels visible across contact sheet; near/lower edges can clip and mast occludes bottom-centre",
+  "session_only_extra_rear_self_rectangle_m": {
+    "x": [
+      -0.215,
+      -0.18
+    ],
+    "y": [
+      -0.205,
+      -0.135
+    ]
+  },
+  "persistent_lidar_profile_changed": false,
+  "all_aruco_positions_verified": false
+}

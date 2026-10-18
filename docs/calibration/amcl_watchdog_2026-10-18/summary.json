@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-18",
+  "navigation_tests_passed": 218,
+  "controller": 138,
+  "servo": 37,
+  "floor_guard": 641,
+  "ui": 50,
+  "ui_skipped": 1,
+  "fsm": "passed",
+  "runtime_fault_injection": "virtual ROS, clock, and subprocesses; actual supervisor loop",
+  "jetson_deployment": "pending_next_boot",
+  "systemd_watchdog_hardware_validation": "pending_next_boot"
+}

@@ -1,0 +1,427 @@
+{
+  "target_accumulated_deg": 30,
+  "pulses": [
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 0.0,
+      "after_deg": 4.376551379168995,
+      "odom": {
+        "x": 0.10501787985719688,
+        "y": 0.6909034733083539,
+        "yaw": 1.4472999718969204,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4261.799086665044,
+        "stamp": 1792315941.4073553,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 4.376551379168995,
+      "after_deg": 9.79761962850791,
+      "odom": {
+        "x": 0.10477579394003937,
+        "y": 0.6914152688778086,
+        "yaw": 1.5419154618232092,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4262.699516692717,
+        "stamp": 1792315942.2599301,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 9.79761962850791,
+      "after_deg": 15.56318569713265,
+      "odom": {
+        "x": 0.10089167456130894,
+        "y": 0.6909652377617828,
+        "yaw": 1.6425435729619762,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4263.576283560875,
+        "stamp": 1792315943.166107,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 15.56318569713265,
+      "after_deg": 17.829300262546486,
+      "odom": {
+        "x": 0.1007359250591033,
+        "y": 0.690956205854258,
+        "yaw": 1.682094733355848,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4264.465792775271,
+        "stamp": 1792315944.0270092,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 17.829300262546486,
+      "after_deg": 19.341762892042347,
+      "odom": {
+        "x": 0.09944931926583793,
+        "y": 0.6904924966526494,
+        "yaw": 1.7084921860539222,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4265.340056432235,
+        "stamp": 1792315944.9347177,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 19.341762892042347,
+      "after_deg": 21.564428239200343,
+      "odom": {
+        "x": 0.09774534792761295,
+        "y": 0.6900034671654822,
+        "yaw": 1.7472850145318117,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4266.245048724206,
+        "stamp": 1792315945.8451276,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 21.564428239200343,
+      "after_deg": 23.323903867152293,
+      "odom": {
+        "x": 0.09843013856477474,
+        "y": 0.6905875360770053,
+        "yaw": 1.7779936573481683,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4267.129084944848,
+        "stamp": 1792315946.6992311,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 2,
+      "before_deg": 23.323903867152293,
+      "after_deg": 24.50264420432476,
+      "odom": {
+        "x": 0.09805114999546988,
+        "y": 0.6910965650793255,
+        "yaw": 1.798566557257896,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4268.0118427025045,
+        "stamp": 1792315947.6153886,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 2,
+      "before_deg": 24.50264420432476,
+      "after_deg": 26.53110552140023,
+      "odom": {
+        "x": 0.09738169950673037,
+        "y": 0.6900002588655666,
+        "yaw": 1.8339698859902036,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4268.889811991148,
+        "stamp": 1792315948.4814546,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 2,
+      "before_deg": 26.53110552140023,
+      "after_deg": 28.278821998943695,
+      "odom": {
+        "x": 0.09628050917286618,
+        "y": 0.689224067863086,
+        "yaw": 1.8644732929146945,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4269.790285105544,
+        "stamp": 1792315949.3845289,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 28.278821998943695,
+      "after_deg": 28.813023395477913,
+      "odom": {
+        "x": 0.09645205333570216,
+        "y": 0.6894456875813895,
+        "yaw": 1.8737968661529685,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4270.654091928943,
+        "stamp": 1792315950.2472744,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 28.813023395477913,
+      "after_deg": 29.25199416470974,
+      "odom": {
+        "x": 0.09659674523235429,
+        "y": 0.6898487636921322,
+        "yaw": 1.8814583513960763,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4271.541095666925,
+        "stamp": 1792315951.1005342,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 29.25199416470974,
+      "after_deg": 29.725017782328006,
+      "odom": {
+        "x": 0.09677092427124194,
+        "y": 0.690365799592177,
+        "yaw": 1.8897141709632095,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4272.340381767359,
+        "stamp": 1792315951.953345,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    }
+  ],
+  "ok": true,
+  "reference_odom": {
+    "x": 0.10889144618546127,
+    "y": 0.6905491670781602,
+    "yaw": 1.3709147404477227,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 4258.850488881156,
+    "stamp": 1792315938.4276638,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "real": true,
+  "direction": "left",
+  "confirmed_rear_structure": true,
+  "confirmed_right_structure": true,
+  "operator_confirmed_self_returns": false,
+  "swept_gate_observations": 0,
+  "initial_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "bin_rim_height_m": 0.06,
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 2.66,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 83375,
+      "skipped_invalid": 2,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.1089,
+        0.6905,
+        1.3709
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 507.0,
+    "uptime_s": 4199.4
+  },
+  "start_odom": {
+    "x": 0.10889144618546127,
+    "y": 0.6905491670781602,
+    "yaw": 1.3709147404477227,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 4259.843919793003,
+    "stamp": 1792315939.437519,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "initial_accumulated_deg": 0.0,
+  "final_odom": {
+    "x": 0.09677092427124194,
+    "y": 0.690365799592177,
+    "yaw": 1.8897141709632095,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 4272.4277400383,
+    "stamp": 1792315952.0034933,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "final_accumulated_deg": 29.725017782328006,
+  "lock": {
+    "ok": true
+  },
+  "final_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "bin_rim_height_m": 0.06,
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 0.82,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 83632,
+      "skipped_invalid": 2,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.0968,
+        0.6904,
+        1.8897
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 507.0,
+    "uptime_s": 4212.4
+  }
+}

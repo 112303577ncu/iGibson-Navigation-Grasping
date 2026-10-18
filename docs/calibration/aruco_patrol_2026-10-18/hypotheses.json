@@ -1,0 +1,57 @@
+{
+  "accepted": false,
+  "reason": "independent corner/heading reference required; paper-box map position is still a candidate",
+  "points": 473,
+  "hypotheses": [
+    {
+      "pose": [
+        0.44013624180908284,
+        0.7195540148018816,
+        0.7088865796376509
+      ],
+      "score_m": 0.0035877778899067927,
+      "wall_p90_m": 0.08368114227026303,
+      "within_5cm_fraction": 0.879492600422833,
+      "candidate_box_bearing_left_deg": -34.81476453064673,
+      "candidate_box_range_m": 1.1255700880729143
+    },
+    {
+      "pose": [
+        0.8272388408341077,
+        0.259766206553426,
+        -2.4237981588356927
+      ],
+      "score_m": 0.006067625848496829,
+      "wall_p90_m": 0.045797318784704256,
+      "within_5cm_fraction": 0.904862579281184,
+      "candidate_box_bearing_left_deg": 176.92736418987545,
+      "candidate_box_range_m": 0.930497881333949
+    },
+    {
+      "pose": [
+        0.8331176622654781,
+        0.6738506249886449,
+        -0.8344887226823134
+      ],
+      "score_m": 0.0065283614751118525,
+      "wall_p90_m": 0.03736772030364743,
+      "within_5cm_fraction": 0.9323467230443975,
+      "candidate_box_bearing_left_deg": 60.18824255354251,
+      "candidate_box_range_m": 0.7441140735934992
+    },
+    {
+      "pose": [
+        0.3904926805935104,
+        0.28915259415643246,
+        2.22232103879195
+      ],
+      "score_m": 0.008280681306327546,
+      "wall_p90_m": 0.05127755169558639,
+      "within_5cm_fraction": 0.8964059196617337,
+      "candidate_box_bearing_left_deg": -102.37580327038337,
+      "candidate_box_range_m": 1.289859392472696
+    }
+  ],
+  "source_stamp": 1792318037.413341,
+  "lidar_forward_m": 0.1
+}

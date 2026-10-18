@@ -9,6 +9,13 @@ def finite(value):
     return not math.isnan(value) and not math.isinf(value)
 
 
+class FixedProfile(dict):
+    """Legacy angle bins plus explicitly surveyed base-frame body rectangles."""
+    def __init__(self):
+        dict.__init__(self)
+        self.body_rectangles = []
+
+
 def load_profile(path):
     with open(path) as stream:
         data = json.load(stream)
@@ -17,7 +24,7 @@ def load_profile(path):
     tolerance = float(data['tolerance_m'])
     if not finite(tolerance) or not 0 < tolerance <= .025:
         raise ValueError('invalid tolerance')
-    profile = {}
+    profile = FixedProfile()
     for key, values in data['ranges_by_angle_deg'].items():
         angle = int(key)
         if not -180 <= angle <= 180 or not values:
@@ -25,7 +32,26 @@ def load_profile(path):
         if any(not finite(v) or not .1 <= v <= .75 for v in values):
             raise ValueError('invalid learned range')
         profile[angle] = values
-    if not profile:
+    rectangles = data.get('body_rectangles_base_m', [])
+    if rectangles:
+        geometry = data.get('laser_geometry', {})
+        if geometry != {'forward_m': .10, 'yaw_rad': math.pi}:
+            raise ValueError('body mask requires verified 10cm/180deg laser geometry')
+        if len(rectangles) > 8:
+            raise ValueError('too many body rectangles')
+        for rectangle in rectangles:
+            bounds = rectangle['bounds_xyxy']
+            if len(bounds) != 4 or not all(finite(v) for v in bounds):
+                raise ValueError('invalid body rectangle')
+            x0,y0,x1,y1 = bounds
+            if not x0 < x1 or not y0 < y1:
+                raise ValueError('invalid body rectangle order')
+            if max(math.hypot(x,y) for x in (x0,x1) for y in (y0,y1)) > .32:
+                raise ValueError('body mask must stay inside 32cm centre radius')
+            if not rectangle.get('source'):
+                raise ValueError('body mask needs physical source evidence')
+            profile.body_rectangles.append(tuple(bounds))
+    if not profile and not profile.body_rectangles:
         raise ValueError('empty self-return profile')
     return profile, tolerance
 
@@ -44,7 +70,11 @@ def filter_ranges(ranges, angle_min, increment, profile, tolerance):
         key = int(floor + (1 if angle-floor > .5 or
                           (angle-floor == .5 and int(floor) % 2) else 0))
         values = profile.get(key, ())
-        if any(abs(distance - value) <= tolerance for value in values):
+        theta = angle_min + i * increment + math.pi
+        x,y = .10 + distance * math.cos(theta), distance * math.sin(theta)
+        body = any(x0 <= x <= x1 and y0 <= y <= y1
+                   for x0,y0,x1,y1 in getattr(profile, 'body_rectangles', ()))
+        if body or any(abs(distance - value) <= tolerance for value in values):
             output[i] = float('nan')  # unknown ray, not free-space clearing
             masked += 1
     return output, masked
@@ -55,7 +85,8 @@ def main():
     from sensor_msgs.msg import LaserScan
     rospy.init_node('g2_self_return_filter')
     profile, tolerance = load_profile(rospy.get_param('~profile'))
-    rospy.loginfo('fixed self-return profile loaded: %d angle bins', len(profile))
+    rospy.loginfo('fixed self-return profile loaded: %d angle bins, %d body rectangles',
+                  len(profile), len(profile.body_rectangles))
     publisher = rospy.Publisher('/scan', LaserScan, queue_size=1)
 
     def callback(scan):

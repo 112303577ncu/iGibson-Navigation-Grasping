@@ -138,7 +138,10 @@ class Runner:
             with open('/dev/shm/g2_localization_health.json') as f:loc=json.load(f)
         except (IOError,ValueError) as exc:raise Transient('localization supervisor unavailable: '+str(exc))
         if loc.get('owner_pid')!=self.pid or not loc.get('ready') or not 0<=time.time()-loc['stamp']<=.4:
-            raise Transient('localization supervisor: '+str(loc.get('reason',loc.get('status'))))
+            detail='localization supervisor: '+str(loc.get('reason',loc.get('status')))
+            if loc.get('degraded') and 0<=time.time()-loc['stamp']<=.4:
+                raise RuntimeError(detail+' ['+str(loc.get('reason_code'))+'; '+str(loc.get('next_action'))+']')
+            raise Transient(detail)
         memory=available_mb();self.report['min_available_mb']=min(memory,self.report.get('min_available_mb',memory))
         if memory<768:raise RuntimeError('RAM pressure')
         if time.time()-self.last_health>1:

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'integration'))
-from g2_localization_policy import propagated_seed,RestartBudget,turn_clear,FaultDelay
+from g2_localization_policy import propagated_seed,restart_pose,RestartBudget,turn_clear,FaultDelay
 
 
 def seed():
@@ -32,6 +32,20 @@ def test_restart_has_cooldown_and_window_budget():
     assert b.take(10) and b.take(20)
     assert not b.take(30)
     assert b.take(601)
+
+
+def test_new_independent_reference_survives_processing_time_but_not_expiry():
+    assert restart_pose(seed(),[0,0,0],160,'boot',7,'map',True)==pytest.approx(seed()['pose'])
+    with pytest.raises(ValueError):restart_pose(seed(),[0,0,0],221,'boot',7,'map',True)
+
+
+def test_internal_recovery_keeps_short_expiry_after_localization_accepted():
+    with pytest.raises(ValueError):restart_pose(seed(),[0,0,0],116,'boot',7,'map',False)
+
+
+@pytest.mark.parametrize('odom,boot,owner,digest', [([.11,0,0],'boot',7,'map'),([0,0,.2],'boot',7,'map'),([0,0,0],'new',7,'map'),([0,0,0],'boot',8,'map'),([0,0,0],'boot',7,'new')])
+def test_external_reference_does_not_relax_motion_or_identity(odom,boot,owner,digest):
+    with pytest.raises(ValueError):restart_pose(seed(),odom,160,boot,owner,digest,True)
 
 
 def test_service_has_no_wall_clock_expiry_or_serial_access():

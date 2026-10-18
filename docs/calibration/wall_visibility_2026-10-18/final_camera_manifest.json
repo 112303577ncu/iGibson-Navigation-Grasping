@@ -1,0 +1,1258 @@
+{
+  "camera": "/dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB_2.0_Camera_SN0001-video-index0",
+  "opencv": "4.13.0",
+  "depth_verified": false,
+  "frames": [
+    {
+      "file": "frame_000.jpg",
+      "time": 1792315874.9045894,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1431.28515625,
+      "odom": {
+        "rosbridge": true,
+        "published": 82101,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1431,
+          0.6856,
+          -0.1862
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 130.77,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_001.jpg",
+      "time": 1792315877.923212,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1411.56640625,
+      "odom": {
+        "rosbridge": true,
+        "published": 82160,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1426,
+          0.6815,
+          -0.1221
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.67,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_002.jpg",
+      "time": 1792315880.9373891,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1413.91796875,
+      "odom": {
+        "rosbridge": true,
+        "published": 82220,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1405,
+          0.6836,
+          0.0674
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.24,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_003.jpg",
+      "time": 1792315883.955341,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1405.1875,
+      "odom": {
+        "rosbridge": true,
+        "published": 82280,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1399,
+          0.6817,
+          0.1312
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.63,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_004.jpg",
+      "time": 1792315886.988397,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1402.83984375,
+      "odom": {
+        "rosbridge": true,
+        "published": 82340,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1398,
+          0.6828,
+          0.1837
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.13,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_005.jpg",
+      "time": 1792315890.027895,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1397.83203125,
+      "odom": {
+        "rosbridge": true,
+        "published": 82401,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.138,
+          0.6828,
+          0.2619
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.53,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_006.jpg",
+      "time": 1792315893.0824325,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1401.40234375,
+      "odom": {
+        "rosbridge": true,
+        "published": 82461,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1376,
+          0.6829,
+          0.3057
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          -0.046
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.1,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_007.jpg",
+      "time": 1792315896.104011,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1403.83203125,
+      "odom": {
+        "rosbridge": true,
+        "published": 82521,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.137,
+          0.6833,
+          0.3065
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.52,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_008.jpg",
+      "time": 1792315899.1401875,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1404.69140625,
+      "odom": {
+        "rosbridge": true,
+        "published": 82581,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1362,
+          0.6834,
+          0.3235
+        ],
+        "twist": [
+          -0.005,
+          -0.003,
+          0.117
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.08,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34128"
+      }
+    },
+    {
+      "file": "frame_009.jpg",
+      "time": 1792315902.1973834,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1415.59375,
+      "odom": {
+        "rosbridge": true,
+        "published": 82642,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1353,
+          0.6837,
+          0.3306
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 2.3,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_010.jpg",
+      "time": 1792315905.2302315,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1401.36328125,
+      "odom": {
+        "rosbridge": true,
+        "published": 82702,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1331,
+          0.6859,
+          0.4606
+        ],
+        "twist": [
+          -0.002,
+          0.001,
+          0.364
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          -30,
+          -30,
+          30,
+          30
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": null,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34220"
+      }
+    },
+    {
+      "file": "frame_011.jpg",
+      "time": 1792315908.255643,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1402.03515625,
+      "odom": {
+        "rosbridge": true,
+        "published": 82762,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1299,
+          0.6879,
+          0.6293
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.5,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_012.jpg",
+      "time": 1792315911.2927637,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1401.8984375,
+      "odom": {
+        "rosbridge": true,
+        "published": 82822,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1267,
+          0.6891,
+          0.7351
+        ],
+        "twist": [
+          -0.002,
+          -0.001,
+          0.105
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.0,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34318"
+      }
+    },
+    {
+      "file": "frame_013.jpg",
+      "time": 1792315914.3319733,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1402.79296875,
+      "odom": {
+        "rosbridge": true,
+        "published": 82882,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.125,
+          0.6896,
+          0.8311
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.52,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_014.jpg",
+      "time": 1792315917.374153,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1404.4375,
+      "odom": {
+        "rosbridge": true,
+        "published": 82942,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1233,
+          0.6891,
+          0.8522
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 0.93,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_015.jpg",
+      "time": 1792315920.4131086,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1397.91015625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83002,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1233,
+          0.6891,
+          0.8522
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 3.97,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_016.jpg",
+      "time": 1792315923.4578328,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1398.66015625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83063,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1146,
+          0.6905,
+          1.0506
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.79,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34508"
+      }
+    },
+    {
+      "file": "frame_017.jpg",
+      "time": 1792315926.4944956,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1398.65625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83123,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1111,
+          0.6905,
+          1.1281
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.36,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_018.jpg",
+      "time": 1792315929.5240085,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1394.5703125,
+      "odom": {
+        "rosbridge": true,
+        "published": 83183,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1098,
+          0.6907,
+          1.2398
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.75,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_019.jpg",
+      "time": 1792315932.5595405,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1396.69140625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83243,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1103,
+          0.6899,
+          1.3398
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.36,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_020.jpg",
+      "time": 1792315935.6034877,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1397.4140625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83304,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1095,
+          0.6898,
+          1.3621
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          -30,
+          -30,
+          30,
+          30
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": null,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34708"
+      }
+    },
+    {
+      "file": "frame_021.jpg",
+      "time": 1792315938.648337,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1415.12109375,
+      "odom": {
+        "rosbridge": true,
+        "published": 83364,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1089,
+          0.6905,
+          1.3709
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 2.11,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_022.jpg",
+      "time": 1792315941.6791267,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1396.48046875,
+      "odom": {
+        "rosbridge": true,
+        "published": 83424,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.105,
+          0.6909,
+          1.4473
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          -30,
+          -30,
+          30,
+          30
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": null,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": "127.0.0.1:34798"
+      }
+    },
+    {
+      "file": "frame_023.jpg",
+      "time": 1792315944.711924,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1401.2265625,
+      "odom": {
+        "rosbridge": true,
+        "published": 83484,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.0994,
+          0.6905,
+          1.7085
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.38,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_024.jpg",
+      "time": 1792315947.7171307,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1402.35546875,
+      "odom": {
+        "rosbridge": true,
+        "published": 83544,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.0981,
+          0.6911,
+          1.7986
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": false,
+        "stopped_for_s": 0.74,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    },
+    {
+      "file": "frame_025.jpg",
+      "time": 1792315950.740932,
+      "size": [
+        480,
+        640,
+        3
+      ],
+      "available_mb": 1404.109375,
+      "odom": {
+        "rosbridge": true,
+        "published": 83603,
+        "skipped_invalid": 2,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.0966,
+          0.6898,
+          1.8815
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": false,
+        "moving": true,
+        "stopped_for_s": 0.29,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      }
+    }
+  ],
+  "failures": 0,
+  "ok": false,
+  "min_available_mb": 1391.44140625
+}

@@ -1,0 +1,17 @@
+{
+  "stamp": 1792319399.775376,
+  "boot_id": "9967dd54-4b04-4ba7-a4df-a30294583ebb",
+  "owner_pid": 8117,
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+  "pose": [
+    0.3501301800709473,
+    0.18776781349663713,
+    -0.7837570491536261
+  ],
+  "odom": [
+    0.1726663938642307,
+    0.8389269120512545,
+    -3.1169111352838397
+  ],
+  "source": "supervised IDs2-left/7-right; fresh scan fit selects same stable hypothesis"
+}

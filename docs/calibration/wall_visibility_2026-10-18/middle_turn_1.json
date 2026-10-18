@@ -1,0 +1,705 @@
+{
+  "target_accumulated_deg": 90,
+  "pulses": [
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 0.0,
+      "after_deg": 4.283551122471873,
+      "odom": {
+        "x": 0.11975954151856563,
+        "y": 0.6835215629355654,
+        "yaw": -1.6579008332158054,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4039.6809698556035,
+        "stamp": 1792315719.244704,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 4.283551122471873,
+      "after_deg": 10.416318646914094,
+      "odom": {
+        "x": 0.12164050295920249,
+        "y": 0.6821374463007629,
+        "yaw": -1.5508638476549068,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4040.6724991311103,
+        "stamp": 1792315720.253744,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 10.416318646914094,
+      "after_deg": 15.637876216757059,
+      "odom": {
+        "x": 0.12364854775168364,
+        "y": 0.6801148590748263,
+        "yaw": -1.4597304759787135,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4041.561913968704,
+        "stamp": 1792315721.1577327,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 15.637876216757059,
+      "after_deg": 20.934539753475445,
+      "odom": {
+        "x": 0.12695875764242906,
+        "y": 0.6794782638784698,
+        "yaw": -1.3672862578926501,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4042.436090373024,
+        "stamp": 1792315722.0162768,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 20.934539753475445,
+      "after_deg": 26.558873976808236,
+      "odom": {
+        "x": 0.12901882676520895,
+        "y": 0.6775870928115272,
+        "yaw": -1.2691231074628948,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4043.3357879621785,
+        "stamp": 1792315722.9207518,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 26.558873976808236,
+      "after_deg": 31.51126558911047,
+      "odom": {
+        "x": 0.13147582047100959,
+        "y": 0.6758552488259681,
+        "yaw": -1.1826875679800704,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4044.216146826484,
+        "stamp": 1792315723.8256052,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 31.51126558911047,
+      "after_deg": 37.47894727531049,
+      "odom": {
+        "x": 0.13367475271755697,
+        "y": 0.6755530776479327,
+        "yaw": -1.0785318738449132,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4045.0147458673964,
+        "stamp": 1792315724.5829494,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 37.47894727531049,
+      "after_deg": 43.043771757605725,
+      "odom": {
+        "x": 0.13538973262702597,
+        "y": 0.6767762084461408,
+        "yaw": -0.9814073643332719,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4045.8891960527308,
+        "stamp": 1792315725.4973433,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 43.043771757605725,
+      "after_deg": 48.12704326120633,
+      "odom": {
+        "x": 0.1350796556921212,
+        "y": 0.6757720524884527,
+        "yaw": -0.8926875398226387,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4046.8819948338387,
+        "stamp": 1792315726.4604297,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 48.12704326120633,
+      "after_deg": 53.09449211671583,
+      "odom": {
+        "x": 0.13512495208809355,
+        "y": 0.676824804641246,
+        "yaw": -0.8059892018695739,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4047.764796974299,
+        "stamp": 1792315727.3666325,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 53.09449211671583,
+      "after_deg": 57.76978278978956,
+      "odom": {
+        "x": 0.1350535127992437,
+        "y": 0.6793446138698855,
+        "yaw": -0.7243899861366562,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4048.6414439091145,
+        "stamp": 1792315728.2205088,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 57.76978278978956,
+      "after_deg": 62.89316552609492,
+      "odom": {
+        "x": 0.13563139622954118,
+        "y": 0.6797457793383498,
+        "yaw": -0.6349700885482908,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4049.441394482727,
+        "stamp": 1792315729.0244403,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 62.89316552609492,
+      "after_deg": 68.2078480331818,
+      "odom": {
+        "x": 0.13720259017371306,
+        "y": 0.6813384978837116,
+        "yaw": -0.5422113801014778,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4050.313116550003,
+        "stamp": 1792315729.881314,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.2,
+      "commands": 3,
+      "before_deg": 68.2078480331818,
+      "after_deg": 74.20246227070783,
+      "odom": {
+        "x": 0.13825400564263124,
+        "y": 0.6829036079725559,
+        "yaw": -0.4375856242697189,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4051.109083376691,
+        "stamp": 1792315730.686754,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 74.20246227070783,
+      "after_deg": 76.35500542243523,
+      "odom": {
+        "x": 0.13937203365097198,
+        "y": 0.6836550013443256,
+        "yaw": -0.4000166589808205,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4052.005211086072,
+        "stamp": 1792315731.592804,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 76.35500542243523,
+      "after_deg": 78.60727632392592,
+      "odom": {
+        "x": 0.14011986811004817,
+        "y": 0.6832920857221252,
+        "yaw": -0.3607071161029465,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4052.9684718953827,
+        "stamp": 1792315732.549212,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 78.60727632392592,
+      "after_deg": 80.52663809128326,
+      "odom": {
+        "x": 0.14110274237890522,
+        "y": 0.6828811546826263,
+        "yaw": -0.32720793372566387,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4053.759861913515,
+        "stamp": 1792315733.3541746,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 80.52663809128326,
+      "after_deg": 81.86911217050796,
+      "odom": {
+        "x": 0.1421298326172339,
+        "y": 0.6847701331157704,
+        "yaw": -0.3037773409205138,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4054.659317888184,
+        "stamp": 1792315734.26186,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.1,
+      "commands": 2,
+      "before_deg": 81.86911217050796,
+      "after_deg": 84.12728910611943,
+      "odom": {
+        "x": 0.14312472411332292,
+        "y": 0.6853828346340693,
+        "yaw": -0.26436471830149744,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4055.545347092809,
+        "stamp": 1792315735.12146,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 2,
+      "before_deg": 84.12728910611943,
+      "after_deg": 85.37578711916993,
+      "odom": {
+        "x": 0.14303744198448023,
+        "y": 0.6846668627695691,
+        "yaw": -0.2425743172691588,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4056.331707052807,
+        "stamp": 1792315735.9254026,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 2,
+      "before_deg": 85.37578711916993,
+      "after_deg": 86.82318441111826,
+      "odom": {
+        "x": 0.14360727802796722,
+        "y": 0.6847692889147158,
+        "yaw": -0.21731246894021128,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4057.219158229263,
+        "stamp": 1792315736.8320765,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.08,
+      "commands": 1,
+      "before_deg": 86.82318441111826,
+      "after_deg": 87.26240482882014,
+      "odom": {
+        "x": 0.14352604320119886,
+        "y": 0.68485318568187,
+        "yaw": -0.20964662650932867,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4058.0904150157257,
+        "stamp": 1792315737.687384,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.26240482882014,
+      "after_deg": 87.66493212217,
+      "odom": {
+        "x": 0.14355943113282674,
+        "y": 0.6850128570742255,
+        "yaw": -0.20262119991123262,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4058.98765506572,
+        "stamp": 1792315738.5580142,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.66493212217,
+      "after_deg": 87.6989178702793,
+      "odom": {
+        "x": 0.14347753534818572,
+        "y": 0.6850961570420204,
+        "yaw": -0.2020280367079712,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4059.8871863941217,
+        "stamp": 1792315739.4669993,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.6989178702793,
+      "after_deg": 87.83201517611859,
+      "odom": {
+        "x": 0.1432790946133702,
+        "y": 0.68533622291708,
+        "yaw": -0.1997050504955422,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4060.741729825136,
+        "stamp": 1792315740.3287973,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.83201517611859,
+      "after_deg": 87.83201517611859,
+      "odom": {
+        "x": 0.14307379871610681,
+        "y": 0.6855441839026046,
+        "yaw": -0.1997050504955422,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4061.639480072203,
+        "stamp": 1792315741.2341926,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.83201517611859,
+      "after_deg": 87.96516819909041,
+      "odom": {
+        "x": 0.14283619499094224,
+        "y": 0.6855919882719362,
+        "yaw": -0.19738109183569996,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4062.5275329913247,
+        "stamp": 1792315742.1370225,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 87.96516819909041,
+      "after_deg": 88.20312717609279,
+      "odom": {
+        "x": 0.14298201446414896,
+        "y": 0.6858292386211207,
+        "yaw": -0.19322792420233137,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4063.4165744563265,
+        "stamp": 1792315742.9972327,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 88.20312717609279,
+      "after_deg": 88.33906887858103,
+      "odom": {
+        "x": 0.14314765938015625,
+        "y": 0.6856642814142017,
+        "yaw": -0.1908552939031445,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4064.3877608835674,
+        "stamp": 1792315743.9565995,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    },
+    {
+      "duration_s": 0.06,
+      "commands": 1,
+      "before_deg": 88.33906887858103,
+      "after_deg": 88.60828771638097,
+      "odom": {
+        "x": 0.14314243821629308,
+        "y": 0.6856321248806224,
+        "yaw": -0.1861565387751436,
+        "vx": 0.0,
+        "wz": 0.0,
+        "received_at": 4065.1800681000173,
+        "stamp": 1792315744.7678561,
+        "frame_id": "odom",
+        "child_frame_id": "base_footprint"
+      }
+    }
+  ],
+  "ok": false,
+  "reference_odom": {
+    "x": 0.11686475379355861,
+    "y": 0.6832793258477613,
+    "yaw": -1.7326629039804387,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 4036.831252019514,
+    "stamp": 1792315716.4287066,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "real": true,
+  "direction": "left",
+  "confirmed_rear_structure": true,
+  "confirmed_right_structure": true,
+  "operator_confirmed_self_returns": false,
+  "swept_gate_observations": 0,
+  "initial_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "bin_rim_height_m": 0.06,
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 2.62,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 78969,
+      "skipped_invalid": 2,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.1169,
+        0.6833,
+        -1.7327
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 507.0,
+    "uptime_s": 3977.3
+  },
+  "start_odom": {
+    "x": 0.11686475379355861,
+    "y": 0.6832793258477613,
+    "yaw": -1.7326629039804387,
+    "vx": 0.0,
+    "wz": 0.0,
+    "received_at": 4037.7265658955225,
+    "stamp": 1792315717.332285,
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint"
+  },
+  "initial_accumulated_deg": 0.0,
+  "error": "pulse count limit",
+  "lock": {
+    "ok": true
+  },
+  "final_status": {
+    "ok": true,
+    "episodes": 0,
+    "last": null,
+    "servo_deg": [
+      90.0,
+      140.0,
+      0.0,
+      0.0,
+      90.0,
+      30.0
+    ],
+    "detection": {
+      "pos": [
+        0.26,
+        0.0,
+        0.02
+      ],
+      "height": null,
+      "fresh": false
+    },
+    "servo_read_reason": "ok",
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "bin_rim_height_m": 0.06,
+    "chassis_tcp_ready": true,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 0.82,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 79522,
+      "skipped_invalid": 2,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.1431,
+        0.6856,
+        -0.1862
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "rss_mb": 507.0,
+    "uptime_s": 4005.2
+  }
+}

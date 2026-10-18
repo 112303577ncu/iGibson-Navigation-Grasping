@@ -302,3 +302,17 @@ def test_transient_sensor_recovery_requires_five_distinct_odom_frames(monkeypatc
     r.state=state;monkeypatch.setattr(patrol.time,'sleep',lambda _:None)
     assert r.ready()['odom_stamp']==5
     assert r.stop.call_count==1 and r.recovery_generation==1
+
+
+@pytest.mark.parametrize('degraded,stamp,kind', [(True,100,RuntimeError),(False,100,patrol.Transient),(True,90,patrol.Transient)])
+def test_supervisor_deadline_is_not_followed_by_another_navigation_wait(monkeypatch,degraded,stamp,kind):
+    import io,json
+    r=patrol.Runner.__new__(patrol.Runner);r.end=200;r.pid=7
+    report=dict(owner_pid=7,ready=False,stamp=stamp,degraded=degraded,
+                reason='stale scan',reason_code='SCAN_STALE',next_action='wait_for_fresh_scan')
+    monkeypatch.setattr(patrol,'open',lambda *_:io.StringIO(json.dumps(report)),raising=False)
+    monkeypatch.setattr(patrol.time,'time',lambda:100)
+    with pytest.raises(kind) as failure:r.state()
+    if degraded and stamp==100:
+        assert type(failure.value) is RuntimeError
+        assert 'SCAN_STALE' in str(failure.value) and 'wait_for_fresh_scan' in str(failure.value)

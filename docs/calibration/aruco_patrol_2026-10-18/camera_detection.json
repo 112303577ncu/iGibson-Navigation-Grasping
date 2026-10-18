@@ -1,0 +1,597 @@
+{
+  "counts": {
+    "2": 19,
+    "0": 7,
+    "3": 12,
+    "4": 42,
+    "5": 8,
+    "1": 3,
+    "6": 6,
+    "7": 3
+  },
+  "frames": [
+    {
+      "file": "camera_frame_000.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_001.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_002.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_003.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_004.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_005.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_006.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_007.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_008.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_009.jpg",
+      "ids": [
+        0,
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_010.jpg",
+      "ids": [
+        0
+      ]
+    },
+    {
+      "file": "camera_frame_011.jpg",
+      "ids": [
+        0
+      ]
+    },
+    {
+      "file": "camera_frame_012.jpg",
+      "ids": [
+        3,
+        0
+      ]
+    },
+    {
+      "file": "camera_frame_013.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_014.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_015.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_016.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_017.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_018.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_019.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_020.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_021.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_022.jpg",
+      "ids": [
+        4,
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_023.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_024.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_025.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_026.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_027.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_028.jpg",
+      "ids": [
+        5
+      ]
+    },
+    {
+      "file": "camera_frame_029.jpg",
+      "ids": [
+        5,
+        1
+      ]
+    },
+    {
+      "file": "camera_frame_030.jpg",
+      "ids": [
+        1
+      ]
+    },
+    {
+      "file": "camera_frame_031.jpg",
+      "ids": [
+        6,
+        1
+      ]
+    },
+    {
+      "file": "camera_frame_032.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_033.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_034.jpg",
+      "ids": [
+        6
+      ]
+    },
+    {
+      "file": "camera_frame_035.jpg",
+      "ids": [
+        6
+      ]
+    },
+    {
+      "file": "camera_frame_036.jpg",
+      "ids": [
+        6
+      ]
+    },
+    {
+      "file": "camera_frame_037.jpg",
+      "ids": [
+        6
+      ]
+    },
+    {
+      "file": "camera_frame_038.jpg",
+      "ids": [
+        6
+      ]
+    },
+    {
+      "file": "camera_frame_039.jpg",
+      "ids": [
+        7
+      ]
+    },
+    {
+      "file": "camera_frame_040.jpg",
+      "ids": [
+        7
+      ]
+    },
+    {
+      "file": "camera_frame_041.jpg",
+      "ids": [
+        2,
+        7
+      ]
+    },
+    {
+      "file": "camera_frame_042.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_043.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_044.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_045.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_046.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_047.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_048.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_049.jpg",
+      "ids": [
+        2
+      ]
+    },
+    {
+      "file": "camera_frame_050.jpg",
+      "ids": [
+        0
+      ]
+    },
+    {
+      "file": "camera_frame_051.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_052.jpg",
+      "ids": []
+    },
+    {
+      "file": "camera_frame_053.jpg",
+      "ids": [
+        0,
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_054.jpg",
+      "ids": [
+        0,
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_055.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_056.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_057.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_058.jpg",
+      "ids": [
+        3
+      ]
+    },
+    {
+      "file": "camera_frame_059.jpg",
+      "ids": [
+        3,
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_060.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_061.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_062.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_063.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_064.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_065.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_066.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_067.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_068.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_069.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_070.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_071.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_072.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_073.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_074.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_075.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_076.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_077.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_078.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_079.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_080.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_081.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_082.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_083.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_084.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_085.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_086.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_087.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_088.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_089.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_090.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_091.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_092.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_093.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_094.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_095.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_096.jpg",
+      "ids": [
+        4
+      ]
+    },
+    {
+      "file": "camera_frame_097.jpg",
+      "ids": []
+    }
+  ]
+}

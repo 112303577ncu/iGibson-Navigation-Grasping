@@ -2,6 +2,13 @@
 *.pdf binary
 *.pgm binary
 
+# These entrypoints are deployed from Windows to Linux; preserve shebang/unit lines.
+/deploy/ros/g2_self_return_filter.py text eol=lf
+/deploy/ros/g2_localization_service.py text eol=lf
+/deploy/ros/g2_map_patrol.py text eol=lf
+/deploy/systemd/x3plus-g2-localization.service text eol=lf
+/integration/g2_localization_policy.py text eol=lf
+
 # Imported robot evidence retains its original whitespace and source hashes.
 docs/calibration/**/*.json -whitespace
 docs/calibration/**/*.log -whitespace

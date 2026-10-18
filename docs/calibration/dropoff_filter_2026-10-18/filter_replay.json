@@ -1,0 +1,20 @@
+[
+  {
+    "snapshot": "before_scan.json",
+    "valid_body_rays_masked": 46,
+    "valid_outside32cm_rays": 1489,
+    "outside32cm_rays_removed": 0
+  },
+  {
+    "snapshot": "after_scan.json",
+    "valid_body_rays_masked": 43,
+    "valid_outside32cm_rays": 1474,
+    "outside32cm_rays_removed": 0
+  },
+  {
+    "snapshot": "final_scan.json",
+    "valid_body_rays_masked": 37,
+    "valid_outside32cm_rays": 1450,
+    "outside32cm_rays_removed": 0
+  }
+]

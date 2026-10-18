@@ -2,6 +2,21 @@
 
 ## 最新：常駐定位與隨機起點導航
 
+- **離線新增AMCL監督強化，尚未部署Jetson**：整段恢復20秒上限、具體reason_code／next_action、導航不重複追加等待、15秒systemd heartbeat、最近15秒健康cache回復、同boot持久化3次／600秒AMCL重啟預算。正常AMCL持續更新參考，不以運行時間判過期；缺新參考仍不盲開。218相關tests及既有回歸通過。下次開機先依 docs/operations/AMCL_WATCHDOG_2026-10-18.md 配套更新script／policy／patrol／unit，再做實車故障注入與巡航。本段優先於下方較早「監督器已部署」敘述，先前已部署版本沒有本輪所有強化。
+
+- 已依要求送出安全關機：前置確認輪零、maintenance=true、travel、owner8117，隨後SSH逾時；下次須重新檢查boot／owner及未知起點，不使用舊seed。
+- 下一輪優先依 docs/planning/ARUCO_LOCALIZATION_AND_PLACEMENT_APPROACH_2026-10-18.md：保留AMCL＋ArUco絕對參考，取得組員repo外的placement權重、核對座標、量release-preview落點，建立相機可視交接點再接近。已實際讀取Claude「放置盒接近交接」頁。現入口會覆寫外部YOLO模型環境變數、會拒絕持物啟動，且無placement模式；不能只換模型就跑投放。尚未做此模式程式修改或取得模型。
+
+- 已從另一隨機點（ID2左前／ID7右前人工監督排除對稱解，新scan種子）導航至投放準備區：34.14秒、40脈衝、0恢復、AMCL估計終點誤差4.29cm、RAM最低1437MB。流程停在WAIT_VISUAL_TARGET，未精準靠盒或投放。證據 docs/calibration/dropoff_filter_2026-10-18/。
+- **LiDAR持續設定已更新**：新預設 lidar_self_returns_2026-10-18.json，6個已確認機構小矩形，皆在車體中心32cm內；遮罩外近回波、32cm外所有回波保留，不整片忽略後方。三份實scan重播32cm外刪除0，舊10/16 profile留存。此更新優先於下方「持續profile未改」的歷史紀錄。
+- 一併修正外部seed讀入120秒、啟動僅15秒的不一致；首次有效AMCL前120秒、內部回復仍15秒，移動／身分／預算閘不變。定位監督器升級後恢復ready，owner8117、輪零、maintenance=true、travel、turn_clear=true，相機無持有者。濾波／定位42 tests及既有回歸通過。ArUco仍未完成metric/map登錄，不能宣稱全自動任意點定位。
+
+- 實貼8張ArUco後完成「目前點→最近路段→逆時鐘完整一圈→原接入點」，171.25秒、235脈衝、0恢復、AMCL估計終點誤差4.38cm、RAM最低1403MB。巡航56張取樣內ID0～7全見，各至少3張。起步以ID2方向人工監督排除對稱解，未完成metric ArUco定位／自動AMCL修正。證據 docs/calibration/aruco_patrol_2026-10-18/。最後輪零、maintenance=true、travel、owner8117、AMCL ready，相機停止。
+
+- A牆實貼ID0、ID2已由後相機分別連續四張解碼成功；證據 docs/calibration/aruco_a_wall_2026-10-18/。本次只確認可見／解碼，未註冊map或接入AMCL。受監督右轉達脈衝上限後停穩，輪零、maintenance=true、travel、owner8117，RAM最低1394 MB；相機與臨時snapshot已停止。不可視為精確90°轉向或沿用舊停靠朝向。
+
+- 後續相機環視已涵蓋369.25°／50張影像，四面白牆可見；未偵測到ArUco，未完成實貼ID覆蓋／定位驗收。近牆裁切與下中央支架遮擋須避開，安裝高度以完整標記／白邊入鏡為準。僅本輪臨時補了一小段已確認後機構自回波遮罩，未改常駐profile；最後停穩、AMCL ready、owner8117、RAM最低1391 MB。本輪最初朝向後多約9°，不可當作原精確停靠姿態。新證據見 docs/calibration/wall_visibility_2026-10-18/README.md（未包含於較早推送a3022f4）。
+
 先讀 [本輪整合入口](docs/operations/RESIDENT_NAVIGATION_FLOW_2026-10-18.md)。以下較早段落的PID7157、AMCL缺失及尚未修復的舊入口敘述不代表最新狀態。
 
 - Jetson172.20.10.3重開機後owner8117；唯一Serial owner不變。x3plus-g2-localization.service已enable、無40分鐘期限，無有效boot/owner/map綁定seed時等待，不猜角落。短暫故障先等待，持續故障有限重啟；實測終止AMCL後7.25秒恢復。

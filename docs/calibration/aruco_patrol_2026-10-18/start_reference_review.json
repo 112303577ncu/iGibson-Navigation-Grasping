@@ -1,0 +1,48 @@
+{
+  "method": "supervised wall-ID direction disambiguation of independent LiDAR hypotheses; not calibrated ArUco pose estimation",
+  "seen_id": 2,
+  "seen_wall": "A",
+  "image_marker_right_of_center": true,
+  "mounting_positions_are_approximate_not_registered": true,
+  "candidates": [
+    {
+      "hypothesis": 0,
+      "approx_id2_bearing_left_deg": -91.84153730404039,
+      "pose": [
+        0.44013624180908284,
+        0.7195540148018816,
+        0.7088865796376509
+      ]
+    },
+    {
+      "hypothesis": 1,
+      "approx_id2_bearing_left_deg": 86.6378151415987,
+      "pose": [
+        0.8272388408341077,
+        0.259766206553426,
+        -2.4237981588356927
+      ]
+    },
+    {
+      "hypothesis": 2,
+      "approx_id2_bearing_left_deg": -17.531457561099934,
+      "pose": [
+        0.8331176622654781,
+        0.6738506249886449,
+        -0.8344887226823134
+      ]
+    },
+    {
+      "hypothesis": 3,
+      "approx_id2_bearing_left_deg": -162.64683710674646,
+      "pose": [
+        0.3904926805935104,
+        0.28915259415643246,
+        2.22232103879195
+      ]
+    }
+  ],
+  "selected_hypothesis": 2,
+  "preserve_current_amcl": true,
+  "reason": "Only candidate 2 puts A-wall ID2 in forward right sector; current AMCL agrees within a few cm/degrees. No reseed performed."
+}

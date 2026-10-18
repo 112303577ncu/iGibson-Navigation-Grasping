@@ -6,10 +6,15 @@ StartLimitIntervalSec=600
 StartLimitBurst=3
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
+TimeoutStartSec=20
+WatchdogSec=15
+LimitCORE=0
 User=jetson
 WorkingDirectory=/home/jetson/Documents/deploy_jetson2
 Environment=ROS_MASTER_URI=http://127.0.0.1:11311
+Environment=ROS_IP=127.0.0.1
 Environment=ROS_IP=127.0.0.1
 ExecStart=/bin/bash -c 'source /opt/ros/melodic/setup.bash; exec /usr/bin/python deploy/ros/g2_localization_service.py --map maps/demo_box_20261017/demo_box.yaml'
 Restart=on-failure

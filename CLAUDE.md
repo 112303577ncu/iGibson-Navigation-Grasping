@@ -5,6 +5,16 @@
 > 以下 v21／A/B/C 的主線敘述為歷史背景，不能據此啟動第二個實機序列 owner。
 > 新 plan 後端不等於已完成自主巡航；待驗收項目見上述 demo 文件。
 
+> **2026-10-18 LiDAR／定位規則：** 預設 `deploy/ros/lidar_self_returns_2026-10-18.json`，
+> 僅遮除已確認的車體局部矩形，全部限車體中心32cm內；遮罩外回波保留，輸出NaN不作自由空間。
+> LiDAR幾何前移10cm、yaw=π；不在行駛／開機時自動學習遮罩。新獨立定位參考首次驗證前有效120秒，
+> 健康定位建立後內部回復種子有效15秒，仍受boot／owner／map及位移／角度限制。
+> 實測及未完成項目見 `docs/calibration/dropoff_filter_2026-10-18/README.md`。
+
+> **AMCL監督新版（同日離線完成、待部署）：** 恢復等待20秒後明確降級；systemd heartbeat 15秒。
+> 快速監督器退出只可沿用仍在15秒內的健康cache；AMCL重啟預算同boot持久保存，不因重啟監督器歸零。
+> 詳見 `docs/operations/AMCL_WATCHDOG_2026-10-18.md`，Type=notify單元須與新版程式配套安裝。
+
 > **接手這個專案？先讀 [`docs/handoff/HANDOFF_2026-09-20.md`](docs/handoff/HANDOFF_2026-09-20.md)。**
 > 那份講的是「現在做到哪裡、能跑什麼指令、卡在哪一步、下一步做什麼」，以及機器上的
 > 檔案跟這個 repo 不同步這件事。本檔是規格，那份是現況，兩份都要看。

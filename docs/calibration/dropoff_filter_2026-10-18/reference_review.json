@@ -1,0 +1,15 @@
+{
+  "method": "supervised semantic marker direction plus fresh LiDAR fit",
+  "ids": [
+    2,
+    7
+  ],
+  "image_bearings": "ID2 front-left, ID7 front-right",
+  "selected_hypothesis": 3,
+  "pose": [
+    0.35125098617994777,
+    0.18804836410322345,
+    -0.7845152207743382
+  ],
+  "metric_aruco_pose_used": false
+}
