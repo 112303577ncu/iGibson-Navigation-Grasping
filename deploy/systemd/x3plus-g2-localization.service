@@ -1,0 +1,24 @@
+[Unit]
+Description=X3Plus seeded AMCL supervisor (resident Serial owner unchanged)
+Requires=x3plus-g2-roscore.service
+After=x3plus-g2-roscore.service x3plus-g2-lidar.service
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=jetson
+WorkingDirectory=/home/jetson/Documents/deploy_jetson2
+Environment=ROS_MASTER_URI=http://127.0.0.1:11311
+Environment=ROS_IP=127.0.0.1
+ExecStart=/bin/bash -c 'source /opt/ros/melodic/setup.bash; exec /usr/bin/python deploy/ros/g2_localization_service.py --map maps/demo_box_20261017/demo_box.yaml'
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+KillSignal=SIGINT
+TimeoutStopSec=8
+MemoryAccounting=true
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

@@ -22,7 +22,7 @@ except ImportError:
     from g2_filtered_turn_calibration import rpc, available_mb
 
 
-def swept_hazard(points, confirmed_rear_structure=False):
+def swept_hazard(points, confirmed_rear_structure=False, confirmed_right_structure=False):
     candidates = []
     for angle, distance in points:
         theta = math.radians(angle + 180)
@@ -34,6 +34,12 @@ def swept_hazard(points, confirmed_rear_structure=False):
         if confirmed_rear_structure and -.18 <= x <= -.06 and -.22 <= y <= -.13:
             continue
         if confirmed_rear_structure and -.20 <= x <= -.15 and .10 <= y <= .14:
+            continue
+        # Explicit supervised-session confirmation: current right cable cluster
+        # and the separately observed front-right fixed structure, 2026-10-18.
+        if confirmed_right_structure and -.05 <= x <= .02 and -.29 <= y <= -.21:
+            continue
+        if confirmed_right_structure and .04 <= x <= .07 and -.29 <= y <= -.24:
             continue
         if math.hypot(x, y) <= math.hypot(.20, .12)+.05:
             candidates.append((angle, x, y))
@@ -50,8 +56,9 @@ def swept_hazard(points, confirmed_rear_structure=False):
 
 
 class EnvelopeGate:
-    def __init__(self, confirmed_rear_structure=False):
+    def __init__(self, confirmed_rear_structure=False, confirmed_right_structure=False):
         self.confirmed_rear_structure = confirmed_rear_structure
+        self.confirmed_right_structure = confirmed_right_structure
         self.last = None
         self.count = 0
 
@@ -60,7 +67,7 @@ class EnvelopeGate:
         # 10Hz scanner this adds ~0.2s; bounded pulses stop independently.
         if scan.stamp != self.last:
             self.last = scan.stamp
-            self.count = self.count+1 if swept_hazard(scan.points, self.confirmed_rear_structure) else 0
+            self.count = self.count+1 if swept_hazard(scan.points, self.confirmed_rear_structure, self.confirmed_right_structure) else 0
         return self.count >= 3
 
 
@@ -93,6 +100,8 @@ def main():
     parser.add_argument('--native-snapshot')
     parser.add_argument('--confirmed-rear-structure', action='store_true',
                         help='exclude only confirmed rear-right body rectangle x [-.18,-.06], y [-.22,-.13]m')
+    parser.add_argument('--confirmed-right-structure', action='store_true',
+                        help='session-only two observed right-side cable/structure rectangles; not a scan-wide mask')
     parser.add_argument('--operator-confirmed-self-returns', action='store_true',
                         help='supervised clear-floor calibration only; record swept returns without gating')
     args = parser.parse_args()
@@ -114,6 +123,7 @@ def main():
               'reference_odom':origin, 'real':args.real,
               'direction':args.direction,
               'confirmed_rear_structure':args.confirmed_rear_structure,
+              'confirmed_right_structure':args.confirmed_right_structure,
               'operator_confirmed_self_returns':args.operator_confirmed_self_returns,
               'swept_gate_observations':0}
     sensors = None
@@ -148,7 +158,7 @@ def main():
             if not -1.5 <= angle <= hard_max or drift > (.05 if args.target_deg==90 else .03):
                 raise RuntimeError('accumulated yaw or translation limit')
             return scan,odom,angle
-        gate=EnvelopeGate(args.confirmed_rear_structure)
+        gate=EnvelopeGate(args.confirmed_rear_structure,args.confirmed_right_structure)
         def envelope_blocked(scan):
             found=gate.check(scan)
             if found:

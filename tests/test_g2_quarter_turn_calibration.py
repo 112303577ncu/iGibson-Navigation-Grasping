@@ -40,6 +40,14 @@ def test_confirmed_structure_is_opt_in_and_spatially_limited():
         assert swept_hazard(points(x,y), confirmed_rear_structure=True)
 
 
+def test_confirmed_right_structure_does_not_ignore_other_near_returns():
+    for x,y in [(-.02,-.24),(.055,-.26)]:
+        assert swept_hazard(points(x,y))
+        assert not swept_hazard(points(x,y),confirmed_right_structure=True)
+    for x,y in [(0,-.20),(.10,-.24),(0,.20)]:
+        assert swept_hazard(points(x,y),confirmed_right_structure=True)
+
+
 def test_gate_requires_distinct_frames_and_resets():
     gate=EnvelopeGate()
     for stamp,expected in [(1,False),(1,False),(2,False),(3,True)]:

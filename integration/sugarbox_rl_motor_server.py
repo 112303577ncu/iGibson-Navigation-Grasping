@@ -257,15 +257,7 @@ class SugarboxRLMotorServer:
 
 
 def load_rosmaster(serial_port: str):
-    root = Path(__file__).resolve().parents[1]
-    grasp_dir = root / "grasp"
-    if str(grasp_dir) not in sys.path:
-        sys.path.insert(0, str(grasp_dir))
-    from Rosmaster_Lib import Rosmaster
-    try:
-        return Rosmaster(com=serial_port)
-    except TypeError:
-        return Rosmaster()
+    raise RuntimeError("legacy standalone Serial owner retired; use resident grasp-service TCP7000 and grasp/v23/demo.py navigation or approach")
 
 
 def run_selftest() -> None:

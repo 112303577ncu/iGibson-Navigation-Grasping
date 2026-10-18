@@ -1,0 +1,14 @@
+{
+  "command": [
+    "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+    "docs\\calibration\\nav_retest_2026-10-18\\windows_regression_runner.py",
+    "grasp/v21/test_deploy_controller.py"
+  ],
+  "exit_code": 0,
+  "tail": [
+    "  [ok]   ...and the same name key ('cam_pose_name')",
+    "",
+    "==========================================================================",
+    "all 138 checks passed"
+  ]
+}

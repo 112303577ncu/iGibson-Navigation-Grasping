@@ -1,0 +1,166 @@
+{
+  "dictionary": "DICT_4X4_50",
+  "black_marker_m": 0.12,
+  "page_count": 4,
+  "markers": [
+    {
+      "id": 0,
+      "wall": "A",
+      "distance_m": 0.5,
+      "room_xy_m": [
+        0.5,
+        2.0
+      ],
+      "description": "紙盒後方牆，從紙盒角落沿牆 50 cm"
+    },
+    {
+      "id": 2,
+      "wall": "A",
+      "distance_m": 1.5,
+      "room_xy_m": [
+        1.5,
+        2.0
+      ],
+      "description": "紙盒後方牆，從紙盒角落沿牆 150 cm"
+    },
+    {
+      "id": 3,
+      "wall": "B",
+      "distance_m": 0.5,
+      "room_xy_m": [
+        0.0,
+        1.5
+      ],
+      "description": "紙盒左側牆，從紙盒角落沿牆 50 cm"
+    },
+    {
+      "id": 4,
+      "wall": "B",
+      "distance_m": 1.5,
+      "room_xy_m": [
+        0.0,
+        0.5
+      ],
+      "description": "紙盒左側牆，從紙盒角落沿牆 150 cm"
+    },
+    {
+      "id": 5,
+      "wall": "C",
+      "distance_m": 0.5,
+      "room_xy_m": [
+        0.5,
+        0.0
+      ],
+      "description": "A 的對面牆，從 B 側端點沿牆 50 cm"
+    },
+    {
+      "id": 1,
+      "wall": "C",
+      "distance_m": 1.5,
+      "room_xy_m": [
+        1.5,
+        0.0
+      ],
+      "description": "A 的對面牆，從 B 側端點沿牆 150 cm"
+    },
+    {
+      "id": 6,
+      "wall": "D",
+      "distance_m": 0.5,
+      "room_xy_m": [
+        2.0,
+        0.5
+      ],
+      "description": "B 的對面牆，從 C 側端點沿牆 50 cm"
+    },
+    {
+      "id": 7,
+      "wall": "D",
+      "distance_m": 1.5,
+      "room_xy_m": [
+        2.0,
+        1.5
+      ],
+      "description": "B 的對面牆，從 C 側端點沿牆 150 cm"
+    }
+  ],
+  "geometry_and_decode_checks": [
+    {
+      "page": 1,
+      "id": 0,
+      "black_mm": [
+        119.99996969434949,
+        120.00002890692815
+      ]
+    },
+    {
+      "page": 1,
+      "id": 2,
+      "black_mm": [
+        119.99996969434949,
+        119.99999660915798
+      ]
+    },
+    {
+      "page": 2,
+      "id": 3,
+      "black_mm": [
+        119.99996969434949,
+        120.00002890692815
+      ]
+    },
+    {
+      "page": 2,
+      "id": 4,
+      "black_mm": [
+        119.99996969434949,
+        119.99999660915798
+      ]
+    },
+    {
+      "page": 3,
+      "id": 5,
+      "black_mm": [
+        119.99996969434949,
+        120.00002890692815
+      ]
+    },
+    {
+      "page": 3,
+      "id": 1,
+      "black_mm": [
+        119.99996969434949,
+        119.99999660915798
+      ]
+    },
+    {
+      "page": 4,
+      "id": 6,
+      "black_mm": [
+        119.99996969434949,
+        120.00002890692815
+      ]
+    },
+    {
+      "page": 4,
+      "id": 7,
+      "black_mm": [
+        119.99996969434949,
+        119.99999660915798
+      ]
+    }
+  ],
+  "physical_detection_verified": false,
+  "camera_calibration_verified": false,
+  "map_registration_verified": false,
+  "outputs": [
+    {
+      "path": "output\\pdf\\aruco_walls_8_120mm_A4_two_per_page.pdf",
+      "sha256": "3ff4c969b6837fafaa10f48c0222b579e7c3017dae6402be21c4d68de67dccbb"
+    },
+    {
+      "path": "output\\pdf\\aruco_walls_placement_2m.pdf",
+      "sha256": "edb9ba42737992df7eef902ac869049d74c43e641325b997d6d906c1c6d3268a"
+    }
+  ]
+}

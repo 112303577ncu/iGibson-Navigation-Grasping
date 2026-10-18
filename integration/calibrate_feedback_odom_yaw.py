@@ -84,15 +84,7 @@ def calculate_scales(trials: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _load_rosmaster(serial_port: str):
-    grasp_dir = ROOT / "grasp"
-    if str(grasp_dir) not in sys.path:
-        sys.path.insert(0, str(grasp_dir))
-    try:
-        from Rosmaster_Lib import Rosmaster
-    except ImportError as exc:
-        raise RuntimeError(
-            "Rosmaster_Lib is unavailable; use the deployed Jetson repo") from exc
-    return Rosmaster(com=serial_port)
+    raise RuntimeError("legacy standalone Serial owner retired; use resident grasp-service TCP7000 and grasp/v23/demo.py navigation or approach")
 
 
 def _stop(device) -> None:

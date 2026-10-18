@@ -1,0 +1,18 @@
+{
+  "exit_code": 0,
+  "command": [
+    "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_g2_quarter_turn_calibration.py",
+    "tests/test_g2_mapping_route.py",
+    "tests/test_g2_patrol_policy.py",
+    "tests/test_g2_relative_dock_probe.py",
+    "tests/test_v23_release_preview.py",
+    "tests/test_g2_safety_audit.py",
+    "tests/test_g2_demo_supervisor.py",
+    "tests/test_v23_demo.py",
+    "tests/test_v23_recovery.py",
+    "-q"
+  ]
+}

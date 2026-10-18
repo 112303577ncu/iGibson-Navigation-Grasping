@@ -1,0 +1,59 @@
+{
+  "source": "fresh stationary scan; operator near patrol home and bin left-front",
+  "lidar_forward_m": 0.1,
+  "fitting_points": 480,
+  "candidates": [
+    {
+      "pose": [
+        0.011370143256691716,
+        0.3526132657405971,
+        -0.4292131600989901
+      ],
+      "score_m": 0.004035739551275105,
+      "wall_median_m": 0.0006189549913673911,
+      "wall_p90_m": 0.03256233865836938,
+      "within_5cm_fraction": 0.9416666666666667,
+      "candidate_box_bearing_left_deg": 41.83774225375312,
+      "consistent_with_operator_left_front": true
+    },
+    {
+      "pose": [
+        0.029111040737564386,
+        0.12271562138029216,
+        3.063929236384506e-10
+      ],
+      "score_m": 0.0796497486294802,
+      "wall_median_m": 0.07405534557619764,
+      "wall_p90_m": 0.21418882448078305,
+      "within_5cm_fraction": 0.40625,
+      "candidate_box_bearing_left_deg": 24.900763843542073,
+      "consistent_with_operator_left_front": true
+    },
+    {
+      "pose": [
+        0.18907338565388876,
+        0.6582614539290983,
+        -1.5773032791261872
+      ],
+      "score_m": 0.1371075394690038,
+      "wall_median_m": 0.12527190783575062,
+      "wall_p90_m": 0.4056206087427671,
+      "within_5cm_fraction": 0.24583333333333332,
+      "candidate_box_bearing_left_deg": 97.6503887963978,
+      "consistent_with_operator_left_front": false
+    },
+    {
+      "pose": [
+        0.4509327905930341,
+        0.6582614522936612,
+        2.1975731800615317
+      ],
+      "score_m": 0.2708750484545574,
+      "wall_median_m": 0.2545897757967239,
+      "wall_p90_m": 0.8053186379491998,
+      "within_5cm_fraction": 0.12083333333333333,
+      "candidate_box_bearing_left_deg": -116.94105156869047,
+      "consistent_with_operator_left_front": false
+    }
+  ]
+}

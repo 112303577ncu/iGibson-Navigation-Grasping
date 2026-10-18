@@ -5,6 +5,18 @@
 統一調用，不複製控制實作。v21 與 v24 保留供回歸／參考，未完成 gate 不改 true。
 舊 A/B/C 任務仍是 v21／獨立序列架構，不作決賽實機入口。
 
+## 10/18 常駐導航與視覺交接入口
+
+目前請由[整合流程與實測](../../docs/operations/RESIDENT_NAVIGATION_FLOW_2026-10-18.md)接續。
+`demo.py navigation --task return|patrol|dropoff` 已接到共用resident TCP7000；
+`demo.py approach` 是校正後明確投放目標的視覺停靠介面。
+此處原有JSON plan後端仍維持下述短直線／手臂限制，不代表完整任務FSM已接通。
+
+巡航從最近可達路段接入；dropoff先到準備區，缺少紙盒／ArUco producer時回報
+WAIT_VISUAL_TARGET，不當作投放成功。koala朝物件移動、E1微調及夾取交接模組已選擇性匯入，
+來源、後續流程差異與未啟用項目見[GitHub同步核對](../../docs/operations/GITHUB_SYNC_2026-10-18.md)。
+完整視覺停靠、實物投放、退出續巡及PPO接管仍待驗收。
+
 ## 正式展示目標與準備順序（2026-10-17）
 
 正式主線為「已建圖場地定位 → 巡航尋物 → 視覺接近/E1交接 → 夾取 → 收臂搬運 →

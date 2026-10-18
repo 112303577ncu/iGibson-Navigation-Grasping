@@ -1,0 +1,17 @@
+{
+  "operator_front_gap_range_m": [
+    0.09434837458647533,
+    0.14434837458647537
+  ],
+  "requested_advance_m": 0.05,
+  "pose_map": [
+    1.2227393691670516,
+    0.7390923718773479,
+    0.38348851635431913
+  ],
+  "service_pid": 7157,
+  "boot_id": "64a7d59f-bedc-4d55-a663-08a31bf96302",
+  "source": "operator now requests forward5cm then right30; gap range propagated from original measurement, not a new tape measurement",
+  "scope": "supervised relative approach, not permanent map box registration",
+  "gap_propagation_along_map_m": 0.25565162541352465
+}

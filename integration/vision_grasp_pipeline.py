@@ -1,39 +1,13 @@
 #!/usr/bin/env python3
-"""Unified self-driving grasp pipeline for X3Plus.
+"""Legacy vision/grasp dry-run and reusable camera geometry.
 
-One process owns the Rosmaster serial link and does the whole loop:
+Live chassis output requires a guarded ResidentMotion TCP7000 adapter; only
+resident grasp-service owns /dev/myserial. Full legacy --real grasp remains
+blocked because its final camera/arm calibration contract is not validated.
 
-    1. detect object (YOLOv11, dual camera)
-    2. drive the mecanum base toward it       (set_car_motion)
-    3. stop once it is within arm reach        (hand off, no blind push)
-    4. grasp with the PPO arm policy           (vision gives x/y/z + width)
-    5. if the grasp failed (object still seen at the same spot), retry from 2
-       — up to --max-retries times.
-
-Why one process: the same Rosmaster object drives BOTH the wheels
-(`set_car_motion`) and the arm servos (`set_uart_servo_angle_array`). Running
-the chassis and the arm from separate processes would fight over the Rosmaster
-serial port,
-so the orchestrator builds the grasp controller (which opens Rosmaster) and
-reuses `controller.servo.device` for the chassis.
-
-Navigation logic (distance/offset geometry, decision thresholds, speed
-calibration) is ported from detection/rear_nav/rear_to_arm_blind_handoff.py,
-but the actuator is changed from the port-7000 motor server to direct
-`set_car_motion`, and the final ARM blind-push is replaced by a hand-off to the
-arm policy (which already reaches objects at x≈0.25 m).
-
-HARDWARE PREREQUISITES
-    * The port-7000 motor server / ROS base driver must NOT be running
-      (they would own the serial port).
-    * Camera streams: arm + rear MJPEG on :8080 (see URL_ARM / URL_REAR).
-
-Run:
-    python vision_grasp_pipeline.py --selftest          # logic check, no hw/cam
-    python vision_grasp_pipeline.py                      # dry-run (no motion), needs cams
-
-The integrated --real path is intentionally refused until measured grasp-home
-homography mapping is connected to final alignment and target latching.
+Use grasp/v23/demo.py navigation for map navigation, or invoke this entry with
+--resident-approach followed by the v23_dock_approach arguments for the resident
+visual docking runner. Heavy YOLO/SAM inference belongs on the development PC.
 """
 from __future__ import annotations
 
@@ -625,7 +599,9 @@ class Navigator:
             raise ValueError("camera-to-base mapping values must be finite")
         if sign_y not in (-1.0, 1.0):
             raise ValueError("camera lateral sign must be +1 or -1")
-        self.device = device          # Rosmaster handle (None in dry-run)
+        if not dry_run and device is not None and not getattr(device, 'resident_transport', False):
+            raise ValueError('live navigation requires resident TCP transport; direct Serial is disabled')
+        self.device = device          # ResidentMotion adapter (None in dry-run)
         self.model = model            # ultralytics YOLO
         self.show = show
         self.dry_run = dry_run
@@ -1249,4 +1225,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if '--resident-approach' in sys.argv:
+        from v23_dock_approach import main as resident_main
+        raise SystemExit(resident_main([x for x in sys.argv[1:] if x!='--resident-approach']))
     main()

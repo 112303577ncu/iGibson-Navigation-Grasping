@@ -1,0 +1,99 @@
+[
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "docs/calibration/nav_retest_2026-10-18/windows_regression_runner.py",
+      "grasp/v21/test_deploy_controller.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "  [ok]   the sender uses the same cam_pose key ('cam_pose')",
+      "  [ok]   ...and the same name key ('cam_pose_name')",
+      "",
+      "==========================================================================",
+      "all 138 checks passed"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "grasp/v21/test_servo_read.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "14. no device: unchanged fail-closed behaviour",
+      "  [ok]   invalid without a board",
+      "  [ok]   all NaN without a board",
+      "",
+      "all 37 checks passed \ufffdX servo reads survive the half-duplex bus"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "docs/calibration/nav_retest_2026-10-18/windows_regression_runner.py",
+      "grasp/v21/test_deploy_floor_guard.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "  random          worst commanded sweep =   +8.826 mm",
+      "  from_below trials that were genuinely below the line: 0",
+      "  guard clamped 291x, refused 0x",
+      "============================================================================",
+      "all 641 checks passed \u2014 deployment guard is preventive"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "ui/test_server.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "",
+      "----------------------------------------------------------------------",
+      "Ran 50 tests in 2.809s",
+      "",
+      "OK (skipped=1)"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "integration/mission_fsm.py",
+      "--selftest"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "[fsm] goal-source changes reset ActionDelay/tracker OK",
+      "[fsm] deliver_enabled=False path OK",
+      "[fsm] paused-while-carrying resumes all 4 carrying states, others land in IDLE OK",
+      "[fsm] config validation OK",
+      "[fsm] SELFTEST PASSED"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "-m",
+      "pytest",
+      "tests/test_g2_quarter_turn_calibration.py",
+      "tests/test_g2_mapping_route.py",
+      "tests/test_g2_patrol_policy.py",
+      "tests/test_g2_relative_dock_probe.py",
+      "tests/test_v23_release_preview.py",
+      "tests/test_g2_safety_audit.py",
+      "tests/test_g2_demo_supervisor.py",
+      "tests/test_v23_demo.py",
+      "tests/test_v23_recovery.py",
+      "-q"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "........................................................................ [ 42%]",
+      "........................................................................ [ 84%]",
+      ".........................s                                               [100%]",
+      "169 passed, 1 skipped in 1.53s"
+    ]
+  }
+]

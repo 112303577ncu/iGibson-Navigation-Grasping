@@ -1,0 +1,16 @@
+{
+  "operator_front_gap_range_m": [
+    0.35,
+    0.4
+  ],
+  "requested_advance_m": 0.3,
+  "pose_map": [
+    0.9845578321488333,
+    0.645222797403478,
+    0.32238147725004396
+  ],
+  "service_pid": 7157,
+  "boot_id": "64a7d59f-bedc-4d55-a663-08a31bf96302",
+  "source": "operator front-edge measurement and forward30cm request at nav_retest post_navigation_probe pose; same unchanged box",
+  "scope": "supervised relative approach, not permanent map box registration"
+}

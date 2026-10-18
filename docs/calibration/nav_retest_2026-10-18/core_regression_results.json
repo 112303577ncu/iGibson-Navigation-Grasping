@@ -1,0 +1,68 @@
+[
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "grasp/v21/test_deploy_controller.py"
+    ],
+    "exit_code": 1,
+    "tail": [
+      "    ctrl.fk = X.FKComputer(cfg.urdf_path)",
+      "  File \"D:\\OneDrive - \ufffd\ufffd\u07e4\ufffd\ufffd\ufffd\ufffdj\ufffd\ufffd\\\ufffd\u0b71\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\x3plus_real_grasp.py\", line 1028, in __init__",
+      "    self.body_id = p.loadURDF(",
+      "pybullet.error: Cannot load URDF file."
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "grasp/v21/test_servo_read.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "  [ok]   invalid without a board",
+      "  [ok]   all NaN without a board",
+      "",
+      "all 37 checks passed \ufffdX servo reads survive the half-duplex bus"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "grasp/v21/test_deploy_floor_guard.py"
+    ],
+    "exit_code": 1,
+    "tail": [
+      "    fk = FKComputer(cfg.urdf_path)",
+      "  File \"D:\\OneDrive - \ufffd\ufffd\u07e4\ufffd\ufffd\ufffd\ufffdj\ufffd\ufffd\\\ufffd\u0b71\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\x3plus_real_grasp.py\", line 1028, in __init__",
+      "    self.body_id = p.loadURDF(",
+      "pybullet.error: Cannot load URDF file."
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "ui/test_server.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "----------------------------------------------------------------------",
+      "Ran 50 tests in 3.063s",
+      "",
+      "OK (skipped=1)"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "integration/mission_fsm.py",
+      "--selftest"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "[fsm] deliver_enabled=False path OK",
+      "[fsm] paused-while-carrying resumes all 4 carrying states, others land in IDLE OK",
+      "[fsm] config validation OK",
+      "[fsm] SELFTEST PASSED"
+    ]
+  }
+]

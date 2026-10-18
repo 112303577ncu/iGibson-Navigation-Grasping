@@ -102,7 +102,13 @@ jobs:
         run: python tests/test_g2_nav_client.py
 
       - name: G2 mapping, patrol geometry and empty release preview
-        run: python -m pytest tests/test_g2_quarter_turn_calibration.py tests/test_g2_mapping_route.py tests/test_g2_patrol_policy.py tests/test_v23_release_preview.py -q
+        run: python -m pytest tests/test_g2_quarter_turn_calibration.py tests/test_g2_mapping_route.py tests/test_g2_patrol_policy.py tests/test_g2_relative_dock_probe.py tests/test_v23_release_preview.py -q
 
       - name: Vision grasp pipeline selftest
         run: python integration/vision_grasp_pipeline.py --selftest
+
+      - name: Resident navigation recovery and dropoff handoff
+        run: python -m pytest tests/test_g2_localization_service.py tests/test_v23_dock_approach.py tests/test_g2_navigation_goals.py tests/test_v23_delivery_navigation.py -q
+
+      - name: Koala approach import and target compatibility
+        run: python -m pytest tests/test_target_approach.py tests/test_sugarbox_approach_grasp.py tests/test_sugarbox_blind_finish.py tests/test_sugarbox_ground_calibration.py tests/test_sugarbox_lidar_geometry.py -q

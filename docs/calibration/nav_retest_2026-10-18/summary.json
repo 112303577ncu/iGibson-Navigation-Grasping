@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-18",
+  "owner_pid": 7157,
+  "boot_id": "64a7d59f-bedc-4d55-a663-08a31bf96302",
+  "patrol": {
+    "all_waypoints_reached": true,
+    "reported_ok_before_post_parking_check": true,
+    "arrival_error_range_m": [
+      0.03102379574669204,
+      0.044348392072375606
+    ],
+    "post_parking_error_m": 0.08354974476165677,
+    "post_parking_within_65mm": false,
+    "full_acceptance": false,
+    "reason": "final turn translated centre about 4.3cm; pre-turn arrival cannot certify final position",
+    "recoveries": [],
+    "pulses": 159,
+    "min_available_mb": 1599.7578125
+  },
+  "dropoff_preparation": {
+    "ok": true,
+    "arrival_error_m": 0.0443074131220482,
+    "fresh_stopped_goal_error_m": 0.045033141460618806,
+    "final_pose_map": [
+      0.9845578321488333,
+      0.645222797403478,
+      0.32238147725004396
+    ],
+    "recoveries": [],
+    "pulses": 15,
+    "min_available_mb": 1603.68359375,
+    "box_front_gap_operator_m": [
+      0.35,
+      0.4
+    ],
+    "requested_further_base_advance_approx_m": 0.3,
+    "box_bearing_physical_not_confirmed": true,
+    "actual_release_docking_validated": false
+  },
+  "changes": {
+    "patrol_inset_m": 0.7,
+    "general_wall_margin_m": 0.4,
+    "box_envelope_additional_registration_allowance_m": 0.04,
+    "new_filter_profile": false,
+    "last_park_position_check_deployed": true,
+    "last_park_position_check_hardware_run": false
+  },
+  "offline_checks": {
+    "pytest": "154 passed, 1 skipped",
+    "controller": 138,
+    "servo": 37,
+    "floor_guard": 641,
+    "ui": "50 tests, 1 skipped",
+    "fsm": "passed",
+    "windows_note": "controller/floor require test-only relative URDF path adapter; original failures retained, UTF-8 output adapter used"
+  },
+  "final_chassis": {
+    "motors": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "maintenance": true,
+    "moving": false,
+    "stopped_for_s": 191.2,
+    "arm_busy": false,
+    "arm_pose": "travel",
+    "pose_blocked_total": 0,
+    "board_rx_age_s": 0.01,
+    "rx_blocked_total": 0,
+    "dropped_total": 0,
+    "refused_total": 0,
+    "client": null
+  },
+  "source_sha256": {
+    "deploy/ros/g2_map_patrol.py": "4da0740604c45fdde46090dadb45bb22b4f66acf7b8f4b645661a48f6c65be2e",
+    "integration/g2_patrol_policy.py": "b1a661d1eada9919ee2f84f4ebd7e99f0c3c3292c463c443b6426c2a35408ee1",
+    "tests/test_g2_patrol_policy.py": "8b8438c4c14a2cfb9e1406d1c80699779a17eb7ac1437aa3ce964a7d7cb0d824"
+  }
+}

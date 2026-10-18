@@ -298,32 +298,7 @@ def clear_estop():
 # ============================================================
 
 def initialize_rosmaster():
-    global bot
-
-    print("[INFO] 初始化 Rosmaster...")
-
-    bot = Rosmaster(com="/dev/myserial")
-
-    # Yahboom Rosmaster_Lib 通常需要接收執行緒，
-    # 才能正常取得 get_motion_data()。
-    if hasattr(bot, "create_receive_threading"):
-        bot.create_receive_threading()
-
-    # 開啟底層自動回報
-    try:
-        bot.set_auto_report_state(
-            enable=True,
-            forever=False
-        )
-
-    except TypeError:
-        # 相容某些舊版 Rosmaster_Lib
-        bot.set_auto_report_state(
-            True,
-            False
-        )
-
-    print("[INFO] Rosmaster 初始化完成。")
+    raise RuntimeError("legacy standalone Serial owner retired; use resident grasp-service TCP7000 and grasp/v23/demo.py navigation or approach")
 
 
 # ============================================================

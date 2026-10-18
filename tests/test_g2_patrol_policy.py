@@ -22,6 +22,105 @@ def test_real_scene_opposite_corner_route_stays_in_mask():
     assert distances.index(max(distances))==0
 
 
+def test_moved_box_envelope_requires_inward_patrol_route():
+    p=Policy(str(ROOT/'maps/demo_box_20261018_patrol'))
+    with pytest.raises(ValueError,match='patrol segment'):
+        p.patrol_points(.60)
+    points=p.patrol_points(.70)
+    assert all(p.segment_allowed(a,b) for a,b in zip(points,points[1:]+points[:1]))
+    runner=patrol.Runner.__new__(patrol.Runner);runner.policy=p
+    assert all(runner.rotation_allowed(point) for point in points)
+
+
+def test_uncertain_box_envelope_does_not_enable_exact_docking():
+    p=Policy(str(ROOT/'maps/demo_box_20261018_patrol'))
+    p.require_motion_ready(.10)
+    with pytest.raises(ValueError,match='physical box registration'):
+        p.enable_dock_zone(.10)
+    u0,u1,v0,v1=p.layout['navigation_mask_validation']['envelope_room_uv']
+    angle=p.layout['room_heading_rad'];c,s=math.cos(angle),math.sin(angle)
+    for u in (u0,(u0+u1)/2,u1):
+        for v in (v0,(v0+v1)/2,v1):
+            assert not p.allowed(c*u-s*v,s*u+c*v)
+
+
+@pytest.mark.parametrize('inset',['nan','.59','.91'])
+def test_patrol_cli_rejects_inset_before_hardware(monkeypatch,inset):
+    monkeypatch.setattr(sys,'argv',['g2_map_patrol.py','--scene','unused',
+                                   '--output','unused','--inset',inset])
+    with pytest.raises(SystemExit) as exc:
+        patrol.main()
+    assert exc.value.code==2
+
+
+def test_final_facing_rotates_without_approaching_point():
+    runner=patrol.Runner.__new__(patrol.Runner);runner.report={'recoveries':[]}
+    pose=[0,0,0];calls=[]
+    runner.ready=lambda:{'pose':pose}
+    def pulse(vx,wz,duration):
+        calls.append((vx,wz,duration));pose[2]=math.pi/2
+    runner.pulse=pulse
+    runner.face_point([0,10])
+    assert calls and all(vx==0 and wz==1 for vx,wz,_ in calls)
+    assert runner.report['park_facing']=='requested_point'
+    assert runner.report['park_yaw_error_deg']==pytest.approx(0)
+
+
+def test_parking_cannot_reuse_arrival_before_turn_drift():
+    runner=patrol.Runner.__new__(patrol.Runner);runner.report={
+        'arrivals':[{'error_m':.044}]}
+    runner.settle=lambda:{'pose':[.08,0,0]}
+    with pytest.raises(RuntimeError,match='final turn displaced'):
+        runner.verify_parked_goal([0,0])
+    assert runner.report['parked_goal_valid'] is False
+    assert runner.report['final_goal_error_m']==pytest.approx(.08)
+    runner.settle=lambda:{'pose':[.04,0,0]}
+    runner.verify_parked_goal([0,0])
+    assert runner.report['parked_goal_valid'] is True
+
+
+def test_outer_route_retains_wall_box_and_turn_limits():
+    import json
+    p=Policy(str(ROOT/'maps/demo_box_20261018_patrol'))
+    goals=json.loads((ROOT/'docs/calibration/nav_outer_2026-10-18/outer_goals.json').read_text())
+    points=[g['point'] for g in goals]
+    runner=patrol.Runner.__new__(patrol.Runner);runner.policy=p
+    assert all(runner.rotation_allowed(point) for point in points)
+    assert all(p.segment_allowed(a,b) for a,b in zip(points,points[1:]))
+    # Forward braking projection remains legal even near each outward corner.
+    for a,b in zip(points,points[1:]):
+        yaw=math.atan2(b[1]-a[1],b[0]-a[0])
+        before=[b[0]-.045*math.cos(yaw),b[1]-.045*math.sin(yaw),yaw]
+        assert p.stopping_path_allowed(before,.074)
+
+
+def test_final_heading_modes_cannot_conflict(monkeypatch):
+    monkeypatch.setattr(sys,'argv',['g2_map_patrol.py','--scene','unused',
+        '--output','unused','--keep-heading','--face-point','0','1'])
+    with pytest.raises(SystemExit) as exc:patrol.main()
+    assert exc.value.code==2
+
+
+@pytest.mark.parametrize('front,duration,allowed',[(.40,.04,True),(.40,.15,False),(.34,.04,False)])
+def test_boundary_micro_keeps_long_pulse_and_close_wall_brakes(front,duration,allowed):
+    runner=patrol.Runner.__new__(patrol.Runner);runner.boundary_micro=True
+    runner.report={'pulses':0,'trace':[]};calls=[]
+    state={'odom':[0,0,0],'pose':[0,0,0],'front':front}
+    runner.ready=lambda:state;runner.state=lambda:state;runner.settle=lambda:state
+    runner.stop=lambda:calls.append('stop')
+    class PolicyStub:
+        def stopping_path_allowed(self,*args):return True
+    class SocketStub:
+        def sendall(self,payload):calls.append(payload)
+    runner.policy=PolicyStub();runner.sock=SocketStub()
+    if allowed:
+        runner.pulse(.15,0,duration)
+        assert any(isinstance(item,bytes) and b'velocity' in item for item in calls)
+    else:
+        with pytest.raises(patrol.Transient,match='front brake'):runner.pulse(.15,0,duration)
+        assert calls==['stop']
+
+
 def test_map_outside_and_paper_box_are_forbidden():
     p=Policy(str(ROOT/'maps/demo_box_20261017'))
     assert not p.allowed(-100,100)
@@ -190,3 +289,16 @@ def test_moved_box_blocks_old_route_even_after_geometry_validation():
     p=Policy(str(ROOT/'maps/demo_box_20261017'))
     p.layout['sensor_geometry']['validation']={'verified':True,'lidar_forward_m':.10}
     with pytest.raises(ValueError,match='box moved'):p.require_motion_ready(.10)
+
+
+def test_transient_sensor_recovery_requires_five_distinct_odom_frames(monkeypatch):
+    from unittest.mock import Mock
+    r=patrol.Runner.__new__(patrol.Runner);r.stop=Mock()
+    stamps=[1,1,2,3,4,5];calls=[patrol.Transient('stale AMCL')]+[{'odom_stamp':n} for n in stamps]
+    def state():
+        value=calls.pop(0)
+        if isinstance(value,Exception):raise value
+        return value
+    r.state=state;monkeypatch.setattr(patrol.time,'sleep',lambda _:None)
+    assert r.ready()['odom_stamp']==5
+    assert r.stop.call_count==1 and r.recovery_generation==1

@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "scope": "random-start localization disambiguated with camera and scan; nearest-patrol and dropoff-preparation navigation; no final visual docking or release",
+  "localization": {
+    "boot_bound_seed": true,
+    "global_scan_match_alone_ambiguous": true,
+    "camera_disambiguation_supervised": true,
+    "unknown_start_fully_automatic": false,
+    "recovery_test_ok": true,
+    "recovery_seconds": 7.253025054931641,
+    "permanent_service": "x3plus-g2-localization.service",
+    "runtime_limit": "infinity"
+  },
+  "random_to_nearest_patrol": {
+    "ok": true,
+    "map_estimated_final_error_m": 0.043350727168322466,
+    "recoveries": [],
+    "pulses": 46,
+    "minimum_available_mb": 1447.69921875
+  },
+  "patrol_to_dropoff_preparation": {
+    "ok": true,
+    "map_estimated_final_error_m": 0.03982826604292038,
+    "recoveries": [],
+    "pulses": 57,
+    "minimum_available_mb": 1450.0,
+    "final_pose_map": [
+      0.988367473573806,
+      0.6496058532691895,
+      0.3673454762745978
+    ]
+  },
+  "robot_final": {
+    "owner_pid": 8117,
+    "motors": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "maintenance": true,
+    "arm_pose": "travel"
+  },
+  "pending": [
+    "physical marker print and camera calibration/map registration",
+    "paper-box/ArUco target producer for teammate final approach",
+    "real release result and validated departure",
+    "uninterrupted full patrol and repeated full mission",
+    "PPO shadow evaluation before taking actuator control"
+  ],
+  "printed_marker_set": {
+    "dictionary": "DICT_4X4_50",
+    "ids": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      1,
+      6,
+      7
+    ],
+    "black_mm": 120,
+    "walls": 4,
+    "per_wall": 2,
+    "all_camera_views_guaranteed": false
+  },
+  "software_tests": {
+    "navigation_passed": 219,
+    "navigation_skipped": 1,
+    "koala_tests_passed_python311": 152,
+    "koala_subtests_passed": 178,
+    "controller": 138,
+    "floor_guard": 641,
+    "servo": 37,
+    "ui": 50,
+    "ui_skipped": 1,
+    "safety_guards": 73,
+    "fsm": "passed"
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "docs\\calibration\\nav_retest_2026-10-18\\windows_regression_runner.py",
+      "grasp/v21/test_deploy_controller.py"
+    ],
+    "exit_code": 1,
+    "tail": [
+      "  File \"D:\\OneDrive - \ufffd\ufffd\u07e4\ufffd\ufffd\ufffd\ufffdj\ufffd\ufffd\\\ufffd\u0b71\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\test_deploy_controller.py\", line 1347, in run_test",
+      "    fn()",
+      "  File \"D:\\OneDrive - \ufffd\ufffd\u07e4\ufffd\ufffd\ufffd\ufffdj\ufffd\ufffd\\\ufffd\u0b71\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\test_deploy_controller.py\", line 720, in test_clamped_close_blocks_lift_and_stage2",
+      "    print(\"\\n[11] guard clamping during the close \\u21d2 no lift, no stage 2, no success\")",
+      "UnicodeEncodeError: 'cp950' codec can't encode character '\\u21d2' in position 39: illegal multibyte sequence"
+    ]
+  },
+  {
+    "command": [
+      "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+      "docs\\calibration\\nav_retest_2026-10-18\\windows_regression_runner.py",
+      "grasp/v21/test_deploy_floor_guard.py"
+    ],
+    "exit_code": 0,
+    "tail": [
+      "  random          worst commanded sweep =   +8.826 mm",
+      "  from_below trials that were genuinely below the line: 0",
+      "  guard clamped 291x, refused 0x",
+      "============================================================================",
+      "all 641 checks passed \ufffdX deployment guard is preventive"
+    ]
+  }
+]

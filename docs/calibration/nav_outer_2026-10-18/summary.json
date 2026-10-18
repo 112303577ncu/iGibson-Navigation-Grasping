@@ -1,0 +1,127 @@
+{
+  "outer_route": {
+    "wall_inset_m": 0.55,
+    "general_center_wall_margin_m": 0.4,
+    "interrupted_then_resumed": true,
+    "uninterrupted_new_mode_loop_verified": false,
+    "resume_ok": true,
+    "resume_final_goal_error_m": 0.04162746913431623
+  },
+  "dock": {
+    "operator_confirmation": "arrived",
+    "physical_pose_confirmed": true,
+    "real_object_release_verified": false,
+    "automatic_repeatable_docking_verified": false,
+    "approach_travel_m": 0.29519022123919614,
+    "additional_micro_travel_m": 0.046741388521507304,
+    "final_right_turn_deg": 29.9273103654455,
+    "odom_pose": [
+      1.0338,
+      0.8202,
+      0.2652
+    ],
+    "map_pose_estimate": null,
+    "pose_basis": "AMCL estimate only; final physical arrival confirmed by operator after relative adjustments",
+    "evidence": "docs/calibration/nav_outer_2026-10-18/final_dock_state.json"
+  },
+  "camera": {
+    "initial_box_visible": true,
+    "servo_control_connected": false,
+    "current_model_class": "sugarbox, not paper dropoff box",
+    "metric_extrinsics_unverified": true,
+    "final_read_failures": 0
+  },
+  "filter": {
+    "persistent_profile_changed": false,
+    "session_right_structure_opt_in": true,
+    "rectangles_m": [
+      [
+        -0.05,
+        0.02,
+        -0.29,
+        -0.21
+      ],
+      [
+        0.04,
+        0.07,
+        -0.29,
+        -0.24
+      ]
+    ],
+    "wall_49_to_53cm_retained": true
+  },
+  "tests": "172 passed, 1 skipped; core regressions passed with documented Windows-only test adapter",
+  "last_health": {
+    "service_pid": 7157,
+    "rss_mb": 509.0,
+    "uptime_s": 2825.1,
+    "ok": true,
+    "startup_pose": {
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ],
+      "enabled": true
+    },
+    "capabilities": {
+      "owner_restart": false,
+      "independent_health": true,
+      "serial_transport_diagnostics": false
+    },
+    "stack_version": "v23",
+    "chassis": {
+      "board_rx_age_s": 0.0,
+      "arm_pose": "travel",
+      "stopped_for_s": 197.58,
+      "rx_blocked_total": 0,
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "refused_total": 0,
+      "client": null,
+      "moving": false,
+      "maintenance": true,
+      "pose_blocked_total": 0,
+      "dropped_total": 0,
+      "arm_busy": false
+    },
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+    "holding": false,
+    "chassis_tcp_ready": true,
+    "serial": null,
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+    "odom": {
+      "pose": [
+        1.0338,
+        0.8202,
+        0.2652
+      ],
+      "rosbridge": true,
+      "skipped_invalid": 1,
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": "",
+      "valid": true,
+      "published": 56177,
+      "failures": 0,
+      "skipped_board_silent": 0
+    }
+  },
+  "source_hashes": {
+    "deploy/ros/g2_map_patrol.py": "8146d5e50444f6fd153087b5ba7f6ccbb17360a4b5ae8f6ce2007d8720f4a324",
+    "deploy/ros/g2_relative_dock_probe.py": "66c56f9768523af440706a690769617c431b28db137d6fe975d7e081c66daa7d",
+    "integration/g2_quarter_turn_calibration.py": "6cbb480992bbbbbac3d3395d403e0675c24c2d0ae3c1df41de9bcf820edde484"
+  }
+}

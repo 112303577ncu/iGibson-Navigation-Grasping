@@ -16,6 +16,7 @@ ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,os.path.join(ROOT,'integration'))
 from g2_patrol_policy import Policy,wrap,finite,guided_heading,stop_reserve
 from g2_geometry import LIDAR_FORWARD_M
+from g2_navigation_goals import resolve_destination
 
 
 class Transient(RuntimeError):
@@ -133,6 +134,11 @@ class Runner:
 
     def state(self):
         if time.time()>=self.end:raise RuntimeError('patrol duration limit')
+        try:
+            with open('/dev/shm/g2_localization_health.json') as f:loc=json.load(f)
+        except (IOError,ValueError) as exc:raise Transient('localization supervisor unavailable: '+str(exc))
+        if loc.get('owner_pid')!=self.pid or not loc.get('ready') or not 0<=time.time()-loc['stamp']<=.4:
+            raise Transient('localization supervisor: '+str(loc.get('reason',loc.get('status'))))
         memory=available_mb();self.report['min_available_mb']=min(memory,self.report.get('min_available_mb',memory))
         if memory<768:raise RuntimeError('RAM pressure')
         if time.time()-self.last_health>1:
@@ -143,14 +149,23 @@ class Runner:
         if not self.policy.allowed(*s['pose'][:2]):raise RuntimeError('current centre outside navigation mask')
         return s
 
-    def ready(self,seconds=3):
-        end=time.time()+seconds
+    def ready(self,seconds=20):
+        end=time.time()+seconds;stable=0;last=None
         while True:
-            try:return self.state()
-            except Transient:
+            try:
+                state=self.state()
+                if stable==0 and last is None:return state
+                if state['odom_stamp']!=last:
+                    last=state['odom_stamp'];stable+=1
+                if stable>=5:
+                    self.recovery_generation=getattr(self,'recovery_generation',0)+1
+                    return state
+            except Transient as exc:
+                stable=0;last=-1
                 self.stop()
-                if time.time()>=end:raise
-                time.sleep(.04)
+                if time.time()>=end:raise Transient('sensor recovery timeout: '+str(exc))
+            if time.time()>=end:raise Transient('sensor recovery stability timeout')
+            time.sleep(.04)
 
     def settle(self):
         self.stop();start=time.time();last=None;stable=0
@@ -171,7 +186,9 @@ class Runner:
                 if math.hypot(s['odom'][0]-initial['odom'][0],s['odom'][1]-initial['odom'][1])>.35*duration+.12:
                     raise RuntimeError('pulse translation limit')
                 if vx:
-                    if s['front']<getattr(self,'front_brake_m',.5):raise Transient('front brake')
+                    brake=getattr(self,'front_brake_m',.5)
+                    if getattr(self,'boundary_micro',False) and duration<=.08:brake=min(brake,.35)
+                    if s['front']<brake:raise Transient('front brake')
                     if not self.policy.stopping_path_allowed(pose,.35*max(0,duration-(time.time()-start))+stop_reserve(duration)):raise Transient('predicted stop crosses mask')
                 else:
                     if not self.rotation_allowed(pose):
@@ -188,9 +205,12 @@ class Runner:
         origin=self.report.get('last_planned_goal',current)
         if math.hypot(origin[0]-current[0],origin[1]-current[1])>.13:
             origin=current
-        begun=time.time();last_distance=None;stalled=0
+        begun=time.time();last_distance=None;stalled=0;generation=getattr(self,'recovery_generation',0)
         for _ in range(160):
             s=self.ready();p=s['pose'];distance=math.hypot(goal[0]-p[0],goal[1]-p[1])
+            if generation!=getattr(self,'recovery_generation',0):
+                generation=self.recovery_generation;origin=p[:2];last_distance=None;stalled=0
+                if not self.policy.segment_allowed(origin,goal):raise Transient('replan required after localization correction')
             if distance<=.045:
                 s=self.settle();error=math.hypot(goal[0]-s['pose'][0],goal[1]-s['pose'][1])
                 if error<=.065:
@@ -204,6 +224,8 @@ class Runner:
                     self.pulse(0,1 if err>0 else -1,min(.12,max(.04,(abs(err)-.02)/1.5)))
                 else:
                     choices=[d for d in (.6,.35,.15,.08,.04) if d<=getattr(self,'max_forward_duration',.6) and .35*d+.025<distance and self.policy.stopping_path_allowed(p,.35*d+stop_reserve(d))]
+                    if getattr(self,'boundary_micro',False) and s['front']<.5:
+                        choices=[d for d in choices if d<=.08]
                     if not choices:
                         if distance<.10:choices=[.04] if self.policy.stopping_path_allowed(p,.074) else []
                         if not choices:raise RuntimeError('cannot approach goal within stop reserve')
@@ -214,20 +236,43 @@ class Runner:
             except Transient as exc:
                 self.stop();self.report['recoveries'].append(str(exc))
                 if len(self.report['recoveries'])>12:raise RuntimeError('recovery budget exhausted')
-                self.settle();self.ready()
+                self.settle();fresh=self.ready();origin=fresh['pose'][:2]
+                # Localization may correct map->odom during recovery. Re-anchor
+                # guidance and recheck the entire route before another output.
+                if not self.policy.segment_allowed(origin,goal):
+                    raise Transient('replan required after localization correction')
+                last_distance=None;stalled=0
         raise RuntimeError('waypoint iteration limit')
 
     def goto(self,goal,label):
         current=self.ready()['pose'][:2];path=self.policy.plan(current,goal)
         self.report.setdefault('planned_paths',[]).append({'label':label,'points':path})
-        for i,point in enumerate(path[1:]):self.navigate(point,label if i==len(path)-2 else label+'_via%d'%i)
+        for attempt in range(4):
+            try:
+                for i,point in enumerate(path[1:]):self.navigate(point,label if i==len(path)-2 else label+'_via%d'%i)
+                return
+            except Transient as exc:
+                self.stop()
+                if 'replan required' not in str(exc) or attempt==3:raise
+                current=self.ready()['pose'][:2];path=self.policy.plan(current,goal)
+                self.report['planned_paths'].append({'label':label,'points':path,'reason':str(exc)})
+
+    def verify_parked_goal(self,goal):
+        final=self.settle();self.report['final']=final
+        error=math.hypot(goal[0]-final['pose'][0],goal[1]-final['pose'][1])
+        self.report['final_goal_error_m']=error
+        self.report['parked_goal_valid']=error<=.065
+        if error>.065:raise RuntimeError('final turn displaced centre beyond goal tolerance')
 
     def face_interior(self):
         centre=[sum(p[i] for p in self.policy.layout['room_polygon'])/4 for i in (0,1)]
+        self.face_point(centre,'room_centre')
+
+    def face_point(self,point,label='requested_point'):
         for _ in range(50):
-            s=self.ready();pose=s['pose'];error=wrap(math.atan2(centre[1]-pose[1],centre[0]-pose[0])-pose[2])
+            s=self.ready();pose=s['pose'];error=wrap(math.atan2(point[1]-pose[1],point[0]-pose[0])-pose[2])
             if abs(error)<=math.radians(6):
-                self.report['park_facing']='room_centre';self.report['park_yaw_error_deg']=math.degrees(error);return
+                self.report['park_facing']=label;self.report['park_face_point']=point;self.report['park_yaw_error_deg']=math.degrees(error);return
             try:self.pulse(0,1 if error>0 else -1,min(.15,max(.05,(abs(error)-.03)/1.5)))
             except Transient as exc:
                 self.report['recoveries'].append(str(exc));self.settle()
@@ -254,10 +299,21 @@ def resolve_goals(requested,policy,points):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--scene',required=True);p.add_argument('--output',required=True)
-    p.add_argument('--loops',type=int,default=1);p.add_argument('--seconds',type=int,default=600);p.add_argument('--real',action='store_true');p.add_argument('--goals',help='JSON list of home, dropoff or {name,point:[x,y]}');args=p.parse_args()
+    p.add_argument('--loops',type=int,default=1);p.add_argument('--seconds',type=int,default=600);p.add_argument('--real',action='store_true');p.add_argument('--goals',help='JSON list of home, dropoff or {name,point:[x,y]}')
+    p.add_argument('--inset',type=float,default=.60,help='Patrol centre distance inside fitted walls, 0.60..0.90 m')
+    p.add_argument('--face-point',type=float,nargs=2,metavar=('X','Y'),help='Face this map point after arrival; does not authorize approaching it')
+    p.add_argument('--keep-heading',action='store_true',help='Keep the final travel heading when chaining navigation stages')
+    p.add_argument('--boundary-micro',action='store_true',help='Use <=0.08s pulses and a 0.35m front brake below normal 0.50m clearance')
+    p.add_argument('--destination',choices=('nearest-patrol','patrol-cycle','dropoff-preparation'))
+    p.add_argument('--point',type=float,nargs=2,metavar=('X','Y'),help='Navigate to any reachable map point')
+    args=p.parse_args()
     if not 1<=args.loops<=2 or not 30<=args.seconds<=600:p.error('bounded loops 1..2, seconds 30..600')
-    policy=Policy(args.scene);points=policy.patrol_points();report={'ok':False,'real':args.real,'output_path':args.output,'waypoints':points,'primary_patrol_point':'opposite paper-box corner, inset60cm','arrivals':[],'recoveries':[],'trace':[],'pulses':0}
-    runner=None
+    if not finite(args.inset) or not .60<=args.inset<=.90:p.error('patrol inset must be 0.60..0.90 m')
+    if args.face_point and not all(finite(v) for v in args.face_point):p.error('face point must be finite')
+    if args.keep_heading and args.face_point:p.error('keep-heading and face-point are mutually exclusive')
+    if sum(bool(x) for x in (args.goals,args.destination,args.point))>1:p.error('choose goals, destination or point')
+    policy=Policy(args.scene);points=policy.patrol_points(args.inset);report={'ok':False,'real':args.real,'output_path':args.output,'waypoints':points,'patrol_inset_m':args.inset,'primary_patrol_point':'opposite paper-box corner','arrivals':[],'recoveries':[],'trace':[],'pulses':0}
+    runner=None;lease=None;unlocked=False
     def interrupted(*_):raise KeyboardInterrupt()
     signal.signal(signal.SIGTERM,interrupted)
     try:
@@ -265,16 +321,34 @@ def main():
         goals=None
         if args.goals:
             with open(args.goals) as f:goals=resolve_goals(json.load(f),policy,points)
+            report['requested_goals']=[{'name':name,'point':goal} for name,goal in goals]
         if available_mb()<1024:raise RuntimeError('RAM below 1GB at start')
         h=rpc('health');ch=h['chassis'];owner=str(h['service_pid'])
         held=subprocess.check_output(['fuser','/dev/myserial']).decode().split()
         if held!=[owner] or ch['motors']!=[0,0,0,0] or ch['moving'] or ch['client'] is not None:raise RuntimeError('sole idle owner preflight failed')
         import rospy
         rospy.init_node('g2_map_patrol',disable_signals=True);sensors=Sensors();runner=Runner(sensors,policy,report,args.seconds)
+        runner.boundary_micro=args.boundary_micro
+        report['boundary_micro']=args.boundary_micro
         report['initial']=runner.ready(8)
+        if args.destination:
+            goals=resolve_destination(policy,report['initial']['pose'][:2],args.destination)
+            report['destination']=args.destination
+        elif args.point:
+            policy.plan(report['initial']['pose'][:2],args.point)
+            goals=[('requested_point',args.point)]
+        if goals:
+            report['requested_goals']=[{'name':name,'point':goal} for name,goal in goals]
+            previous=report['initial']['pose'][:2];report['preflight_paths']=[]
+            for name,goal in goals:
+                report['preflight_paths'].append({'label':name,'points':policy.plan(previous,goal)})
+                previous=goal
         if args.real:
+            import fcntl
+            lease=open('/tmp/g2_motion_client.lock','a');fcntl.flock(lease,fcntl.LOCK_EX|fcntl.LOCK_NB)
             result=rpc('maintenance-unlock','/tmp/grasp_service.sock')
             if not result.get('ok'):raise RuntimeError('unlock refused')
+            unlocked=True
             runner.sock=socket.create_connection(('127.0.0.1',7000),timeout=1);runner.sock.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
             # Enter the interior before rotating when parked near the centre-mask
             # edge. No reverse/blind turn; each forward pulse retains all gates.
@@ -291,14 +365,20 @@ def main():
                 runner.goto(points[0],'diagonal_start')
                 for loop in range(args.loops):
                     for i in (1,2,3,0):runner.goto(points[i],'loop%d_point%d'%(loop+1,i))
-            runner.face_interior()
+            if args.keep_heading or ((args.destination or args.point) and not args.face_point):report['park_facing']='last_leg'
+            elif args.face_point:runner.face_point(args.face_point)
+            else:runner.face_interior()
+            runner.verify_parked_goal(goals[-1][1] if goals else points[0])
         report['ok']=True
+        if args.destination=='dropoff-preparation':
+            report['next_stage']='visual_dock_required'
+            report['release_ready']=False
     except (Exception,KeyboardInterrupt) as exc:report['error']=str(exc) or 'interrupted'
     finally:
         if runner is not None:
             runner.stop()
             if runner.sock is not None:runner.sock.close()
-        if args.real:
+        if unlocked:
             try:
                 for _ in range(30):
                     h=rpc('health')
@@ -309,6 +389,7 @@ def main():
                 else:raise RuntimeError('maintenance lock timeout')
                 report['final_health']=rpc('health')
             except Exception as exc:report['ok']=False;report['cleanup_error']=str(exc)
+        if lease:lease.close()
         with open(args.output,'w') as f:json.dump(report,f,indent=2)
     print(json.dumps({k:report.get(k) for k in ('ok','error','pulses','recoveries','arrivals')}));return 0 if report['ok'] else 1
 

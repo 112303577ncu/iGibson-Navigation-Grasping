@@ -1,0 +1,18 @@
+{
+  "boot_id": "9967dd54-4b04-4ba7-a4df-a30294583ebb",
+  "owner_pid": 8117,
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+  "stamp": 1792313484.779035,
+  "pose": [
+    0.2709105875991318,
+    0.4836163844188616,
+    -0.03873111408863974
+  ],
+  "odom": [
+    0.07458455834997481,
+    0.027425914351821044,
+    1.2804304193452616
+  ],
+  "source": "camera paper-box quadrant plus fresh static scan fit",
+  "reference_verified": true
+}

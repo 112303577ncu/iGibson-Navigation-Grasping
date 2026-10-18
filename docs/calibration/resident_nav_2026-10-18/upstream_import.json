@@ -1,0 +1,93 @@
+[
+  {
+    "path": "integration/target_approach.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "676560d1e8a6ab4e34a0baa693d4edf9114ed4c473519f2796301d184c67094b"
+  },
+  {
+    "path": "integration/sugarbox_approach_grasp.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "2fcd6d67a607a9a863aa9abcf161653a79b6ef997b79af32d4520ae2a534a4ee"
+  },
+  {
+    "path": "integration/sugarbox_rl_approach_final2.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "02529d9820798fc5a0cde298e9d045b745b0ae579f5f9bb27aa8a82b28207438"
+  },
+  {
+    "path": "integration/sugarbox_ground_calibration.py",
+    "source_commit": "3eb79ece15b239ef0c497c0d0558a0a6e38dbd28",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "43f7c69fd81e06857b882d882c9d5e78498be54332c20d9bda50f3a44152cee2"
+  },
+  {
+    "path": "integration/sugarbox_lidar_geometry.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "0f504cb2fa6056ee030aa3ea834dc51c6e293839ec0d53bbd2e9dcdf87ee3f16"
+  },
+  {
+    "path": "integration/sugarbox_training_contract.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "cf1943fb89013907e8a204a115fbca41a893f2ce4df92212dd656bd481f1f79d"
+  },
+  {
+    "path": "integration/nav_best_model/doorway_ft_final.zip",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "af5e9e1d5ce0115de8b4bbb321873c6a99686c82c0c69d060f881bbe97b64f35"
+  },
+  {
+    "path": "integration/nav_best_model/doorway_ft_final_vecnormalize.pkl",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "3cd4ef9ab5b0fa38058b5142b1cc5b5df1ba9c440f325ff81b88d5e6ca7a8cdf"
+  },
+  {
+    "path": "detection/rear_ground_homography.json",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "e35cec25ced2868fdbd3fc24a8c7153be0d0b5baaf29e29a1016f4c64ed1e2a1"
+  },
+  {
+    "path": "tests/test_sugarbox_approach_grasp.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "7e3f5c37c430420cc56b2ffc017b87eecc3ee9bf6e16538ccc1e5ef28396da81"
+  },
+  {
+    "path": "tests/test_sugarbox_blind_finish.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "5e5abcc07dbf4890a0eec3223f566165279e928557e275d0bc8f62515a0f44d2"
+  },
+  {
+    "path": "tests/test_sugarbox_lidar_geometry.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "3dde10596e6c87e8fb486ad6b1dcd9981062a5e41da9816657802283cfbccf4a"
+  },
+  {
+    "path": "tests/test_sugarbox_ground_calibration.py",
+    "source_commit": "3eb79ece15b239ef0c497c0d0558a0a6e38dbd28",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "de098178d656e45d09c493a9392c40c26e4efc499f59981dbdd31b0a2dda1866",
+    "local_adaptation": "updated fixture expectations for feature-branch 16-inlier calibration; original stable-branch tests expected older 7 samples"
+  },
+  {
+    "path": "tests/test_target_approach.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "06ed2793c22a667cb3bfa6d258ca3a3d8c85a8eade9412d375d253ddf4a80e60"
+  },
+  {
+    "path": "integration/trash_target.py",
+    "source_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+    "source_repository": "koala915/iGibson-Navigation-Grasping",
+    "sha256": "fbe86fc038b1847a371a5ccec4a8017cc810241bdceeac3d6b6a4ed58388467d"
+  }
+]

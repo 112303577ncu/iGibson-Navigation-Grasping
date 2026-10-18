@@ -1,0 +1,17 @@
+{
+  "boot_id": "64a7d59f-bedc-4d55-a663-08a31bf96302",
+  "owner_pid": 7157,
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+  "stamp": 1792303381.340458,
+  "pose": [
+    1.2461249532564576,
+    0.828806445072929,
+    -0.07332173582906797
+  ],
+  "odom": [
+    1.0337722258626623,
+    0.8201936049566713,
+    0.26516989785674877
+  ],
+  "source": "fresh static scan fit near operator-confirmed dock; 93.9% within 5cm"
+}

@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "real": true,
+  "task": "dropoff",
+  "stages": [
+    {
+      "name": "MAP_NAVIGATION",
+      "state": "passed",
+      "report": "/tmp/g2_random_dropoff_flow.json.navigation.json"
+    },
+    {
+      "name": "VISUAL_DOCK",
+      "state": "waiting_for_target_configuration"
+    }
+  ],
+  "arm_or_release_executed": false,
+  "mission_complete": false,
+  "started_at": 1792313721.868557,
+  "navigation_ok": true,
+  "next_stage": "WAIT_VISUAL_TARGET",
+  "reason": "paper-box detector or ArUco and calibrated target config are required; preparation arrival is not release readiness",
+  "finished_at": 1792313768.1005461
+}

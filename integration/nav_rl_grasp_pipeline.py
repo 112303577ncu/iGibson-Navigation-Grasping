@@ -269,6 +269,9 @@ class RLNavigator(vgp.Navigator):
 # ════════════════════════════════════════════════════════════════════════════
 
 def run_pipeline(args):
+    if args.real and args.nav_only:
+        raise SystemExit('legacy direct-Serial navigation retired; use grasp/v23/demo.py approach '
+                         'or this entry with --resident-approach and the new approach arguments')
     lidar_backend = "none" if args.no_lidar else args.lidar_backend
     if lidar_backend == "none" and args.real:
         raise SystemExit("a no-lidar backend with --real is not allowed: the policy has "
@@ -641,4 +644,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if '--resident-approach' in sys.argv:
+        from v23_dock_approach import main as resident_main
+        raise SystemExit(resident_main([x for x in sys.argv[1:] if x!='--resident-approach']))
     main()

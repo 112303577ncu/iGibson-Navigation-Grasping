@@ -5,8 +5,8 @@
   <arg name="initial_x"/>
   <arg name="initial_y"/>
   <arg name="initial_yaw"/>
-  <node pkg="map_server" type="map_server" name="g2_scene_map_server" args="$(arg map)"/>
-  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+  <node pkg="map_server" type="map_server" name="g2_scene_map_server" args="$(arg map)" required="true"/>
+  <node pkg="amcl" type="amcl" name="amcl" output="screen" required="true">
     <param name="use_map_topic" value="true"/>
     <param name="odom_model_type" value="omni"/>
     <param name="min_particles" value="300"/>

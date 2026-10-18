@@ -1,0 +1,9 @@
+{
+  "role": "dropoff",
+  "target_id": "aruco:dropoff:REPLACE_WITH_ID",
+  "calibration_id": "REPLACE_WITH_MEASURED_CAMERA_TO_BASE_CALIBRATION",
+  "calibration_verified": false,
+  "standoff_m": 0.30,
+  "use_registered_dock_zone": false,
+  "note": "Template only. Measure standoff from four-wheel centre, verify camera transform and box/map registration before enabling."
+}

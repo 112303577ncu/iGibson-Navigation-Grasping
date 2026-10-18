@@ -1,0 +1,17 @@
+{
+  "pose": [
+    0.24239037830455917,
+    0.5010457172424729,
+    -0.0651484770439032
+  ],
+  "source": "visual paper-box confirmation after bounded left89.28deg survey disambiguates global candidate 2; no production detector claim",
+  "image": "../random_camera90.jpg",
+  "box_bbox_xyxy": [
+    138,
+    213,
+    225,
+    260
+  ],
+  "paper_box_left_front": true,
+  "global_best_rejected": true
+}
