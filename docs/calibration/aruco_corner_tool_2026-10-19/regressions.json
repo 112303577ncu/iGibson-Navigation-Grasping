@@ -1,0 +1,22 @@
+[
+  {
+    "name": "controller",
+    "exit_code": 0
+  },
+  {
+    "name": "servo",
+    "exit_code": 0
+  },
+  {
+    "name": "floor_guard",
+    "exit_code": 0
+  },
+  {
+    "name": "ui",
+    "exit_code": 0
+  },
+  {
+    "name": "fsm",
+    "exit_code": 0
+  }
+]

@@ -9,6 +9,7 @@ import json
 import math
 from pathlib import Path
 from g2_patrol_policy import read_pgm
+from g2_aruco_corner_seed import file_hash,map_hash
 
 
 def main():
@@ -18,10 +19,15 @@ def main():
     from scipy.optimize import differential_evolution
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--snapshot',required=True);p.add_argument('--scene',required=True);p.add_argument('--output',required=True)
+    p.add_argument('--reference-map-yaml',help='Exact active Jetson YAML bytes; local scene supplies identical raster')
     args=p.parse_args();scene=Path(args.scene)
     data=json.loads(Path(args.snapshot).read_text());layout=json.loads((scene/'scene_layout.json').read_text())
     meta=yaml.safe_load((scene/'demo_box.yaml').read_text());image=scene/Path(meta['image']).name
     w,h,raw=read_pgm(str(image));res=float(meta['resolution']);ox,oy,oyaw=meta['origin']
+    reference=Path(args.reference_map_yaml) if args.reference_map_yaml else scene/'demo_box.yaml'
+    reference_meta=yaml.safe_load(reference.read_text())
+    if any(reference_meta.get(k)!=meta.get(k) for k in ('resolution','origin','negate','occupied_thresh','free_thresh')):
+        raise ValueError('reference map geometry/thresholds differ from local raster scene')
     if oyaw!=0:raise ValueError('rotated map unsupported')
     grid=np.array(raw).reshape(h,w);distance=distance_transform_edt(grid>65)*res
     scan=data['scan'];r=np.array([np.nan if v is None else v for v in scan['ranges']])
@@ -51,7 +57,8 @@ def main():
             'candidate_box_range_m':math.hypot(box['x']-p1[0],box['y']-p1[1])})
     hypotheses.sort(key=lambda x:x['score_m'])
     out={'accepted':False,'reason':'independent corner/heading reference required; paper-box map position is still a candidate',
-         'points':len(points),'hypotheses':hypotheses,'source_stamp':data['time'],'lidar_forward_m':.10}
+         'points':len(points),'hypotheses':hypotheses,'source_stamp':data['time'],'lidar_forward_m':.10,
+         'snapshot_sha256':file_hash(args.snapshot),'map_hash':map_hash(reference,image)}
     Path(args.output).write_text(json.dumps(out,indent=2));print(json.dumps(out,indent=2))
 
 

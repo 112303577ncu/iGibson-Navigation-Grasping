@@ -1,0 +1,73 @@
+{
+  "backup": "/home/jetson/Documents/deploy_jetson2/.codex_backups/aruco_20261019_1792412217",
+  "files": [
+    {
+      "path": "deploy/ros/g2_localization_service.py",
+      "old_sha256": "78bea37bbef4e275ebf478978f2812cefadfdd86f7944bcc97006bcb89371001",
+      "new_sha256": "3a0f58a39af96ddd8c7bbbb7bb95726a80c61c540f3b90d51a56ba074fe01960",
+      "mode": "0o664"
+    },
+    {
+      "path": "integration/g2_localization_policy.py",
+      "old_sha256": "98b733621aae132f907c3ebc6084af773f44c73f46d2f78bd27fee2dd78cdcc3",
+      "new_sha256": "ac59690c396fb4d3b82a01b2491cf4027b83feb36b9ee4b7f0c8a0bfa04a780b",
+      "mode": "0o664"
+    },
+    {
+      "path": "deploy/ros/g2_map_patrol.py",
+      "old_sha256": "1b712170044ccd5196b63cd0e0b79fe2b455ac478cac944a13ee2841c00a1cb6",
+      "new_sha256": "c8d1147a887dbd280fbf2502d5f2c53f84a76f6904d12b8579d484cae1bcf559",
+      "mode": "0o664"
+    },
+    {
+      "path": "deploy/systemd/x3plus-g2-localization.service",
+      "old_sha256": null,
+      "new_sha256": "43a20adcd85e4813bee27a6a22751608fa392cc508d5a7b460438974551f1bc2",
+      "mode": "0o644"
+    },
+    {
+      "path": "integration/v23_task_resume_guard.py",
+      "old_sha256": null,
+      "new_sha256": "020be9f4d13633cf3ff4b9f8c21f98ac8df3a23f12cc18905d5d3d8af752c84d",
+      "mode": "0o644"
+    },
+    {
+      "path": "integration/g2_aruco_corner_seed.py",
+      "old_sha256": null,
+      "new_sha256": "c2019588eac77e65b967583dd5de4a51b5c618b3cbfcd3220160a160ca1249ab",
+      "mode": "0o644"
+    },
+    {
+      "path": "integration/g2_scan_match.py",
+      "old_sha256": null,
+      "new_sha256": "8193bb5c85705eeaf7a3eb7e236f31bebb26ef4d378196a857e3efceab088008",
+      "mode": "0o644"
+    },
+    {
+      "path": "deploy/ros/g2_corner_snapshot.py",
+      "old_sha256": null,
+      "new_sha256": "c73c2ab3f436d899635b89e06e037bfbc2a89961b678af0c56f010b8d25a5801",
+      "mode": "0o644"
+    },
+    {
+      "path": "tests/test_g2_boot_idle.py",
+      "old_sha256": null,
+      "new_sha256": "580c495a26e824cc3fd2f2562344957f67ff0cb2ea6134a29d36ed537a933784",
+      "mode": "0o644"
+    },
+    {
+      "path": "grasp/v23/test_chassis_server.py",
+      "old_sha256": "f877713b1702927f5b96cf37ec9d9ab6abd35ed56cc756f68912b80e6ffa99c0",
+      "new_sha256": "f877713b1702927f5b96cf37ec9d9ab6abd35ed56cc756f68912b80e6ffa99c0",
+      "mode": "0o664"
+    },
+    {
+      "path": "grasp/v23/chassis_server.py",
+      "old_sha256": "6fa450e1313938f801632d1528842b3c8c33fb79aa868c0e109a64313581dacf",
+      "new_sha256": "39f6405eea4a387ed2d8b361842346a81311fe3862a170797c955eec97faba3b",
+      "mode": "0o664"
+    }
+  ],
+  "arm_controller_modified": false,
+  "chassis_scope": "initial zero telemetry only; preserve remote implementation"
+}

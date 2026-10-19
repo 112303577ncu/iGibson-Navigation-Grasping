@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 from g2_map_patrol import Sensors, rpc, available_mb
-from g2_localization_policy import RestartBudget, propagated_seed, restart_pose, turn_clear, FaultDelay, RecoveryWatchdog
+from g2_localization_policy import RestartBudget, propagated_seed, restart_pose, resident_stopped, turn_clear, FaultDelay, RecoveryWatchdog
 
 
 def monotonic_seconds():
@@ -123,13 +123,20 @@ def main():
                     with open(args.seed) as f:supplied=json.load(f)
                     if supplied['stamp']!=consumed_stamp:
                         propagated_seed(supplied,od[4],now,boot,owner,digest,120)
-                        seed=supplied;consumed_stamp=supplied['stamp'];external_pending=True
+                        if resident_stopped(ch):
+                            # Explicit reference submission is an actual reseed,
+                            # not merely comparison against the old AMCL pose.
+                            if child is not None and child.poll() is None:stop_child()
+                            seed=supplied;consumed_stamp=supplied['stamp'];external_pending=True
+                        else:out['supplied_seed_warning']='new reference deferred until resident stopped and arm idle'
                 except (IOError,ValueError,KeyError,TypeError) as exc:out['supplied_seed_warning']=str(exc)
                 if child is not None and child.poll() is None:
                     try:
                         state=sensors.state()
-                        with sensors.lock:amcl_received=sensors.amcl[0] if sensors.amcl else 0
-                        if amcl_received<launched:raise RuntimeError('waiting for new AMCL publication after restart')
+                        with sensors.lock:
+                            amcl_received=sensors.amcl[0] if sensors.amcl else 0
+                            amcl_stamp=sensors.amcl[1] if sensors.amcl else 0
+                        if min(amcl_received,amcl_stamp)<launched:raise RuntimeError('waiting for new AMCL publication after restart')
                         if seed is None or seed['owner_pid']!=owner:raise RuntimeError('owner changed')
                         # A jump must not turn into an automatic trusted restart seed.
                         expected=propagated_seed(seed,state['odom'],now,boot,owner,digest,120)
@@ -151,15 +158,14 @@ def main():
                 else:
                     if seed is None:raise RuntimeError('fresh pose seed required')
                     pose=restart_pose(seed,od[4],now,boot,owner,digest,external_pending)
-                    if (ch['motors']!=[0,0,0,0] or ch['moving'] or ch['arm_busy']
-                            or ch['stopped_for_s']<.5):raise RuntimeError('waiting for stopped resident')
+                    if not resident_stopped(ch):raise RuntimeError('waiting for stopped resident')
                     if out['available_mb']<1024:raise RuntimeError('RAM below startup reserve')
                     if not budget.take(monotonic_seconds()):raise RuntimeError('localization restart budget/cooldown')
                     atomic(args.restart_budget,{'boot_id':boot,'attempts':budget.attempts})
                     # Child receives no duration limit. Kill only this process group.
                     command=['roslaunch',launch,'map:='+args.map,'initial_x:='+str(pose[0]),'initial_y:='+str(pose[1]),'initial_yaw:='+str(pose[2])]
                     child=subprocess.Popen(command,preexec_fn=os.setsid)
-                    launched=now;launched_clock=monotonic_seconds();bad_since=launched_clock
+                    launched=time.time();launched_clock=monotonic_seconds();bad_since=launched_clock
                     out['status']='starting_localization'
             except Exception as exc:
                 out['reason']=str(exc)
@@ -174,6 +180,7 @@ def main():
             out['retry_after_s']=round(budget.retry_after(clock_now),3)
             out['reference_kind']='none' if seed is None else ('external_pending' if external_pending else 'last_good_amcl')
             out['reference_age_s']=None if seed is None else round(time.time()-seed['stamp'],3)
+            out['accepted_reference_stamp']=consumed_stamp
             out['amcl_pid']=child.pid if child is not None and child.poll() is None else None
             watchdog.annotate(out,clock_now)
             atomic(args.health,out)

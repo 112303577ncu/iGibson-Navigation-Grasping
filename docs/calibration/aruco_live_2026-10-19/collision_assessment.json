@@ -1,0 +1,14 @@
+{
+  "user_reported_collision": true,
+  "navigation_acceptance_passed": false,
+  "robot_path_report_ok": true,
+  "watch_reason": "PATROL_COMPLETE",
+  "frames": 169,
+  "candidate_frames": 12,
+  "confirmed_grasp_targets": 0,
+  "grasp_issued": false,
+  "placement_issued": false,
+  "automatic_motion_suspended": true,
+  "cause_status": "Exact collision timing/source not established. Acquisition waited for three stable calibrated detections while patrol continued; no independent low-object camera brake. LiDAR height/visual blind region require inspection.",
+  "temporary_test_route": "75cm inset, not the persistent outer patrol route"
+}

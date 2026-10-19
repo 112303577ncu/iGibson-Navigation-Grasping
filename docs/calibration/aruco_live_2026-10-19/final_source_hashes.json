@@ -1,0 +1,12 @@
+{
+  "deploy/ros/g2_localization_service.py": "3a0f58a39af96ddd8c7bbbb7bb95726a80c61c540f3b90d51a56ba074fe01960",
+  "integration/g2_localization_policy.py": "ac59690c396fb4d3b82a01b2491cf4027b83feb36b9ee4b7f0c8a0bfa04a780b",
+  "deploy/ros/g2_map_patrol.py": "c8d1147a887dbd280fbf2502d5f2c53f84a76f6904d12b8579d484cae1bcf559",
+  "deploy/ros/g2_corner_snapshot.py": "c73c2ab3f436d899635b89e06e037bfbc2a89961b678af0c56f010b8d25a5801",
+  "deploy/ros/g2_corner_camera_capture.py": "fdab1eb80570030316f8c1f24d9efa94aea0c4cbf7ea12e7258f7e47bf36b8be",
+  "integration/g2_aruco_corner_seed.py": "b263127fd67c4619ade44c969891ce519ba7030319c9af4aa41062b664d35542",
+  "integration/g2_scan_match.py": "8193bb5c85705eeaf7a3eb7e236f31bebb26ef4d378196a857e3efceab088008",
+  "integration/v23_task_resume_guard.py": "020be9f4d13633cf3ff4b9f8c21f98ac8df3a23f12cc18905d5d3d8af752c84d",
+  "grasp/v23/chassis_server.py": "39f6405eea4a387ed2d8b361842346a81311fe3862a170797c955eec97faba3b",
+  "maps/demo_box_20261018_patrol/aruco_corner_landmarks.json": "159611ee37248ecd7b4811c238f897815ca44c7dd0f9215c2a6b71e037c1ceae"
+}

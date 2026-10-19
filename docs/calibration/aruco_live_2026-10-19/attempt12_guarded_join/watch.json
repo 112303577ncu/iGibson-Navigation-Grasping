@@ -1,0 +1,292 @@
+{
+  "reason": "CANDIDATE_UNCONFIRMED_STOPPED",
+  "detected_point": null,
+  "samples": [
+    {
+      "seq": 40,
+      "source_stamp": 1792415958.1510775,
+      "source_age_s": 0.025557457000104478,
+      "file": "frame_00000040.jpg",
+      "available_mb": 1542.5625,
+      "pc_observed_stamp": 1792415958.688675,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.09202146530151367
+    },
+    {
+      "seq": 48,
+      "source_stamp": 1792415958.5454135,
+      "source_age_s": 0.03017946900035895,
+      "file": "frame_00000048.jpg",
+      "available_mb": 1540.625,
+      "pc_observed_stamp": 1792415959.2237983,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.21909570693969727
+    },
+    {
+      "seq": 60,
+      "source_stamp": 1792415959.1514938,
+      "source_age_s": 0.027618599000561517,
+      "file": "frame_00000060.jpg",
+      "available_mb": 1499.59375,
+      "pc_observed_stamp": 1792415959.8686259,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.13158655166625977
+    },
+    {
+      "seq": 72,
+      "source_stamp": 1792415959.7419949,
+      "source_age_s": 0.025634152999373327,
+      "file": "frame_00000072.jpg",
+      "available_mb": 1495.0390625,
+      "pc_observed_stamp": 1792415960.498586,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.1845996379852295
+    },
+    {
+      "seq": 84,
+      "source_stamp": 1792415960.341161,
+      "source_age_s": 0.02960201599944412,
+      "file": "frame_00000084.jpg",
+      "available_mb": 1492.08984375,
+      "pc_observed_stamp": 1792415961.0319695,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.21691441535949707
+    },
+    {
+      "seq": 96,
+      "source_stamp": 1792415960.9397142,
+      "source_age_s": 0.02576130200031912,
+      "file": "frame_00000096.jpg",
+      "available_mb": 1485.4296875,
+      "pc_observed_stamp": 1792415961.6170619,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.15567827224731445
+    },
+    {
+      "seq": 108,
+      "source_stamp": 1792415961.536112,
+      "source_age_s": 0.03760206500010099,
+      "file": "frame_00000108.jpg",
+      "available_mb": 1473.18359375,
+      "pc_observed_stamp": 1792415962.149768,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.14321064949035645
+    },
+    {
+      "seq": 120,
+      "source_stamp": 1792415962.155086,
+      "source_age_s": 0.025639756000600755,
+      "file": "frame_00000120.jpg",
+      "available_mb": 1471.6953125,
+      "pc_observed_stamp": 1792415962.7079434,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.057401180267333984
+    },
+    {
+      "seq": 132,
+      "source_stamp": 1792415962.7342618,
+      "source_age_s": 0.025718497999150713,
+      "file": "frame_00000132.jpg",
+      "available_mb": 1471.1796875,
+      "pc_observed_stamp": 1792415963.4134939,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.07040858268737793
+    },
+    {
+      "seq": 144,
+      "source_stamp": 1792415963.3336697,
+      "source_age_s": 0.025617346999752044,
+      "file": "frame_00000144.jpg",
+      "available_mb": 1474.671875,
+      "pc_observed_stamp": 1792415964.2353485,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.16390180587768555
+    },
+    {
+      "seq": 160,
+      "source_stamp": 1792415964.1244245,
+      "source_age_s": 0.025148183000055724,
+      "file": "frame_00000160.jpg",
+      "available_mb": 1471.70703125,
+      "pc_observed_stamp": 1792415965.5879798,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.23944401741027832
+    },
+    {
+      "seq": 188,
+      "source_stamp": 1792415965.5177796,
+      "source_age_s": 0.03170239200062497,
+      "file": "frame_00000188.jpg",
+      "available_mb": 1471.97265625,
+      "pc_observed_stamp": 1792415966.427962,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.1589064598083496
+    },
+    {
+      "seq": 204,
+      "source_stamp": 1792415966.3270175,
+      "source_age_s": 0.025710613000228477,
+      "file": "frame_00000204.jpg",
+      "available_mb": 1471.6640625,
+      "pc_observed_stamp": 1792415966.986526,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.1745903491973877
+    },
+    {
+      "seq": 216,
+      "source_stamp": 1792415966.918537,
+      "source_age_s": 0.02572959200006153,
+      "file": "frame_00000216.jpg",
+      "available_mb": 1471.51953125,
+      "pc_observed_stamp": 1792415967.520408,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.147202730178833
+    },
+    {
+      "seq": 228,
+      "source_stamp": 1792415967.51204,
+      "source_age_s": 0.0249700379999922,
+      "file": "frame_00000228.jpg",
+      "available_mb": 1471.42578125,
+      "pc_observed_stamp": 1792415968.3450406,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.08635067939758301
+    },
+    {
+      "seq": 275,
+      "source_stamp": 1792415969.8639448,
+      "source_age_s": 0.02622532500026864,
+      "file": "frame_00000275.jpg",
+      "available_mb": 1544.31640625,
+      "pc_observed_stamp": 1792415970.3637414,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.0839543342590332
+    },
+    {
+      "seq": 283,
+      "source_stamp": 1792415970.2546158,
+      "source_age_s": 0.029989010000463168,
+      "file": "frame_00000283.jpg",
+      "available_mb": 1544.4375,
+      "pc_observed_stamp": 1792415970.846994,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.15840458869934082
+    },
+    {
+      "seq": 291,
+      "source_stamp": 1792415970.6482491,
+      "source_age_s": 0.025196006999976817,
+      "file": "frame_00000291.jpg",
+      "available_mb": 1544.6875,
+      "pc_observed_stamp": 1792415971.3855972,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.2509188652038574
+    },
+    {
+      "seq": 303,
+      "source_stamp": 1792415971.258289,
+      "source_age_s": 0.029528719000154524,
+      "file": "frame_00000303.jpg",
+      "available_mb": 1543.89453125,
+      "pc_observed_stamp": 1792415972.3823075,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.17783188819885254
+    },
+    {
+      "seq": 323,
+      "source_stamp": 1792415972.2415912,
+      "source_age_s": 0.029042570999990858,
+      "file": "frame_00000323.jpg",
+      "available_mb": 1542.8984375,
+      "pc_observed_stamp": 1792415972.8630533,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.19197750091552734
+    },
+    {
+      "seq": 335,
+      "source_stamp": 1792415972.848113,
+      "source_age_s": 0.02582467199954408,
+      "file": "frame_00000335.jpg",
+      "available_mb": 1541.578125,
+      "pc_observed_stamp": 1792415973.4914947,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.07638907432556152
+    },
+    {
+      "seq": 347,
+      "source_stamp": 1792415973.4522536,
+      "source_age_s": 0.029440542000884307,
+      "file": "frame_00000347.jpg",
+      "available_mb": 1545.3203125,
+      "pc_observed_stamp": 1792415974.2251523,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.0901036262512207
+    },
+    {
+      "seq": 359,
+      "source_stamp": 1792415974.0448642,
+      "source_age_s": 0.02615410799990059,
+      "file": "frame_00000359.jpg",
+      "available_mb": 1542.41796875,
+      "pc_observed_stamp": 1792415975.510931,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.23086071014404297
+    },
+    {
+      "seq": 387,
+      "source_stamp": 1792415975.4289255,
+      "source_age_s": 0.029015529999924183,
+      "file": "frame_00000387.jpg",
+      "available_mb": 1542.29296875,
+      "pc_observed_stamp": 1792415976.1152246,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.13996505737304688
+    },
+    {
+      "seq": 399,
+      "source_stamp": 1792415976.0277355,
+      "source_age_s": 0.025203905000125815,
+      "file": "frame_00000399.jpg",
+      "available_mb": 1543.13671875,
+      "pc_observed_stamp": 1792415976.8543892,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.15147829055786133
+    },
+    {
+      "seq": 415,
+      "source_stamp": 1792415976.8423157,
+      "source_age_s": 0.025627141999393643,
+      "file": "frame_00000415.jpg",
+      "available_mb": 1542.73828125,
+      "pc_observed_stamp": 1792415977.5040977,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.062468528747558594
+    }
+  ]
+}

@@ -1,0 +1,286 @@
+{
+  "ok": true,
+  "elapsed": 6.0293403440000475,
+  "owner_expected": 4443,
+  "records": [
+    {
+      "elapsed": 0.0004866250001214212,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 30622,
+      "owner": 4443,
+      "ram": 1580.890625
+    },
+    {
+      "elapsed": 0.20163704500009771,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 30622,
+      "owner": 4443,
+      "ram": 1576.109375
+    },
+    {
+      "elapsed": 0.40239198800009035,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 30622,
+      "owner": 4443,
+      "ram": 1578.6796875
+    },
+    {
+      "elapsed": 0.6031430259999979,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 30622,
+      "owner": 4443,
+      "ram": 1580.671875
+    },
+    {
+      "elapsed": 0.8039697409999462,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 30622,
+      "owner": 4443,
+      "ram": 1589.55859375
+    },
+    {
+      "elapsed": 1.0046682249999321,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "waiting for new AMCL publication after restart",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1636.9609375
+    },
+    {
+      "elapsed": 1.205365668000013,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "waiting for new AMCL publication after restart",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1601.35546875
+    },
+    {
+      "elapsed": 1.4060404030001337,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale map TF",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1596.72265625
+    },
+    {
+      "elapsed": 1.6067267520002133,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale map TF",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1588.7578125
+    },
+    {
+      "elapsed": 1.8074580500001503,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1594.44921875
+    },
+    {
+      "elapsed": 2.0082143489999,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1593.00390625
+    },
+    {
+      "elapsed": 2.2089001780000217,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1584.859375
+    },
+    {
+      "elapsed": 2.4118054810001013,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1582.6796875
+    },
+    {
+      "elapsed": 2.6124959990002026,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1581.453125
+    },
+    {
+      "elapsed": 2.813214225000138,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1578.62109375
+    },
+    {
+      "elapsed": 3.0173412210001516,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1580.84765625
+    },
+    {
+      "elapsed": 3.2180004360002386,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1580.12109375
+    },
+    {
+      "elapsed": 3.418787987000087,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1593.3359375
+    },
+    {
+      "elapsed": 3.6195134019999387,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1583.76953125
+    },
+    {
+      "elapsed": 3.820261420999941,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1580.62109375
+    },
+    {
+      "elapsed": 4.020954491999873,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1578.21484375
+    },
+    {
+      "elapsed": 4.221632250000312,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1581.82421875
+    },
+    {
+      "elapsed": 4.422322248,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1580.85546875
+    },
+    {
+      "elapsed": 4.6229954750001525,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1589.65625
+    },
+    {
+      "elapsed": 4.823663338000188,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1581.97265625
+    },
+    {
+      "elapsed": 5.025432526000259,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1582.453125
+    },
+    {
+      "elapsed": 5.226356957000007,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1583.109375
+    },
+    {
+      "elapsed": 5.427094770000167,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1584.28125
+    },
+    {
+      "elapsed": 5.627769977000298,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1581.40234375
+    },
+    {
+      "elapsed": 5.828480914000011,
+      "ready": false,
+      "status": "waiting_for_localization",
+      "reason": "stale AMCL",
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1580.60546875
+    },
+    {
+      "elapsed": 6.029226592000214,
+      "ready": true,
+      "status": "localized",
+      "reason": null,
+      "pid": 1505,
+      "owner": 4443,
+      "ram": 1572.9140625
+    }
+  ]
+}

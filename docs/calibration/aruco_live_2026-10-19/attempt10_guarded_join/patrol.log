@@ -1,0 +1,32 @@
+/dev/ttyUSB1:       
+{"pulses": 1, "recoveries": [], "ok": false, "arrivals": [], "error": "negative covariance"}
+Error in atexit._run_exitfuncs:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
+    func(*targs, **kargs)
+  File "/opt/ros/melodic/lib/python2.7/dist-packages/rospy/core.py", line 615, in _ros_atexit
+    signal_shutdown('atexit')
+  File "/opt/ros/melodic/lib/python2.7/dist-packages/rospy/core.py", line 599, in signal_shutdown
+    t.join(_TIMEOUT_SHUTDOWN_JOIN)
+  File "/usr/lib/python2.7/threading.py", line 951, in join
+    self.__block.wait(delay)
+  File "/usr/lib/python2.7/threading.py", line 359, in wait
+    _sleep(delay)
+  File "deploy/ros/g2_map_patrol.py", line 337, in interrupted
+    def interrupted(*_):raise KeyboardInterrupt()
+KeyboardInterrupt
+Error in sys.exitfunc:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
+    func(*targs, **kargs)
+  File "/opt/ros/melodic/lib/python2.7/dist-packages/rospy/core.py", line 615, in _ros_atexit
+    signal_shutdown('atexit')
+  File "/opt/ros/melodic/lib/python2.7/dist-packages/rospy/core.py", line 599, in signal_shutdown
+    t.join(_TIMEOUT_SHUTDOWN_JOIN)
+  File "/usr/lib/python2.7/threading.py", line 951, in join
+    self.__block.wait(delay)
+  File "/usr/lib/python2.7/threading.py", line 359, in wait
+    _sleep(delay)
+  File "deploy/ros/g2_map_patrol.py", line 337, in interrupted
+    def interrupted(*_):raise KeyboardInterrupt()
+KeyboardInterrupt

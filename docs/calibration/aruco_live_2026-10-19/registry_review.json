@@ -1,0 +1,10 @@
+{
+  "selected_index": 1,
+  "coarse_fov_nominal_deg": 60.97250088161537,
+  "nominal_principal_u": 328.51687331633246,
+  "pixel_residual_max": 14.611799576843907,
+  "mirror_check": "original detects IDs0/2/7; horizontally flipped image detects none",
+  "registration_scope": "only visible IDs0,2,7; approximate plan positions +/-20cm, not a metric landmark survey",
+  "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+  "camera_source_age_max": 0.024996348000058788
+}

@@ -112,3 +112,6 @@ jobs:
 
       - name: Koala approach import and target compatibility
         run: python -m pytest tests/test_target_approach.py tests/test_sugarbox_approach_grasp.py tests/test_sugarbox_blind_finish.py tests/test_sugarbox_ground_calibration.py tests/test_sugarbox_lidar_geometry.py -q
+
+      - name: NCU ArUco corner initialization and wait/resume
+        run: python -m pytest tests/test_g2_aruco_corner_seed.py tests/test_g2_corner_snapshot.py tests/test_g2_corner_camera_capture.py tests/test_g2_boot_idle.py tests/test_g2_patrol_vision_gate.py tests/test_v23_task_resume_guard.py -q

@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "clock": "jetson",
+  "capture_id": "SIMULATION_ONLY_REPLAY",
+  "boot_id": "SIMULATION_ONLY",
+  "owner_pid": 8117,
+  "map_hash": "063cd6bc6e3ff1f6942edc4fb6acced5435b95b5df700ed6fa45488706f297f6",
+  "registration_id": "SIMULATION_ONLY",
+  "camera_id": "rear-sonix-640x480",
+  "frames": [
+    {
+      "seq": 0,
+      "stamp": 1792319208.600556,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left"
+        },
+        {
+          "id": 7,
+          "side": "right"
+        }
+      ]
+    },
+    {
+      "seq": 1,
+      "stamp": 1792319208.7005558,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left"
+        },
+        {
+          "id": 7,
+          "side": "right"
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "stamp": 1792319208.800556,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left"
+        },
+        {
+          "id": 7,
+          "side": "right"
+        }
+      ]
+    }
+  ]
+}

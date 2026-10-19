@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "clock": "jetson",
+  "capture_id": "COPY_FROM_NEW_STOPPED_CAPTURE",
+  "boot_id": "COPY_FROM_CAPTURE",
+  "owner_pid": 0,
+  "map_hash": "COPY_FROM_CAPTURE",
+  "registration_id": "COPY_FROM_CONFIRMED_LANDMARK_REGISTRY",
+  "camera_id": "rear-sonix-640x480",
+  "frames": [
+    {"seq": 101, "stamp": 0.0, "markers": [{"id": 2, "side": "left"}, {"id": 7, "side": "right"}]},
+    {"seq": 102, "stamp": 0.1, "markers": [{"id": 2, "side": "left"}, {"id": 7, "side": "right"}]},
+    {"seq": 103, "stamp": 0.2, "markers": [{"id": 2, "side": "left"}, {"id": 7, "side": "right"}]}
+  ],
+  "note": "EXAMPLE ONLY. Replace with three actual distinct decoded image frames and source-image timestamps mapped to Jetson time. Never stamp at send time or copy one detection three times. side is IMAGE left/center/right; registry handles mirror and camera yaw."
+}

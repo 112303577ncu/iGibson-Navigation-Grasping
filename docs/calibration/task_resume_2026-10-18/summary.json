@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-18",
+  "new_resume_guard_tests_passed": 39,
+  "related_tests_passed": 261,
+  "controller": 138,
+  "servo": 37,
+  "floor_guard": 641,
+  "ui": 50,
+  "ui_skipped": 1,
+  "fsm": "passed",
+  "deployed_to_jetson": false,
+  "mission_flow_wired": false,
+  "metric_aruco_producer_calibrated": false
+}

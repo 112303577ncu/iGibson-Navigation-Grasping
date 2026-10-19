@@ -1,0 +1,1 @@
+{"ok": false, "localized": false, "seed_written": false, "arm_or_motion_executed": false, "status": "CONTEXT_MISMATCH", "reason": "scan hypotheses do not belong to this capture/map/geometry", "next_action": "keep stopped; inspect reason or acquire another view"}

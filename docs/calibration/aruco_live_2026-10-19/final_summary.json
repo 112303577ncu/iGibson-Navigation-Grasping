@@ -1,0 +1,146 @@
+{
+  "health": {
+    "ok": true,
+    "serial": null,
+    "stack_version": "v23",
+    "service_pid": 4443,
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+    "holding": false,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 1120.43,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 22264,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "chassis_tcp_ready": true,
+    "rss_mb": 506.5,
+    "uptime_s": 1120.4,
+    "capabilities": {
+      "independent_health": true,
+      "owner_restart": false,
+      "serial_transport_diagnostics": false
+    }
+  },
+  "localization": {
+    "status": "localized",
+    "odom_age_s": 0.058,
+    "next_action": "none",
+    "board_rx_age_s": 0.01,
+    "reason_code": "OK",
+    "available_mb": 1502.046875,
+    "retry_after_s": 272.26,
+    "seed": {
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792413380.178881,
+      "pose": [
+        -0.24241414541466136,
+        0.13578214591476115,
+        -0.33822305438650346
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+      "owner_pid": 4443
+    },
+    "ready": true,
+    "wait_elapsed_s": 0.0,
+    "degraded": false,
+    "reference_age_s": 0.014,
+    "wait_timed_out": false,
+    "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+    "stamp": 1792413380.178881,
+    "accepted_reference_stamp": 1792413036.828588,
+    "scan_age_s": 0.198,
+    "state": {
+      "tf_age": -0.3017430305480957,
+      "front": 1.5835655025572906,
+      "odom_stamp": 1792413380.120943,
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_age": 0.1982569694519043,
+      "vx": 0.0,
+      "pose": [
+        -0.24241414541466136,
+        0.13578214591476115,
+        -0.33822305438650346
+      ],
+      "turn_clear": false,
+      "wz": 0.0,
+      "cov": [
+        0.0004939070731851421,
+        0.0001276658616290993,
+        0.0004613838316785927
+      ]
+    },
+    "last_good_age_s": 0.0,
+    "owner_pid": 4443,
+    "reference_kind": "last_good_amcl",
+    "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+    "restart_attempts_10min": 3,
+    "wait_limit_s": 20,
+    "amcl_pid": 7173
+  },
+  "idle": {
+    "samples": 246,
+    "elapsed": 124.54,
+    "all_ready": true,
+    "owner_ids": [
+      4443
+    ],
+    "minimum_available_mb": 1569.265625,
+    "odom_delta": 2473,
+    "all_stopped": true
+  }
+}

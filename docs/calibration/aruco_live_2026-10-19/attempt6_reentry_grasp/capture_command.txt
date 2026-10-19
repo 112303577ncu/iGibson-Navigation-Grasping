@@ -1,0 +1,1 @@
+{"ok": true, "capture_id": "d5be4b4834344f26974215c8ca1a076b", "output_dir": "/tmp/g2_boot_20261019/attempt6_reentry_grasp", "ids": [1], "max_source_age_s": 0.030568083000616753, "arm_or_motion_executed": false}

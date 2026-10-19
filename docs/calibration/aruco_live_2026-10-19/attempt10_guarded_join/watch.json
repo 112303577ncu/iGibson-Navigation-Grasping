@@ -1,0 +1,94 @@
+{
+  "reason": "PATROL_FAILED",
+  "detected_point": null,
+  "samples": [
+    {
+      "seq": 36,
+      "source_stamp": 1792415735.8834226,
+      "source_age_s": 0.025461142000494874,
+      "file": "frame_00000036.jpg",
+      "available_mb": 1548.53515625,
+      "pc_observed_stamp": 1792415736.6167066,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.23997783660888672
+    },
+    {
+      "seq": 48,
+      "source_stamp": 1792415736.462391,
+      "source_age_s": 0.025327507999463705,
+      "file": "frame_00000048.jpg",
+      "available_mb": 1547.2109375,
+      "pc_observed_stamp": 1792415737.0844154,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.22835326194763184
+    },
+    {
+      "seq": 60,
+      "source_stamp": 1792415737.0631142,
+      "source_age_s": 0.02496292099931452,
+      "file": "frame_00000060.jpg",
+      "available_mb": 1507.0859375,
+      "pc_observed_stamp": 1792415737.5822241,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.07827877998352051
+    },
+    {
+      "seq": 68,
+      "source_stamp": 1792415737.4630253,
+      "source_age_s": 0.029444905000673316,
+      "file": "frame_00000068.jpg",
+      "available_mb": 1503.1796875,
+      "pc_observed_stamp": 1792415738.1431837,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.179764986038208
+    },
+    {
+      "seq": 80,
+      "source_stamp": 1792415738.058522,
+      "source_age_s": 0.025138842000160366,
+      "file": "frame_00000080.jpg",
+      "available_mb": 1501.97265625,
+      "pc_observed_stamp": 1792415739.3800578,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.1619710922241211
+    },
+    {
+      "seq": 103,
+      "source_stamp": 1792415739.2541842,
+      "source_age_s": 0.02947459900042304,
+      "file": "frame_00000103.jpg",
+      "available_mb": 1480.91796875,
+      "pc_observed_stamp": 1792415739.9140687,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.19962453842163086
+    },
+    {
+      "seq": 115,
+      "source_stamp": 1792415739.8675835,
+      "source_age_s": 0.02572887099995569,
+      "file": "frame_00000115.jpg",
+      "available_mb": 1478.12890625,
+      "pc_observed_stamp": 1792415740.4252486,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.10443758964538574
+    },
+    {
+      "seq": 123,
+      "source_stamp": 1792415740.251159,
+      "source_age_s": 0.025207160999343614,
+      "file": "frame_00000123.jpg",
+      "available_mb": 1480.89453125,
+      "pc_observed_stamp": 1792415741.080785,
+      "point": null,
+      "confirmed": false,
+      "latency_s": 0.24613571166992188
+    }
+  ]
+}

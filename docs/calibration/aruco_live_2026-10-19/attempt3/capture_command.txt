@@ -1,0 +1,1 @@
+{"ok": true, "capture_id": "3eb073b4e51548698df7014f14b7f751", "output_dir": "/tmp/g2_boot_20261019/attempt3", "ids": [7, 2, 0], "max_source_age_s": 0.03288474100008898, "arm_or_motion_executed": false}

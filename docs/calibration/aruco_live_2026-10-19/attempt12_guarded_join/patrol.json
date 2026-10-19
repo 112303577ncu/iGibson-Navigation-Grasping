@@ -1,0 +1,262 @@
+{
+  "real": true, 
+  "planned_paths": [
+    {
+      "points": [
+        [
+          0.8075585275378302, 
+          0.9511837706921729
+        ], 
+        [
+          0.43513142516810466, 
+          1.1154466886821153
+        ]
+      ], 
+      "label": "patrol_entry_5"
+    }
+  ], 
+  "trace": [
+    {
+      "tf_age": -0.30703186988830566, 
+      "front": 0.9595450740089786, 
+      "odom_stamp": 1792415963.0160956, 
+      "odom": [
+        0.21306645829892204, 
+        0.12771039631103415, 
+        -1.2937856546281332
+      ], 
+      "scan_age": 0.19296813011169434, 
+      "vx": 0.0, 
+      "pose": [
+        0.8036881779152467, 
+        0.9527984374673604, 
+        3.0970611861689754
+      ], 
+      "wz": 0.0, 
+      "cov": [
+        1.9786771115801145e-07, 
+        1.7481905108570758e-07, 
+        1.9605373730608773e-07
+      ]
+    }, 
+    {
+      "tf_age": -0.272136926651001, 
+      "front": 0.954220478776171, 
+      "odom_stamp": 1792415963.7184749, 
+      "odom": [
+        0.2122068868043722, 
+        0.12582227243578095, 
+        -1.351384727417843
+      ], 
+      "scan_age": 0.22786307334899902, 
+      "vx": 0.0, 
+      "pose": [
+        0.8022264060900166, 
+        0.9541731340056291, 
+        3.0395023244560253
+      ], 
+      "wz": 0.0, 
+      "cov": [
+        4.918000311422542e-07, 
+        4.7307663483290435e-07, 
+        5.549114638225045e-07
+      ]
+    }, 
+    {
+      "tf_age": -0.2588210105895996, 
+      "front": 0.9124622974518004, 
+      "odom_stamp": 1792415967.196971, 
+      "odom": [
+        0.2113893159740212, 
+        0.1234008102135135, 
+        -1.4131446829149668
+      ], 
+      "scan_age": 0.2411789894104004, 
+      "vx": 0.0, 
+      "pose": [
+        0.800117842639491, 
+        0.9557215213033365, 
+        2.977697796008063
+      ], 
+      "wz": 0.0, 
+      "cov": [
+        9.518827764119556e-07, 
+        7.713333115379378e-07, 
+        1.064250484012322e-06
+      ]
+    }, 
+    {
+      "tf_age": -0.2688720226287842, 
+      "front": 0.9170414967737995, 
+      "odom_stamp": 1792415967.8501077, 
+      "odom": [
+        0.21166128330580583, 
+        0.1230791293324669, 
+        -1.4701630245170425
+      ], 
+      "scan_age": 0.23112797737121582, 
+      "vx": 0.0, 
+      "pose": [
+        0.7997690113393363, 
+        0.9555602607333793, 
+        2.920632100005741
+      ], 
+      "wz": 0.0, 
+      "cov": [
+        1.3044029675017692e-06, 
+        1.2974431785502976e-06, 
+        1.6407568486121374e-06
+      ]
+    }
+  ], 
+  "active_goal": {
+    "point": [
+      0.43513142516810466, 
+      1.1154466886821153
+    ], 
+    "label": "patrol_entry_5"
+  }, 
+  "waypoints": [
+    [
+      0.3012311093689412, 
+      0.37812263541215907
+    ], 
+    [
+      0.7317657064536036, 
+      0.17025393849876824
+    ], 
+    [
+      0.9588142575534799, 
+      0.6405135683417862
+    ], 
+    [
+      0.5282796604688176, 
+      0.8483822652551771
+    ]
+  ], 
+  "recoveries": [], 
+  "primary_patrol_point": "opposite paper-box corner", 
+  "pulses": 5, 
+  "final_health": {
+    "service_pid": 4443, 
+    "rss_mb": 506.1, 
+    "uptime_s": 3709.2, 
+    "ok": true, 
+    "startup_pose": {
+      "ok": true, 
+      "reason": "travel_verified", 
+      "servo_deg": [
+        90.0, 
+        140.0, 
+        0.0, 
+        0.0, 
+        90.0, 
+        30.0
+      ], 
+      "enabled": true
+    }, 
+    "capabilities": {
+      "owner_restart": false, 
+      "independent_health": true, 
+      "serial_transport_diagnostics": false
+    }, 
+    "stack_version": "v23", 
+    "chassis": {
+      "board_rx_age_s": 0.01, 
+      "arm_pose": "travel", 
+      "stopped_for_s": 0.87, 
+      "rx_blocked_total": 0, 
+      "motors": [
+        0, 
+        0, 
+        0, 
+        0
+      ], 
+      "refused_total": 0, 
+      "client": null, 
+      "moving": false, 
+      "maintenance": true, 
+      "pose_blocked_total": 0, 
+      "dropped_total": 0, 
+      "arm_busy": false
+    }, 
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip", 
+    "holding": false, 
+    "chassis_tcp_ready": true, 
+    "serial": null, 
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl", 
+    "odom": {
+      "pose": [
+        0.2116, 
+        0.122, 
+        -1.5261
+      ], 
+      "rosbridge": true, 
+      "skipped_invalid": 1, 
+      "twist": [
+        0.0, 
+        0.0, 
+        0.0
+      ], 
+      "reason": "", 
+      "valid": true, 
+      "published": 73671, 
+      "failures": 0, 
+      "skipped_board_silent": 0
+    }
+  }, 
+  "preflight_paths": [
+    {
+      "points": [
+        [
+          0.8075585275378302, 
+          0.9511837706921729
+        ], 
+        [
+          0.43513142516810466, 
+          1.1154466886821153
+        ]
+      ], 
+      "label": "patrol_entry_5"
+    }
+  ], 
+  "ok": false, 
+  "min_available_mb": 1467.890625, 
+  "patrol_inset_m": 0.75, 
+  "requested_goals": [
+    {
+      "name": "patrol_entry_5", 
+      "point": [
+        0.43513142516810466, 
+        1.1154466886821153
+      ]
+    }
+  ], 
+  "initial": {
+    "tf_age": -0.3568859100341797, 
+    "front": 0.9666147269906126, 
+    "odom_stamp": 1792415962.3637638, 
+    "odom": [
+      0.21338237905091398, 
+      0.13190939287951628, 
+      -1.2297395632688206
+    ], 
+    "scan_age": 0.23506808280944824, 
+    "vx": 0.0, 
+    "pose": [
+      0.8075585275378302, 
+      0.9511837706921729, 
+      -3.122049193477392
+    ], 
+    "wz": 0.0, 
+    "cov": [
+      3.6734770164085166e-09, 
+      7.58203782232183e-09, 
+      2.7419400085651977e-10
+    ]
+  }, 
+  "arrivals": [], 
+  "output_path": "/tmp/g2_boot_20261019/attempt12_guarded_join/patrol.json", 
+  "error": "vision candidate requires stopped confirmation", 
+  "boundary_micro": true
+}

@@ -1,0 +1,87 @@
+{
+  "capture_id": "dbf474fc0a4141eeb858d1af671c84f0",
+  "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+  "owner_pid": 4443,
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+  "schema": 1,
+  "clock": "jetson",
+  "registration_id": "coarse_wall_layout_20261019_v1",
+  "camera_id": "rear-sonix-640x480",
+  "frames": [
+    {
+      "seq": 118,
+      "stamp": 1792413972.389767,
+      "source_monotonic": 4517.1280990000005,
+      "source_age_s": 0.024843353999131068,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left",
+          "center_px": [
+            109.25,
+            199.75
+          ]
+        },
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            423.0,
+            211.75
+          ]
+        }
+      ],
+      "file": "frame_00.jpg"
+    },
+    {
+      "seq": 119,
+      "stamp": 1792413972.4377825,
+      "source_monotonic": 4517.176115,
+      "source_age_s": 0.025829385000179172,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left",
+          "center_px": [
+            109.25,
+            199.75
+          ]
+        },
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            423.0,
+            211.75
+          ]
+        }
+      ],
+      "file": "frame_01.jpg"
+    },
+    {
+      "seq": 120,
+      "stamp": 1792413972.4858289,
+      "source_monotonic": 4517.224161,
+      "source_age_s": 0.029515739999624202,
+      "markers": [
+        {
+          "id": 2,
+          "side": "left",
+          "center_px": [
+            109.25,
+            199.75
+          ]
+        },
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            423.0,
+            211.75
+          ]
+        }
+      ],
+      "file": "frame_02.jpg"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/tmp/g2_boot_20261019/x3_rear_watch_capture.py", line 18, in <module>
+    if not ok:raise RuntimeError('rear camera disconnected')
+RuntimeError: rear camera disconnected

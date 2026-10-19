@@ -21,7 +21,8 @@ from g2_localization_policy import RecoveryWatchdog,RestartBudget
 
 def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
                 seed_age=0,no_seed=False,new_reference_at=None,memory_gap=None,owner_change=None,
-                jump_at=None,cached_amcl=False,cached_seed=None,persisted_budget=None):
+                jump_at=None,cached_amcl=False,cached_seed=None,persisted_budget=None,cached_source=False,
+                busy_gap=None):
     clock=SimpleNamespace(t=0.)
     reports=[];children=[];killed=[];notifications=[]
     seed_path=tmp_path/'seed.json'
@@ -46,7 +47,7 @@ def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
             return (stamp,stamp,'laser',[])
         def state(self):
             if inside(amcl_gap):raise RuntimeError('stale AMCL')
-            self.amcl=(999 if cached_amcl else 1000+clock.t,)
+            self.amcl=(999 if cached_amcl else 1000+clock.t,999 if cached_source else 1000+clock.t)
             return dict(pose=[1.5 if jump_at is not None and clock.t>=jump_at else 1,2,0],
                         odom=[0,0,0],front=float('inf'),vx=0,wz=0)
     class Child:
@@ -60,7 +61,7 @@ def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
     def rpc(command):
         assert command=='health','supervisor must never send robot commands'
         return dict(service_pid=8 if owner_change is not None and clock.t>=owner_change else 7,
-                    chassis=dict(board_rx_age_s=0,motors=[0,0,0,0],moving=False,arm_busy=False,stopped_for_s=1),
+                    chassis=dict(board_rx_age_s=0,motors=[0,0,0,0],moving=False,arm_busy=inside(busy_gap),stopped_for_s=1),
                     odom=dict(valid=True))
     def read(path,*args,**kwargs):
         if str(path)=='/proc/sys/kernel/random/boot_id':return io.StringIO('boot')
@@ -159,6 +160,30 @@ def test_owner_change_invalidates_reference_and_never_restarts_board(monkeypatch
 def test_cached_amcl_cannot_satisfy_post_restart_readiness(monkeypatch,tmp_path):
     run=run_monitor(monkeypatch,tmp_path,seconds=25,cached_amcl=True)
     assert not any(r['ready'] for r in run.reports)
+
+
+def test_queued_pre_restart_publication_cannot_satisfy_new_reference(monkeypatch,tmp_path):
+    run=run_monitor(monkeypatch,tmp_path,seconds=15,cached_source=True)
+    assert not any(r['ready'] for r in run.reports)
+
+
+def test_explicit_reference_restarts_amcl_and_is_acknowledged(monkeypatch,tmp_path):
+    run=run_monitor(monkeypatch,tmp_path,seconds=16,new_reference_at=12)
+    assert len(run.children)==2 and run.reports[-1]['ready']
+    assert run.reports[-1]['accepted_reference_stamp']==1012
+
+
+def test_reference_arriving_during_grasp_waits_until_arm_idle(monkeypatch,tmp_path):
+    run=run_monitor(monkeypatch,tmp_path,seconds=20,new_reference_at=12,busy_gap=(10,15))
+    busy=[r for r in run.reports if 1012<=r['stamp']<1015]
+    assert busy and all(r.get('accepted_reference_stamp')==1000 for r in busy)
+    assert run.reports[-1]['ready'] and run.reports[-1]['accepted_reference_stamp']==1012
+
+
+def test_long_grasp_does_not_expire_healthy_localization(monkeypatch,tmp_path):
+    run=run_monitor(monkeypatch,tmp_path,seconds=145,busy_gap=(3,140))
+    assert len(run.children)==1 and run.reports[-1]['ready']
+    assert run.reports[-1]['reference_age_s']==0
 
 
 @pytest.mark.parametrize('age,starts',[(2,True),(16,False)])

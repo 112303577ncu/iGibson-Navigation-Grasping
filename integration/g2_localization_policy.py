@@ -31,6 +31,12 @@ def restart_pose(seed, odom, now, boot_id, owner_pid, map_hash, external_pending
                            120 if external_pending else 15)
 
 
+def resident_stopped(chassis):
+    duration=chassis.get('stopped_for_s')
+    return (chassis.get('motors')==[0,0,0,0] and chassis.get('moving') is False
+            and chassis.get('arm_busy') is False and isinstance(duration,(int,float)) and duration>=.5)
+
+
 class RestartBudget(object):
     def __init__(self):
         self.attempts=[]

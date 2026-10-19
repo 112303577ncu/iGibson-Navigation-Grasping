@@ -1,0 +1,56 @@
+{
+  "robot": "172.20.10.3",
+  "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+  "owner_pid": 4443,
+  "actual_corner_initialization": "LOCALIZED",
+  "marker_ids_tested": [
+    0,
+    2,
+    7
+  ],
+  "seed_result": "attempt3/result.json",
+  "nonzero_chassis_commands_sent": 0,
+  "amcl_child_recovery_s": 6.0293403440000475,
+  "idle": {
+    "samples": 246,
+    "elapsed": 124.54,
+    "all_ready": true,
+    "owner_ids": [
+      4443
+    ],
+    "minimum_available_mb": 1569.265625,
+    "odom_delta": 2473,
+    "all_stopped": true
+  },
+  "navigation_start_allowed": false,
+  "closest_fitted_wall_m": 0.29539294388976767,
+  "navigation_center_wall_min_m": 0.4,
+  "scope": "one starting location; partial coarse marker registration, not metric survey or arbitrary-start acceptance",
+  "pushed": false,
+  "local_navigation_tests_passed": 230,
+  "robot_chassis_checks_passed": 60,
+  "local_chassis_checks_passed": 58,
+  "mandatory_local_regressions": [
+    {
+      "name": "controller",
+      "exit_code": 0
+    },
+    {
+      "name": "servo",
+      "exit_code": 0
+    },
+    {
+      "name": "floor_guard",
+      "exit_code": 0
+    },
+    {
+      "name": "ui",
+      "exit_code": 0
+    },
+    {
+      "name": "fsm",
+      "exit_code": 0
+    }
+  ],
+  "camera_source_age_max_s": 0.03288474100008898
+}

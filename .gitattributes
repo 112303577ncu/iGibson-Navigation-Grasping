@@ -8,8 +8,17 @@
 /deploy/ros/g2_map_patrol.py text eol=lf
 /deploy/systemd/x3plus-g2-localization.service text eol=lf
 /integration/g2_localization_policy.py text eol=lf
+/integration/g2_aruco_corner_seed.py text eol=lf
+/integration/g2_scan_match.py text eol=lf
+/deploy/ros/g2_corner_snapshot.py text eol=lf
+/deploy/ros/g2_corner_camera_capture.py text eol=lf
 
 # Imported robot evidence retains its original whitespace and source hashes.
 docs/calibration/**/*.json -whitespace
 docs/calibration/**/*.log -whitespace
 docs/calibration/**/*.yaml -whitespace
+
+# Exact sensor/map bytes are part of the corner-seed hash contract.
+/docs/calibration/aruco_live_2026-10-19/**/capture.json -text
+/docs/calibration/aruco_live_2026-10-19/first_capture.json -text
+/docs/calibration/aruco_live_2026-10-19/active_map.yaml -text

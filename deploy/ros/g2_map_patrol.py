@@ -102,7 +102,7 @@ class Sensors:
         cov=p[3]
         if not all(finite(v) for v in (cov[0],cov[7],cov[35])):
             raise RuntimeError('invalid covariance')
-        if min(cov[0],cov[7],cov[35])<0:raise RuntimeError('negative covariance')
+        if min(cov[0],cov[7],cov[35])<0:raise Transient('negative covariance sample: '+repr([cov[0],cov[7],cov[35]]))
         if max(cov[0],cov[7])>.15**2 or cov[35]>math.radians(10)**2:raise Transient('AMCL uncertainty')
         try:
             stamp=self.listener.getLatestCommonTime('map','odom').to_sec()
@@ -133,6 +133,20 @@ class Runner:
                                        pose[1]+.06*math.sin(i*math.pi/8)) for i in range(16))
 
     def state(self):
+        vision_path = getattr(self, 'vision_permit', None)
+        if vision_path:
+            try:
+                with open(vision_path) as f: permit = json.load(f)
+                if (permit.get('owner_pid') != self.pid or
+                        permit.get('boot_id') != self.vision_boot):
+                    raise RuntimeError('vision observer context changed')
+                age = time.time() - permit['source_stamp']
+                if not 0 <= age <= 1.2:
+                    raise Transient('vision observer source stale')
+                if permit.get('allow') is not True:
+                    raise RuntimeError('vision candidate requires stopped confirmation')
+            except (IOError, ValueError, KeyError, TypeError):
+                raise Transient('vision observer unavailable')
         if time.time()>=self.end:raise RuntimeError('patrol duration limit')
         try:
             with open('/dev/shm/g2_localization_health.json') as f:loc=json.load(f)
@@ -307,9 +321,12 @@ def main():
     p.add_argument('--face-point',type=float,nargs=2,metavar=('X','Y'),help='Face this map point after arrival; does not authorize approaching it')
     p.add_argument('--keep-heading',action='store_true',help='Keep the final travel heading when chaining navigation stages')
     p.add_argument('--boundary-micro',action='store_true',help='Use <=0.08s pulses and a 0.35m front brake below normal 0.50m clearance')
+    p.add_argument('--vision-permit', help='Optional boot/owner-bound camera observer heartbeat JSON')
+    p.add_argument('--forward-pulse-max', type=float, default=.6)
     p.add_argument('--destination',choices=('nearest-patrol','patrol-cycle','dropoff-preparation'))
     p.add_argument('--point',type=float,nargs=2,metavar=('X','Y'),help='Navigate to any reachable map point')
     args=p.parse_args()
+    if not finite(args.forward_pulse_max) or not .04<=args.forward_pulse_max<=.6:p.error('forward-pulse-max must be .04..0.6 s')
     if not 1<=args.loops<=2 or not 30<=args.seconds<=600:p.error('bounded loops 1..2, seconds 30..600')
     if not finite(args.inset) or not .60<=args.inset<=.90:p.error('patrol inset must be 0.60..0.90 m')
     if args.face_point and not all(finite(v) for v in args.face_point):p.error('face point must be finite')
@@ -332,6 +349,10 @@ def main():
         import rospy
         rospy.init_node('g2_map_patrol',disable_signals=True);sensors=Sensors();runner=Runner(sensors,policy,report,args.seconds)
         runner.boundary_micro=args.boundary_micro
+        runner.max_forward_duration=args.forward_pulse_max
+        runner.vision_permit=args.vision_permit
+        if args.vision_permit:
+            with open('/proc/sys/kernel/random/boot_id') as f:runner.vision_boot=f.read().strip()
         report['boundary_micro']=args.boundary_micro
         report['initial']=runner.ready(8)
         if args.destination:

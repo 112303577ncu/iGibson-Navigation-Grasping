@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "localized": true,
+  "seed_written": true,
+  "arm_or_motion_executed": false,
+  "status": "LOCALIZED",
+  "selected_index": 0,
+  "seed": {
+    "stamp": 1792415495.787323,
+    "pose": [
+      0.8062454698717572,
+      0.8900565106970655,
+      -3.1381604084576598
+    ],
+    "odom": [
+      0.2123732112610001,
+      0.13415816622888901,
+      -1.2104213701767652
+    ],
+    "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+    "owner_pid": 4443,
+    "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+    "source": "lidar_with_coarse_aruco_disambiguation",
+    "capture_id": "b570d869eb844f78b4ed131755f177d1",
+    "registration_id": "coarse_wall_layout_20261019_v2",
+    "camera_id": "rear-sonix-640x480"
+  },
+  "stable_marker_ids": [
+    1,
+    5
+  ],
+  "candidates": [
+    {
+      "index": 0,
+      "wall_quality_ok": true,
+      "landmark_compatible": true
+    },
+    {
+      "index": 1,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 2,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 3,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 4,
+      "wall_quality_ok": false,
+      "landmark_compatible": true
+    }
+  ],
+  "pose": [
+    0.8071524410491219,
+    0.9025037572035448,
+    -3.1310601713228348
+  ],
+  "valid_until": 1792415522.8482566,
+  "next_action": "plan from current pose"
+}

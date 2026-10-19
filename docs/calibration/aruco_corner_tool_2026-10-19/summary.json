@@ -1,0 +1,37 @@
+{
+  "new_tool_tests": 63,
+  "broader_localization_navigation_tests": 221,
+  "regressions": [
+    {
+      "name": "controller",
+      "exit_code": 0
+    },
+    {
+      "name": "servo",
+      "exit_code": 0
+    },
+    {
+      "name": "floor_guard",
+      "exit_code": 0
+    },
+    {
+      "name": "ui",
+      "exit_code": 0
+    },
+    {
+      "name": "fsm",
+      "exit_code": 0
+    }
+  ],
+  "historical_scan_recomputed": true,
+  "historical_selected_hypothesis": 3,
+  "replay_bindings_and_image_sequences": "SIMULATION ONLY",
+  "physical_landmark_registration_verified": false,
+  "hardware_deployed": false,
+  "pushed": false,
+  "source_hashes": {
+    "integration/g2_aruco_corner_seed.py": "544b46ee3fda45fb710d4e480d1265ebfe254482dad2b711b76eccc7d61feae0",
+    "deploy/ros/g2_corner_snapshot.py": "c73c2ab3f436d899635b89e06e037bfbc2a89961b678af0c56f010b8d25a5801",
+    "integration/g2_scan_match.py": "d660f237f8010a64d292d679e2911147cdf32ac58100f6e14b158394eefcfd59"
+  }
+}

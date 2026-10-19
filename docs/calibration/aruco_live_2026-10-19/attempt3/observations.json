@@ -1,0 +1,111 @@
+{
+  "capture_id": "3eb073b4e51548698df7014f14b7f751",
+  "boot_id": "b42f4b8d-3521-4120-90c0-f9571cb62008",
+  "owner_pid": 4443,
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+  "schema": 1,
+  "clock": "jetson",
+  "registration_id": "coarse_wall_layout_20261019_v1",
+  "camera_id": "rear-sonix-640x480",
+  "frames": [
+    {
+      "seq": 96,
+      "stamp": 1792413036.9264348,
+      "source_monotonic": 3581.664766,
+      "source_age_s": 0.03288474100008898,
+      "markers": [
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            577.0,
+            243.5
+          ]
+        },
+        {
+          "id": 2,
+          "side": "center",
+          "center_px": [
+            318.0,
+            178.5
+          ]
+        },
+        {
+          "id": 0,
+          "side": "left",
+          "center_px": [
+            29.0,
+            172.75
+          ]
+        }
+      ],
+      "file": "frame_00.jpg"
+    },
+    {
+      "seq": 97,
+      "stamp": 1792413036.99448,
+      "source_monotonic": 3581.7328119999997,
+      "source_age_s": 0.026472255000044242,
+      "markers": [
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            577.0,
+            243.5
+          ]
+        },
+        {
+          "id": 2,
+          "side": "center",
+          "center_px": [
+            318.0,
+            178.5
+          ]
+        },
+        {
+          "id": 0,
+          "side": "left",
+          "center_px": [
+            29.0,
+            172.75
+          ]
+        }
+      ],
+      "file": "frame_01.jpg"
+    },
+    {
+      "seq": 98,
+      "stamp": 1792413037.0264442,
+      "source_monotonic": 3581.764777,
+      "source_age_s": 0.02608905400029471,
+      "markers": [
+        {
+          "id": 7,
+          "side": "right",
+          "center_px": [
+            577.0,
+            243.5
+          ]
+        },
+        {
+          "id": 2,
+          "side": "center",
+          "center_px": [
+            318.0,
+            178.5
+          ]
+        },
+        {
+          "id": 0,
+          "side": "left",
+          "center_px": [
+            29.0,
+            172.75
+          ]
+        }
+      ],
+      "file": "frame_02.jpg"
+    }
+  ]
+}

@@ -147,6 +147,7 @@ class Chassis:
         self._lock = threading.Lock()
         self._motors = None                 # unknown until the first write
         self._stopped_since = -math.inf     # when the wheels last went to zero
+        self._first_zero_at = None          # finite telemetry for a never-driven boot
         self._last_cmd = -math.inf
         self._arm_busy = False
         self._maintenance = False
@@ -174,6 +175,8 @@ class Chassis:
         was_moving = self._motors not in (None, ZERO)
         self._motors = values
         if values == ZERO:
+            if self._first_zero_at is None:
+                self._first_zero_at = self._clock()
             if was_moving:
                 self._stopped_since = self._clock()
         else:
@@ -336,6 +339,8 @@ class Chassis:
         with self._lock:
             now = self._clock()
             since = self._stopped_since
+            if since == -math.inf:
+                since = self._first_zero_at
             # None while moving, and before the wheels have ever moved.
             stopped_for = (round(now - since, 2)
                            if since is not None and math.isfinite(since) else None)

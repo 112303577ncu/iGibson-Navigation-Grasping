@@ -1,0 +1,169 @@
+{
+  "real": true, 
+  "planned_paths": [
+    {
+      "points": [
+        [
+          0.8099725348638133, 
+          0.9513726302555968
+        ], 
+        [
+          0.43513142516810466, 
+          1.1154466886821153
+        ]
+      ], 
+      "label": "patrol_entry_5"
+    }
+  ], 
+  "trace": [], 
+  "active_goal": {
+    "point": [
+      0.43513142516810466, 
+      1.1154466886821153
+    ], 
+    "label": "patrol_entry_5"
+  }, 
+  "waypoints": [
+    [
+      0.3012311093689412, 
+      0.37812263541215907
+    ], 
+    [
+      0.7317657064536036, 
+      0.17025393849876824
+    ], 
+    [
+      0.9588142575534799, 
+      0.6405135683417862
+    ], 
+    [
+      0.5282796604688176, 
+      0.8483822652551771
+    ]
+  ], 
+  "recoveries": [], 
+  "primary_patrol_point": "opposite paper-box corner", 
+  "pulses": 1, 
+  "final_health": {
+    "service_pid": 4443, 
+    "rss_mb": 506.1, 
+    "uptime_s": 3481.0, 
+    "ok": true, 
+    "startup_pose": {
+      "ok": true, 
+      "reason": "travel_verified", 
+      "servo_deg": [
+        90.0, 
+        140.0, 
+        0.0, 
+        0.0, 
+        90.0, 
+        30.0
+      ], 
+      "enabled": true
+    }, 
+    "capabilities": {
+      "owner_restart": false, 
+      "independent_health": true, 
+      "serial_transport_diagnostics": false
+    }, 
+    "stack_version": "v23", 
+    "chassis": {
+      "board_rx_age_s": 0.01, 
+      "arm_pose": "travel", 
+      "stopped_for_s": 0.51, 
+      "rx_blocked_total": 0, 
+      "motors": [
+        0, 
+        0, 
+        0, 
+        0
+      ], 
+      "refused_total": 0, 
+      "client": null, 
+      "moving": false, 
+      "maintenance": true, 
+      "pose_blocked_total": 0, 
+      "dropped_total": 0, 
+      "arm_busy": false
+    }, 
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip", 
+    "holding": false, 
+    "chassis_tcp_ready": true, 
+    "serial": null, 
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl", 
+    "odom": {
+      "pose": [
+        0.2134, 
+        0.1319, 
+        -1.2297
+      ], 
+      "rosbridge": true, 
+      "skipped_invalid": 1, 
+      "twist": [
+        0.0, 
+        0.0, 
+        0.0
+      ], 
+      "reason": "", 
+      "valid": true, 
+      "published": 69140, 
+      "failures": 0, 
+      "skipped_board_silent": 0
+    }
+  }, 
+  "preflight_paths": [
+    {
+      "points": [
+        [
+          0.8099725348638133, 
+          0.9513726302555968
+        ], 
+        [
+          0.43513142516810466, 
+          1.1154466886821153
+        ]
+      ], 
+      "label": "patrol_entry_5"
+    }
+  ], 
+  "ok": false, 
+  "min_available_mb": 1476.359375, 
+  "patrol_inset_m": 0.75, 
+  "requested_goals": [
+    {
+      "name": "patrol_entry_5", 
+      "point": [
+        0.43513142516810466, 
+        1.1154466886821153
+      ]
+    }
+  ], 
+  "initial": {
+    "tf_age": -0.34629106521606445, 
+    "front": 0.9747923298205633, 
+    "odom_stamp": 1792415740.1172698, 
+    "odom": [
+      0.2123732112610001, 
+      0.13415816622888901, 
+      -1.2104213701767652
+    ], 
+    "scan_age": 0.15370893478393555, 
+    "vx": 0.0, 
+    "pose": [
+      0.8099725348638133, 
+      0.9513726302555968, 
+      -3.102552231573739
+    ], 
+    "wz": 0.0, 
+    "cov": [
+      8.75570046274674e-07, 
+      2.5347137656032894e-06, 
+      1.3731874521278794e-05
+    ]
+  }, 
+  "arrivals": [], 
+  "output_path": "/tmp/g2_boot_20261019/attempt10_guarded_join/patrol.json", 
+  "error": "negative covariance", 
+  "boundary_micro": true
+}

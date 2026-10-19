@@ -1,0 +1,71 @@
+{
+  "accepted": false,
+  "reason": "independent corner/heading reference required; paper-box map position is still a candidate",
+  "points": 488,
+  "hypotheses": [
+    {
+      "pose": [
+        0.8054001980522822,
+        0.8897045467525183,
+        -3.1327954222551204
+      ],
+      "score_m": 0.004052743752384721,
+      "wall_p90_m": 0.020333716874579893,
+      "within_5cm_fraction": 0.9487704918032787,
+      "candidate_box_bearing_left_deg": 175.22297952535965,
+      "candidate_box_range_m": 0.7566443212147572
+    },
+    {
+      "pose": [
+        1.0614239347381247,
+        0.3385374099568753,
+        1.5838406253916277
+      ],
+      "score_m": 0.004794097768246515,
+      "wall_p90_m": 0.06013930407568693,
+      "within_5cm_fraction": 0.8586065573770492,
+      "candidate_box_bearing_left_deg": -45.9623403755526,
+      "candidate_box_range_m": 0.7023799003495232
+    },
+    {
+      "pose": [
+        0.1900979495681349,
+        0.6531696806280624,
+        -1.5891295352837105
+      ],
+      "score_m": 0.007324736996720441,
+      "wall_p90_m": 0.053736782724864894,
+      "within_5cm_fraction": 0.889344262295082,
+      "candidate_box_bearing_left_deg": 98.54281790570782,
+      "candidate_box_range_m": 1.3816396078500237
+    },
+    {
+      "pose": [
+        0.47050068302029585,
+        0.048339005810445645,
+        0.034808390966261094
+      ],
+      "score_m": 0.007794525723968156,
+      "wall_p90_m": 0.03202360928327161,
+      "within_5cm_fraction": 0.944672131147541,
+      "candidate_box_bearing_left_deg": 33.78000989931631,
+      "candidate_box_range_m": 1.3427914851986273
+    },
+    {
+      "pose": [
+        1.1385833487725627,
+        0.31251716489315634,
+        1.9063889049870424
+      ],
+      "score_m": 0.056117593261966144,
+      "wall_p90_m": 0.20174529333337735,
+      "within_5cm_fraction": 0.48975409836065575,
+      "candidate_box_bearing_left_deg": -58.20235129001982,
+      "candidate_box_range_m": 0.6699154318599133
+    }
+  ],
+  "source_stamp": 1792415446.221792,
+  "lidar_forward_m": 0.1,
+  "snapshot_sha256": "9471d5fad641109d39ee2a921d1617e14074369d3e843a3b0234b2b331fc56e9",
+  "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f"
+}

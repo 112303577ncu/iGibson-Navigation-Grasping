@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "dictionary": "DICT_4X4_50",
+  "registration_verified": true,
+  "registration_id": "SIMULATION_ONLY",
+  "map_hash": "063cd6bc6e3ff1f6942edc4fb6acced5435b95b5df700ed6fa45488706f297f6",
+  "source": "Installation-plan estimates ONLY; confirm actual wall IDs, positions and normals before enabling. No physical registration claimed.",
+  "camera": {
+    "camera_id": "rear-sonix-640x480",
+    "orientation_verified": true,
+    "fov_bound_verified": true,
+    "image_mirrored": false,
+    "yaw_rad": 0.0,
+    "yaw_uncertainty_deg": 10.0,
+    "offset_xy_m": [
+      0.0,
+      0.0
+    ],
+    "offset_uncertainty_m": 0.2,
+    "horizontal_fov_bound_deg": 100.0
+  },
+  "markers": {
+    "0": {
+      "point_map": [
+        1.742910610246717,
+        0.5395536273098955
+      ],
+      "normal_yaw_rad": 2.691787063207559,
+      "position_uncertainty_m": 0.2
+    },
+    "2": {
+      "point_map": [
+        1.3081201399311535,
+        -0.36097801950923253
+      ],
+      "normal_yaw_rad": 2.691787063207559,
+      "position_uncertainty_m": 0.2
+    },
+    "3": {
+      "point_map": [
+        1.5100400219949346,
+        1.2072146858772417
+      ],
+      "normal_yaw_rad": -2.020601917177131,
+      "position_uncertainty_m": 0.2
+    },
+    "4": {
+      "point_map": [
+        0.6095083751758066,
+        1.6420051561928053
+      ],
+      "normal_yaw_rad": -2.020601917177131,
+      "position_uncertainty_m": 0.2
+    },
+    "5": {
+      "point_map": [
+        -0.03842145706663758,
+        1.3996080296966318
+      ],
+      "normal_yaw_rad": -0.44980559038223444,
+      "position_uncertainty_m": 0.2
+    },
+    "1": {
+      "point_map": [
+        -0.4732119273822012,
+        0.4990763828775038
+      ],
+      "normal_yaw_rad": -0.44980559038223444,
+      "position_uncertainty_m": 0.2
+    },
+    "6": {
+      "point_map": [
+        -0.24999465507251356,
+        -0.18857848212329614
+      ],
+      "normal_yaw_rad": 1.1209907364126621,
+      "position_uncertainty_m": 0.2
+    },
+    "7": {
+      "point_map": [
+        0.6505369917466146,
+        -0.6233689524388597
+      ],
+      "normal_yaw_rad": 1.1209907364126621,
+      "position_uncertainty_m": 0.2
+    }
+  },
+  "simulation_only": true
+}

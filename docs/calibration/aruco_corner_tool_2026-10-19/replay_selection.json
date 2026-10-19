@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "localized": false,
+  "seed_written": false,
+  "arm_or_motion_executed": false,
+  "status": "SELECTED_DRY_RUN",
+  "selected_index": 3,
+  "seed": {
+    "stamp": 1792319208.800556,
+    "pose": [
+      0.35125098617994777,
+      0.18804836410322345,
+      -0.7845152207743382
+    ],
+    "odom": [
+      0.1726663938642307,
+      0.8389269120512545,
+      -3.1169111352838397
+    ],
+    "boot_id": "SIMULATION_ONLY",
+    "owner_pid": 8117,
+    "map_hash": "063cd6bc6e3ff1f6942edc4fb6acced5435b95b5df700ed6fa45488706f297f6",
+    "source": "lidar_with_coarse_aruco_disambiguation",
+    "capture_id": "SIMULATION_ONLY_REPLAY",
+    "registration_id": "SIMULATION_ONLY",
+    "camera_id": "rear-sonix-640x480"
+  },
+  "stable_marker_ids": [
+    2,
+    7
+  ],
+  "candidates": [
+    {
+      "index": 0,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 1,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 2,
+      "wall_quality_ok": true,
+      "landmark_compatible": false
+    },
+    {
+      "index": 3,
+      "wall_quality_ok": true,
+      "landmark_compatible": true
+    }
+  ],
+  "next_action": "no seed written; real apply requires live Jetson checks"
+}

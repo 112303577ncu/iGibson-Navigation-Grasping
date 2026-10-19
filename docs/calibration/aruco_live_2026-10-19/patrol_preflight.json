@@ -1,0 +1,32 @@
+{
+  "real": false, 
+  "trace": [], 
+  "waypoints": [
+    [
+      0.23446500351220656, 
+      0.35483557658698084
+    ], 
+    [
+      0.7550527652787818, 
+      0.1034878326420336
+    ], 
+    [
+      1.0255803634102147, 
+      0.6638006271669645
+    ], 
+    [
+      0.5049926016436393, 
+      0.9151483711119117
+    ]
+  ], 
+  "recoveries": [], 
+  "primary_patrol_point": "opposite paper-box corner", 
+  "pulses": 0, 
+  "ok": false, 
+  "min_available_mb": 1504.55859375, 
+  "patrol_inset_m": 0.7, 
+  "arrivals": [], 
+  "output_path": "/tmp/g2_boot_20261019/patrol_preflight.json", 
+  "error": "current centre outside navigation mask", 
+  "boundary_micro": true
+}

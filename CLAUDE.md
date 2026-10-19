@@ -1,3 +1,12 @@
+## 2026-10-19 小工具接手入口（本次發布）
+
+先讀 [koala角落工具交接](docs/operations/KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。
+ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2／5／7。
+199項相關回歸通過；巡航曾碰到糖果盒，辨識亦有牆夾誤認，夾取／投放全流程尚未驗收。
+目前暫停、輪零、maintenance=true、travel、空爪；不要用舊seed或PID直接啟動。
+本次只提交ncu工具與定位配套，未匯入／覆寫koala最新接近、mission_loop、手臂controller或模型；可精選檔案接入組員分支。
+下方保留舊交接紀錄，狀態與本入口衝突時以上述新交接為準。
+
 # X3Plus 專題 — Sim-to-Real 夾取部署
 
 > **2026-10-07 決賽主線：v23 常駐服務。** 使用 `grasp/v23/demo.py` 與
@@ -106,7 +115,7 @@
 | `v24/run_candidate.py` / `manifest.json` | v24 E1 replacement 候選入口；鎖定新 pair 並重用 v23 controller；未通過新 hash 真機 gate，不是正式主線 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
 | `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |
-| `x3plus/yahboomcar.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
+| `x3plus/[use existing SSH credential]car.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
 | `Rosmaster_Lib/` | 硬體驅動（本地化到此，見下方指令） |
 | `fk_test.py` / `servo_test.py` / `workspace_scan.py` / `joint_direction_calibration.py` | 測試/校正小工具 |
 
