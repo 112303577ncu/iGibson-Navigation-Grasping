@@ -168,7 +168,7 @@ def test_entry_adapter_gates_next_loop_on_measured_turn_clear_completion(tmp_pat
     plant = Plant()
     mission, health = fake_mission(plant)
     monkeypatch.setattr(entry, 'rpc', lambda *args: copy.deepcopy(health))
-    info = entry.install_patrol_reentry(mission, tmp_path)
+    info = entry.install_patrol_reentry(mission, tmp_path, with_placement=False)
     room = mission.Room('host', walls=[1], mask=Mask())
     next_loop = Mock()
     mission.place_held()

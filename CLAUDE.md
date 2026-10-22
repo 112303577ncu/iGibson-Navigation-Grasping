@@ -1,3 +1,14 @@
+## 2026-10-22 投放前保留退路（離線、未部署）
+
+`demo.py mission` 現在轉到 `v23_mission_entry.py`；舊流程僅留明確的 `mission-legacy` 名稱。
+先用 `g2_prepare_koala.py`建立全新的 `.runtime/koala-e8766f0-corridor`，manifest schema2；舊schema1拒絕啟動。
+投放前每5度搜尋可接近、可直退且可轉向的方向，優先牆距餘裕，再比較退距與轉運距離。
+原生導航至準備點並以絕對map yaw對正，再啟動PPO；前進命令先保守預測0.6秒，持續保留直退60cm內的出口。
+近盒區禁止原地旋轉；可行時只減低前進速度，不放寬巡航mask。定位／輸送延遲以capture握手時計入有效期限。
+放下RPC前再次檢查實際停點、持物狀態與退出路徑；失敗且確認仍持物時先退回合法轉向區，最多再接近一次。
+不重播未知放下結果；本版沒有實車部署／驗收，也不保證硬體故障時永不停車。
+見 [投放走廊規格與限制](docs/operations/PLACEMENT_CORRIDOR_2026-10-22.md)。
+
 ## 2026-10-22 任務恢復規格（離線、未部署）
 
 入口 `integration/v23_mission_entry.py`；先用 `g2_prepare_koala.py`建立固定e8766f0完整runtime。

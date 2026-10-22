@@ -111,7 +111,7 @@ def retreat_to_patrol(mask, read, back, path_problem, stop, minimum=.20,
         stop()
 
 
-def bind_mission(mission, scene, report_folder, health, recovery=None):
+def bind_mission(mission, scene, report_folder, health, recovery=None, placement=None):
     """Install the adapter on a coherent recent koala Room, leaving PPO unchanged."""
     required = [(mission, 'Room'), (mission.dock, 'fetch_nav_mask'),
                 (mission, 'place_held'), (mission.dock, 'back_path_problem'),
@@ -144,14 +144,14 @@ def bind_mission(mission, scene, report_folder, health, recovery=None):
             return recovery.RecoveryFault(code, text, retryable,
                 fault.elapsed if fault else 0., fault.context if fault else None)
 
-        def _snapshot_once(self):
+        def _snapshot_once(self, holding=False):
             try:
                 h = health(self.host)
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 raise self._fault('HEALTH_UNAVAILABLE', str(exc), True)
             ch = h.get('chassis', {})
-            if h.get('holding') is not False or ch.get('client') is not None:
-                raise self._fault('ACTION_STATE_UNKNOWN', 'post-place reentry requires empty gripper and no other client')
+            if h.get('holding') is not holding or ch.get('client') is not None:
+                raise self._fault('ACTION_STATE_UNKNOWN', 'reentry requires known holding state and no other client')
             if (h.get('ok') is not True or ch.get('arm_pose') != 'travel'
                     or ch.get('arm_busy') is not False or ch.get('moving') is not False
                     or ch.get('motors') != [0, 0, 0, 0]):
@@ -189,19 +189,19 @@ def bind_mission(mission, scene, report_folder, health, recovery=None):
             return {'pose': pose, 'odom': odom, 'stamp': stamp,
                     'context': (loc['boot_id'], loc['owner_pid'], loc['map_hash'])}
 
-        def _snapshot(self):
+        def _snapshot(self, holding=False):
             if recovery is None:
-                return self._snapshot_once()
-            value = recovery.wait_snapshot(self._snapshot_once, lambda: mission.runner.stop(self.host),
+                return self._snapshot_once(holding=holding)
+            value = recovery.wait_snapshot(lambda: self._snapshot_once(holding=holding), lambda: mission.runner.stop(self.host),
                                            previous=self._last_snapshot, events=self.recovery_events)
             self._last_snapshot = value
             return value
 
-        def _leave_ready(self, minimum):
+        def _leave_ready(self, minimum, holding=False):
             result = {}
             try:
                 retreat_to_patrol(
-                    self.mask, self._snapshot, lambda metres: self._back(metres),
+                    self.mask, lambda: self._snapshot(holding=holding), lambda metres: self._back(metres),
                     lambda pose, metres: mission.dock.back_path_problem(
                         pose, metres, self.walls, obstacles=self.obstacles),
                     lambda: mission.runner.stop(self.host), minimum=minimum,
@@ -242,14 +242,17 @@ def bind_mission(mission, scene, report_folder, health, recovery=None):
                 self._snapshot()
 
     def place_held(*args, **kwargs):
-        result = original_place(*args, **kwargs)
+        result = (supervisor.execute(*args, **kwargs) if placement is not None
+                  else original_place(*args, **kwargs))
         post_place['pending'] = True
         return result
 
     mission.Room = FeedbackRoom
     mission.place_held = place_held
+    supervisor = placement.Supervisor(mission, rooms, scene, folder) if placement is not None else None
     patrol_recovery = recovery.bind_patrol(mission, rooms, folder) if recovery is not None else False
     return {'adapter': 'g2_patrol_reentry', 'turn_margin_m': TURN_MARGIN,
             'max_step_m': MAX_STEP, 'max_retreat_m': MAX_RETREAT,
             'completion': 'three fresh stopped poses inside mask with turn reserve', 'scene': scene,
-            'patrol_recovery_installed': patrol_recovery, 'task_recovery_wait_s': 30 if recovery else 0}
+            'patrol_recovery_installed': patrol_recovery, 'task_recovery_wait_s': 30 if recovery else 0,
+            'placement_corridor_installed': supervisor is not None}

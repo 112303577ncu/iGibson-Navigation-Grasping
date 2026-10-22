@@ -265,7 +265,7 @@ def run_stages(initialize_stage, stream_stage, mission_stage):
     return mission_stage()
 
 
-def install_patrol_reentry(mission, folder):
+def install_patrol_reentry(mission, folder, with_placement=True):
     """Load our adapter by path so the upstream integration package stays coherent."""
     path = ROOT / 'integration/g2_patrol_reentry.py'
     spec = importlib.util.spec_from_file_location('v23_post_place_reentry', path)
@@ -275,17 +275,25 @@ def install_patrol_reentry(mission, folder):
     recovery_spec = importlib.util.spec_from_file_location('v23_task_recovery', recovery_path)
     recovery = importlib.util.module_from_spec(recovery_spec)
     recovery_spec.loader.exec_module(recovery)
+    placement = None
+    placement_path = ROOT / 'integration/g2_placement_supervisor.py'
+    if with_placement:
+        placement_spec = importlib.util.spec_from_file_location('v23_placement_supervisor', placement_path)
+        placement = importlib.util.module_from_spec(placement_spec)
+        placement_spec.loader.exec_module(placement)
     result = adapter.bind_mission(mission, SCENE, folder / 'mission',
-                                  lambda host: rpc(host, 'health'), recovery=recovery)
+                                  lambda host: rpc(host, 'health'), recovery=recovery, placement=placement)
     result['source_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
     result['recovery_source_sha256'] = hashlib.sha256(recovery_path.read_bytes()).hexdigest()
+    if with_placement:
+        result['placement_source_sha256'] = hashlib.sha256(placement_path.read_bytes()).hexdigest()
     return result
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', required=True)
-    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0',
+    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0-corridor',
                         help='runtime prepared by integration/g2_prepare_koala.py')
     parser.add_argument('--gstreamer', type=Path, default=os.environ.get('GSTREAMER_LAUNCH_EXE'))
     parser.add_argument('--output', type=Path)

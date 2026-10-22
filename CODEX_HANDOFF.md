@@ -1,3 +1,9 @@
+## 2026-10-22 投放走廊入口（離線、未部署）
+
+先讀 [投放走廊](docs/operations/PLACEMENT_CORRIDOR_2026-10-22.md)；`demo.py mission`統一進新入口。
+需新準備schema2 runtime與Jetson新版 `g2_map_patrol.py --face-yaw`，只更新其中一端不能運行此模式。
+盒位、地圖禁航區與實測旗標未擅自放寬；新guard原始碼hash須與PC規劃端相符。
+
 ## 2026-10-22 任務恢復入口（離線、未部署）
 
 先讀 [任務故障表與限制](docs/operations/MISSION_RECOVERY_2026-10-22.md) 及CLAUDE最上方規格。

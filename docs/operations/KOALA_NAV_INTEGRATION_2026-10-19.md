@@ -4,6 +4,7 @@
 正式新流程使用 [固定runtime入口與恢復規則](MISSION_RECOVERY_2026-10-22.md)；
 下文為10/19版本的整合紀錄，不以歷史固定20cm退出或舊commit覆蓋新版規格。
 本次提交／推送不代表部署或新增實車驗收。
+投放走廊版的 `demo.py mission` 已統一轉新入口；下方歷史no-patrol等命令只適用 `mission-legacy`。
 
 ## 本次核對來源
 

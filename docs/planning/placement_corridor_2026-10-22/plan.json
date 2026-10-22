@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "sampled_valid_headings": 10,
+  "best": {
+    "staging": [
+      0.6106721557614742,
+      0.5176194445950735,
+      0.34906585039886595
+    ],
+    "release": [
+      1.2077776907496636,
+      0.734948086046371,
+      0.34906585039886595
+    ],
+    "exit": {
+      "distance_m": 0.19,
+      "point": [
+        1.029236092800341,
+        0.6699642588144938,
+        0.34906585039886595
+      ]
+    },
+    "wall_clearance_m": 0.23518720893464862,
+    "yaw_rad": 0.34906585039886595,
+    "worst_retreat_m": 0.25,
+    "projected_box_half_depth_m": 0.11157356184323067,
+    "sampled_stop_error_m": 0.04,
+    "sampled_yaw_error_deg": 8.0,
+    "hardware_validated": false
+  },
+  "box": {
+    "x": 1.5599413405605012,
+    "y": 0.8333281945387369,
+    "verified": false,
+    "source": "scene_layout.json",
+    "orientation_rad": 1.1209907364126621,
+    "length_m": 0.18,
+    "width_m": 0.135
+  },
+  "heading_relative_to_room_deg": 45.77196193029234,
+  "actual_pinned_motor_smoke": {
+    "safe_forward_mps": 0.11249999999999999,
+    "stale_sends_stop": true,
+    "zero_always_passes": true
+  },
+  "input_sha256": {
+    "scene_layout.json": "07481c0403507a30a83098737aa6821796ed0c529fcd8da5ed3b6670c054faff",
+    "navigation_center_mask.yaml": "cbf20573351cf0687f6a84046015eed6abcb578c8a4e6f059a821b699faef0cf",
+    "navigation_center_mask.pgm": "23566c869736384cf68afd5aecea23a288b8e62dcc76cba0cb936c5338096a47"
+  },
+  "guard_sha256": "94ae9c8e3869167389c2c062c938e711cbe646c1f27f23066c3e1329b277cd26",
+  "koala_commit": "e8766f03d0de3e48419a488f330b62e3412afab3",
+  "hardware_validated": false
+}

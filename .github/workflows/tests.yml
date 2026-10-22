@@ -114,4 +114,4 @@ jobs:
         run: python -m pytest tests/test_target_approach.py tests/test_sugarbox_approach_grasp.py tests/test_sugarbox_blind_finish.py tests/test_sugarbox_ground_calibration.py tests/test_sugarbox_lidar_geometry.py tests/test_sugarbox_rear_ignore.py tests/test_sugarbox_seed_target.py tests/test_placement_dock.py tests/test_mission_loop.py tests/test_capture_rear_dataset.py tests/test_v23_koala_map_handoff.py -q
 
       - name: AMCL supervisor and bounded task recovery
-        run: python -m pytest tests/test_g2_amcl_watchdog_runtime.py tests/test_g2_mission_recovery.py tests/test_g2_prepare_koala.py tests/test_g2_boundary_recovery.py tests/test_g2_patrol_reentry.py tests/test_g2_offline_workspace_plan.py tests/test_v23_mission_entry.py -q
+        run: python -m pytest tests/test_g2_amcl_watchdog_runtime.py tests/test_g2_mission_recovery.py tests/test_g2_prepare_koala.py tests/test_g2_boundary_recovery.py tests/test_g2_patrol_reentry.py tests/test_g2_placement_corridor.py tests/test_g2_offline_workspace_plan.py tests/test_v23_mission_entry.py -q

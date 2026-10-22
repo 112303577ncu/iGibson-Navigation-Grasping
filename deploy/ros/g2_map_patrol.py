@@ -425,6 +425,18 @@ class Runner:
                 if len(self.report['recoveries'])>12:raise RuntimeError('recovery budget exhausted')
         raise RuntimeError('final orientation limit')
 
+    def face_yaw(self,yaw):
+        for _ in range(50):
+            error=wrap(yaw-self.ready()['pose'][2])
+            if abs(error)<=math.radians(6):
+                self.report.update(park_facing='requested_yaw',park_face_yaw=yaw,
+                                   park_yaw_error_deg=math.degrees(error));return
+            try:self.pulse(0,1 if error>0 else -1,min(.15,max(.05,(abs(error)-.03)/1.5)))
+            except Transient as exc:
+                self.report['recoveries'].append(str(exc));self.settle()
+                if len(self.report['recoveries'])>12:raise RuntimeError('recovery budget exhausted')
+        raise RuntimeError('final orientation limit')
+
 
 def resolve_goals(requested,policy,points):
     if not isinstance(requested,list) or not 1<=len(requested)<=12:
@@ -448,6 +460,7 @@ def main():
     p.add_argument('--loops',type=int,default=1);p.add_argument('--seconds',type=int,default=600);p.add_argument('--real',action='store_true');p.add_argument('--goals',help='JSON list of home, dropoff or {name,point:[x,y]}')
     p.add_argument('--inset',type=float,default=.60,help='Patrol centre distance inside fitted walls, 0.60..0.90 m')
     p.add_argument('--face-point',type=float,nargs=2,metavar=('X','Y'),help='Face this map point after arrival; does not authorize approaching it')
+    p.add_argument('--face-yaw',type=float,help='Absolute map yaw after arrival, -pi..pi; turn only in the normal turn-clear region')
     p.add_argument('--keep-heading',action='store_true',help='Keep the final travel heading when chaining navigation stages')
     p.add_argument('--boundary-micro',action='store_true',help='Use <=0.08s pulses and a 0.35m front brake below normal 0.50m clearance')
     p.add_argument('--vision-permit', help='Optional boot/owner-bound camera observer heartbeat JSON')
@@ -459,7 +472,8 @@ def main():
     if not 1<=args.loops<=2 or not 30<=args.seconds<=600:p.error('bounded loops 1..2, seconds 30..600')
     if not finite(args.inset) or not .60<=args.inset<=.90:p.error('patrol inset must be 0.60..0.90 m')
     if args.face_point and not all(finite(v) for v in args.face_point):p.error('face point must be finite')
-    if args.keep_heading and args.face_point:p.error('keep-heading and face-point are mutually exclusive')
+    if args.face_yaw is not None and (not finite(args.face_yaw) or not -math.pi<=args.face_yaw<=math.pi):p.error('face-yaw must be -pi..pi')
+    if sum((bool(args.keep_heading),bool(args.face_point),args.face_yaw is not None))>1:p.error('choose keep-heading, face-point or face-yaw')
     if sum(bool(x) for x in (args.goals,args.destination,args.point))>1:p.error('choose goals, destination or point')
     policy=Policy(args.scene);points=policy.patrol_points(args.inset);report={'ok':False,'real':args.real,'output_path':args.output,'waypoints':points,'patrol_inset_m':args.inset,'primary_patrol_point':'opposite paper-box corner','arrivals':[],'recoveries':[],'trace':[],'pulses':0}
     runner=None;lease=None;unlocked=False
@@ -525,7 +539,8 @@ def main():
                 runner.goto(points[0],'diagonal_start')
                 for loop in range(args.loops):
                     for i in (1,2,3,0):runner.goto(points[i],'loop%d_point%d'%(loop+1,i))
-            if args.keep_heading or ((args.destination or args.point) and not args.face_point):report['park_facing']='last_leg'
+            if args.keep_heading or ((args.destination or args.point) and not args.face_point and args.face_yaw is None):report['park_facing']='last_leg'
+            elif args.face_yaw is not None:runner.face_yaw(args.face_yaw)
             elif args.face_point:runner.face_point(args.face_point)
             else:runner.face_interior()
             runner.verify_parked_goal(goals[-1][1] if goals else points[0])

@@ -18,7 +18,13 @@ def source_tree(root):
                      if moving else 0.0)
         return pose, moved + PATROL_MAX_VX * uncovered, turned + PATROL_MAX_WZ * uncovered
 ''', encoding='utf-8')
-    (root / 'integration/sugarbox_rl_approach_final2.py').write_text('''def finish():
+    (root / 'integration/sugarbox_rl_approach_final2.py').write_text('''import json
+import os
+def send(self, msg, vx, wz):
+'''+prepare.ENGINE_SEND+'''
+def connect(self, sock):
+'''+prepare.CONNECT_ASSIGN+'''
+def finish():
     try:
         return "stage-result"
     finally:
@@ -29,8 +35,8 @@ def source_tree(root):
 
 
 def manifest(root):
-    data = dict(schema=1, upstream_commit=prepare.COMMIT,
-                patches=['frame_sample_motion_bound', 'headless_cleanup'],
+    data = dict(schema=2, upstream_commit=prepare.COMMIT,
+                patches=prepare.PATCHES,
                 source_sha256={name: hashlib.sha256((root / 'integration' / name).read_bytes()).hexdigest()
                                for name in prepare.SOURCES})
     (root / 'g2_runtime_manifest.json').write_text(json.dumps(data), encoding='utf-8')
@@ -77,6 +83,16 @@ def test_changed_patch_context_is_rejected(tmp_path):
     (tmp_path / 'integration/mission_loop.py').write_text('# newer unreviewed version')
     with pytest.raises(ValueError, match='patch context changed'):
         prepare.patch_sources(tmp_path)
+
+
+def test_current_pc_guard_must_match_worker_even_if_manifest_is_internally_consistent(tmp_path):
+    source_tree(tmp_path)
+    prepare.patch_sources(tmp_path)
+    helper = tmp_path / 'integration/g2_placement_corridor.py'
+    helper.write_text(helper.read_text(encoding='utf-8') + '\n# older guard variant\n', encoding='utf-8')
+    manifest(tmp_path)
+    with pytest.raises(ValueError, match='differs from PC planner'):
+        prepare.verify_manifest(tmp_path)
 
 
 def test_existing_runtime_is_never_overwritten(tmp_path):

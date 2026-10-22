@@ -11,7 +11,30 @@ import tempfile
 UPSTREAM = 'https://github.com/koala915/iGibson-Navigation-Grasping.git'
 COMMIT = 'e8766f03d0de3e48419a488f330b62e3412afab3'
 SOURCES = ('mission_loop.py', 'mission_runtime.py', 'robot_rpc.py',
-           'sugarbox_approach_grasp.py', 'sugarbox_rl_approach_final2.py')
+           'sugarbox_approach_grasp.py', 'sugarbox_rl_approach_final2.py',
+           'placement_dock.py', 'g2_placement_corridor.py')
+PATCHES = ['frame_sample_motion_bound', 'headless_cleanup', 'reversible_placement_gate']
+ENGINE_SEND = '        self._send_json(\n            msg\n        )'
+ENGINE_GATE = '''        if G2_GUARD_PATH and TARGET_KIND == 'placement' and (vx or wz):
+            if self.sock is None:
+                self.connect()
+            if not hasattr(self, '_g2_guard'):
+                self._g2_guard = G2Permit(G2_GUARD_PATH)
+            safe_vx, safe_wz = self._g2_guard.limit(vx, wz)
+            if not safe_vx and not safe_wz:
+                msg = {'action': 'stop'}
+            else:
+                msg['vx'], msg['wz'] = safe_vx, safe_wz
+        self._send_json(
+            msg
+        )'''
+CONNECT_ASSIGN = '        self.sock = sock'
+CONNECT_GATE = '''        self.sock = sock
+        if G2_GUARD_PATH and TARGET_KIND == 'placement':
+            if getattr(self, '_g2_connected_once', False):
+                self.sock.sendall(json.dumps({'action': 'stop'}).encode('utf-8') + bytes([10]))
+                raise RuntimeError('placement motor connection changed; velocity was not replayed')
+            self._g2_connected_once = True'''
 FLOW_TEST_EDITS = (
     ('self.link(samples).frame_pose(10.5), (pose, 0.0, 0.0)',
      'self.link(samples).frame_pose(10.5, moving=False), (pose, 0.0, 0.0)'),
@@ -46,7 +69,20 @@ def patch_sources(root):
            '            pass  # Headless GUI cleanup must not replace the stage result.\n')
     if source.count(old) != 1:
         raise ValueError('pinned headless-cleanup patch context changed')
-    approach.write_text(source.replace(old, new), encoding='utf-8')
+    source = source.replace(old, new)
+    if (source.count('import json\n') != 1 or source.count(ENGINE_SEND) != 1
+            or source.count(CONNECT_ASSIGN) != 1):
+        raise ValueError('pinned placement motor gate context changed')
+    source = source.replace('import json\n', 'import json\nfrom integration.g2_placement_corridor import Permit as G2Permit\n')
+    source = source.replace(ENGINE_SEND, ENGINE_GATE)
+    source = source.replace(CONNECT_ASSIGN, CONNECT_GATE)
+    # Capture the run's environment during module loading; resident workers
+    # restore os.environ immediately after importing each stage.
+    marker = 'import os\n'
+    source = source.replace(marker, marker + "G2_GUARD_PATH = os.environ.get('G2_PLACEMENT_GUARD_FILE', '')\n")
+    approach.write_text(source, encoding='utf-8')
+    shutil.copyfile(Path(__file__).with_name('g2_placement_corridor.py'),
+                    root / 'integration/g2_placement_corridor.py')
     tests = root / 'tests/test_flow_contracts.py'
     source = tests.read_text(encoding='utf-8')
     for old, new in FLOW_TEST_EDITS:
@@ -61,14 +97,17 @@ def verify_manifest(root):
     if not path.is_file():
         raise ValueError('prepare the pinned runtime with integration/g2_prepare_koala.py first')
     manifest = json.loads(path.read_text(encoding='utf-8'))
-    if manifest.get('upstream_commit') != COMMIT or manifest.get('schema') != 1:
+    if manifest.get('upstream_commit') != COMMIT or manifest.get('schema') != 2:
         raise ValueError('incompatible koala runtime manifest')
-    if manifest.get('patches') != ['frame_sample_motion_bound', 'headless_cleanup']:
+    if manifest.get('patches') != PATCHES:
         raise ValueError('required runtime fixes are missing')
     for name in SOURCES:
         actual = hashlib.sha256((root / 'integration' / name).read_bytes()).hexdigest()
         if manifest.get('source_sha256', {}).get(name) != actual:
             raise ValueError('prepared runtime source changed: ' + name)
+    helper = 'g2_placement_corridor.py'
+    if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
+        raise ValueError('placement guard differs from PC planner; prepare a new runtime')
     return manifest
 
 
@@ -105,8 +144,8 @@ def prepare(output, git_cache=None):
                 else:
                     raise ValueError('unsupported runtime archive entry')
     patch_sources(output)
-    manifest = {'schema': 1, 'upstream_repository': UPSTREAM, 'upstream_commit': COMMIT,
-                'patches': ['frame_sample_motion_bound', 'headless_cleanup'],
+    manifest = {'schema': 2, 'upstream_repository': UPSTREAM, 'upstream_commit': COMMIT,
+                'patches': PATCHES,
                 'hardware_validated': False,
                 'source_sha256': {name: hashlib.sha256((output / 'integration' / name).read_bytes()).hexdigest()
                                   for name in SOURCES}}

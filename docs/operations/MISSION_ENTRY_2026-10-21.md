@@ -1,5 +1,9 @@
 # 八 ID 定位接入新版任務入口
 
+2026-10-22投放走廊版更新：先建立全新 `.runtime/koala-e8766f0-corridor`（schema2），
+再使用 `demo.py mission`或本入口；同時更新Jetson的face-yaw支援。
+下方較早的runtime目錄名需替換為此新目錄；見 [投放走廊](PLACEMENT_CORRIDOR_2026-10-22.md)。
+
 入口：`integration/v23_mission_entry.py`，在 PC 執行。
 以獨立、完整的 koala 工作目錄執行其 `mission_loop.py`；不覆寫本工作樹既有接近／手臂整合草稿。
 2026-10-22離線版固定 koala `e8766f03d0de3e48419a488f330b62e3412afab3`，以

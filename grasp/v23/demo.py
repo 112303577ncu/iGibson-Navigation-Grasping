@@ -19,7 +19,8 @@ if __name__ == '__main__':
         'approach': [str(ROOT/'integration/v23_dock_approach.py')],
         'navigation': [str(ROOT/'integration/v23_delivery_navigation.py')],
         'object-approach': [str(ROOT/'integration/sugarbox_approach_grasp.py')],
-        'mission': [str(ROOT/'integration/mission_loop.py')],
+        'mission': [str(ROOT/'integration/v23_mission_entry.py')],
+        'mission-legacy': [str(ROOT/'integration/mission_loop.py')],
     }
     if len(sys.argv)>1 and sys.argv[1] in commands:
         raise SystemExit(subprocess.call([sys.executable]+commands[sys.argv[1]]+sys.argv[2:]))
