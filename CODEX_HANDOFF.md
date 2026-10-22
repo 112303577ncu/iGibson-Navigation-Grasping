@@ -1,4 +1,10 @@
-## 2026-10-19 小工具接手入口（本次發布）
+## 2026-10-22 任務恢復入口（離線、未部署）
+
+先讀 [任務故障表與限制](docs/operations/MISSION_RECOVERY_2026-10-22.md) 及CLAUDE最上方規格。
+PC入口與Jetson監督器須配套；準備固定e8766f0完整runtime後才用新入口。
+本版未SSH、未開實車。歷史PID／seed／停車狀態不是當前值；硬體驗證旗標仍保留false。
+
+## 2026-10-19 小工具接手入口（歷史）
 
 先讀 [koala角落工具交接](docs/operations/KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。
 ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2／5／7。

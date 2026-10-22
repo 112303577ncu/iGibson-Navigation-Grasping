@@ -15,7 +15,8 @@
 | 同一段恢復超過20秒 | 明確標示degraded與原因；更換錯誤種類不會重置計時。導航立即回報，不再追加另一輪20秒等待 |
 | 沒有可信參考、seed過期、owner／boot／map改變 | needs_reference；等待新ArUco／外部參考，不重打舊時間或猜位置 |
 | 多次重啟失敗 | AMCL最多3次／600秒，間隔至少10秒；顯示retry_after_s，預算存/dev/shm，同次開機重啟監督器不會清零 |
-| 監督器本身卡死 | systemd 15秒未收到heartbeat判定故障；Restart=on-failure，單元仍受3次／600秒限制，不作無限重啟 |
+| no-motion更新背景執行緒卡死 | monotonic逾時2秒即退出監督器，讓systemd重建執行緒；只重啟roslaunch不能修復此執行緒 |
+| 監督器本身卡死 | systemd 5秒未收到heartbeat判定故障；停止最多5秒、重啟間隔1秒，單元仍受3次／600秒限制，不作無限重啟 |
 | RAM不足 | 開始定位要求1024MB；低於768MB停止定位子程序，等待記憶體恢復 |
 
 20秒是健康狀態檢查的恢復期限，不是保證實體故障在20秒內修好。監督器降級後繼續觀察；有效資料與參考回來可恢復ready。已退出的導航階段需由任務層重新派發目標，不重播中斷前速度。
@@ -40,11 +41,11 @@ systemd READY只代表監督程式已啟動，**不代表機器人已定位**；
 
 ## 下次開機部署順序
 
-1. 同步本次service、policy、g2_map_patrol.py及systemd單元，保留Jetson組員手臂改動。這四個檔案要配套更新；不能只換Type=notify單元卻仍使用不送heartbeat的舊程式。
+1. 同步service、policy、g2_map_patrol.py、integration/g2_boundary_recovery.py、場景JSON及systemd單元，保留Jetson組員手臂改動。必須配套更新；不能只換Type=notify單元卻仍使用不送heartbeat的舊程式。
 2. 在Jetson專案根目錄先做Python2編譯，再安裝本單元：
 
 ```bash
-/usr/bin/python -m py_compile deploy/ros/g2_localization_service.py integration/g2_localization_policy.py deploy/ros/g2_map_patrol.py
+/usr/bin/python -m py_compile deploy/ros/g2_localization_service.py integration/g2_localization_policy.py integration/g2_boundary_recovery.py deploy/ros/g2_map_patrol.py
 sudo install -m 644 deploy/systemd/x3plus-g2-localization.service /etc/systemd/system/x3plus-g2-localization.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now x3plus-g2-localization.service

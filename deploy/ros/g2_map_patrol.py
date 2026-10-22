@@ -17,10 +17,24 @@ sys.path.insert(0,os.path.join(ROOT,'integration'))
 from g2_patrol_policy import Policy,wrap,finite,guided_heading,stop_reserve
 from g2_geometry import LIDAR_FORWARD_M
 from g2_navigation_goals import resolve_destination
+from g2_boundary_recovery import RecoveryPolicy
 
 
 class Transient(RuntimeError):
     pass
+
+
+class BoundaryRequired(RuntimeError):
+    pass
+
+
+class LocalizationWorkerStalled(RuntimeError):
+    pass
+
+
+def monotonic_seconds():
+    if hasattr(time,'monotonic'):return time.monotonic()
+    with open('/proc/uptime') as f:return float(f.read().split()[0])
 
 
 def rpc(command,path='/tmp/grasp_health.sock'):
@@ -86,12 +100,18 @@ class Sensors:
                    rospy.Subscriber('/odom_setmotor',Odometry,odom,queue_size=1,tcp_nodelay=True),
                    rospy.Subscriber('/amcl_pose',PoseWithCovarianceStamped,amcl,queue_size=1,tcp_nodelay=True)]
         self.nomotion=rospy.ServiceProxy('/request_nomotion_update',Empty)
+        self.nomotion_started=None
         def update(_):
+            self.nomotion_started=monotonic_seconds()
             try:self.nomotion()
             except rospy.ServiceException:pass
+            finally:self.nomotion_started=None
         self.timer=rospy.Timer(rospy.Duration(.5),update)
 
     def state(self):
+        requested=getattr(self,'nomotion_started',None)
+        if requested is not None and monotonic_seconds()-requested>2:
+            raise LocalizationWorkerStalled('AMCL no-motion update worker stuck; supervisor restart required')
         with self.lock:a,o,p=self.scan,self.odom,self.amcl
         now=time.time()
         if a is None or o is None or p is None:raise Transient('missing ROS data')
@@ -132,9 +152,9 @@ class Runner:
         return all(self.policy.allowed(pose[0]+.06*math.cos(i*math.pi/8),
                                        pose[1]+.06*math.sin(i*math.pi/8)) for i in range(16))
 
-    def state(self):
+    def state(self,check_vision=True):
         vision_path = getattr(self, 'vision_permit', None)
-        if vision_path:
+        if check_vision and vision_path:
             try:
                 with open(vision_path) as f: permit = json.load(f)
                 if (permit.get('owner_pid') != self.pid or
@@ -151,6 +171,9 @@ class Runner:
         try:
             with open('/dev/shm/g2_localization_health.json') as f:loc=json.load(f)
         except (IOError,ValueError) as exc:raise Transient('localization supervisor unavailable: '+str(exc))
+        if hasattr(self,'report'):
+            self.report['last_localization']={key:loc.get(key) for key in
+                ('ready','status','reason_code','next_action','wait_elapsed_s','retry_after_s')}
         if loc.get('owner_pid')!=self.pid or not loc.get('ready') or not 0<=time.time()-loc['stamp']<=.4:
             detail='localization supervisor: '+str(loc.get('reason',loc.get('status')))
             if loc.get('degraded') and 0<=time.time()-loc['stamp']<=.4:
@@ -163,36 +186,119 @@ class Runner:
             if h['service_pid']!=self.pid or ch['arm_pose']!='travel' or ch['arm_busy'] or ch['board_rx_age_s']>.2:
                 raise RuntimeError('resident feedback/arm/owner fault')
         s=self.sensors.state()
-        if not self.policy.allowed(*s['pose'][:2]):raise RuntimeError('current centre outside navigation mask')
+        if getattr(self,'boundary_recovery',False) and max(s['cov'][:2])>(.04/3.)**2:
+            raise Transient('map geometry localization uncertainty exceeds budget')
+        if not self.policy.allowed(*s['pose'][:2]) and not getattr(self,'_boundary_recovery_active',False):
+            raise BoundaryRequired('current centre outside navigation mask')
         return s
 
-    def ready(self,seconds=20):
-        end=time.time()+seconds;stable=0;last=None
+    def boundary_read(self,check_vision=True):
+        """Read fresh state outside the SOFT mask, retaining every other gate."""
+        before=getattr(self,'_boundary_recovery_active',False)
+        self._boundary_recovery_active=True
+        try:return self.state(check_vision=check_vision)
+        finally:self._boundary_recovery_active=before
+
+    def recover_boundary(self):
+        """Bounded map-checked escape, then return to the normal patrol gates."""
+        self.stop()
+        if not getattr(self,'boundary_recovery',False):
+            raise BoundaryRequired('boundary recovery disabled for this scene')
+        recovery=RecoveryPolicy(self.policy)
+        before=getattr(self,'_boundary_recovery_active',False);self._boundary_recovery_active=True
+        try:initial=self.settle()
+        finally:self._boundary_recovery_active=before
+        target=recovery.target(initial['pose'])
+        record={'start':initial['pose'],'target':target,'trace':[],'ok':False}
+        self.report.setdefault('boundary_escapes',[]).append(record)
+        started=time.time();travelled=0.;last=initial['odom'][:2];stalls=0
+        before=getattr(self,'_boundary_recovery_active',False);self._boundary_recovery_active=True
+        try:
+            for _ in range(100):
+                state=self.state();pose=state['pose']
+                # A ready flag alone allows much larger uncertainty in ordinary
+                # patrol. Escape specifically reserves at most 4cm (3 sigma).
+                if max(state['cov'][:2])>(.04/3.)**2:
+                    raise RuntimeError('boundary escape localization uncertainty exceeds budget')
+                if recovery.recovered(pose):
+                    self.settle();final=self.state()
+                    if recovery.recovered(final['pose']):
+                        record.update(ok=True,final=final['pose']);return
+                    continue
+                if time.time()-started>45 or travelled>.65:
+                    raise RuntimeError('boundary escape distance/time budget exhausted')
+                vx,wz=recovery.command(pose,target,state['vx'])
+                pulse_start=time.time();origin=state['odom'][:2]
+                try:
+                    while time.time()-pulse_start<.08:
+                        fresh=self.state()
+                        drift=math.hypot(fresh['odom'][0]-origin[0],fresh['odom'][1]-origin[1])
+                        if drift>(.03 if wz else .06):
+                            raise RuntimeError('boundary escape pulse drift exceeded')
+                        command=recovery.command(fresh['pose'],target,fresh['vx'] if wz else 0.)
+                        if command!=(vx,wz):break
+                        if abs(wrap(fresh['odom'][2]-state['odom'][2]))>.20:
+                            raise RuntimeError('boundary escape pulse angular limit')
+                        self.sock.sendall((json.dumps({'action':'velocity','vx':vx,'wz':wz})+'\n').encode('ascii'))
+                        time.sleep(.02)
+                finally:self.stop()
+                stopped=self.settle();position=stopped['odom'][:2]
+                distance=math.hypot(position[0]-last[0],position[1]-last[1]);travelled+=distance;last=position
+                if not recovery.hard_allowed(stopped['pose']):
+                    raise RuntimeError('boundary escape physical clearance lost')
+                stalls=stalls+1 if vx and distance<.002 else 0
+                if stalls>=5:raise RuntimeError('boundary escape made no progress')
+                record['trace'].append({'pose':stopped['pose'],'vx':vx,'wz':wz,'travelled_m':travelled})
+                checkpoint(self.report)
+            raise RuntimeError('boundary escape iteration budget exhausted')
+        finally:
+            self.stop();self._boundary_recovery_active=before;checkpoint(self.report)
+
+    def ready(self,seconds=20,allow_boundary=False):
+        end=time.time()+seconds;stable=0;last=None;wait_started=None
         while True:
             try:
-                state=self.state()
+                state=self.boundary_read() if allow_boundary else self.state()
                 if stable==0 and last is None:return state
                 if state['odom_stamp']!=last:
                     last=state['odom_stamp'];stable+=1
                 if stable>=5:
                     self.recovery_generation=getattr(self,'recovery_generation',0)+1
+                    if hasattr(self,'report'):
+                        self.report['last_sensor_wait_elapsed_s']=self.report.get('sensor_wait_elapsed_s',0.)
+                        self.report['sensor_wait_elapsed_s']=0.
                     return state
+            except BoundaryRequired:
+                if not getattr(self,'boundary_recovery',False) or self.sock is None:raise
+                self.recover_boundary();stable=0;last=-1;end=time.time()+seconds
             except Transient as exc:
                 stable=0;last=-1
+                if wait_started is None:wait_started=time.time()
+                if hasattr(self,'report'):
+                    self.report['sensor_wait_elapsed_s']=max(0.,time.time()-wait_started)
+                    self.report['sensor_wait_reason']=str(exc)
                 self.stop()
                 if time.time()>=end:raise Transient('sensor recovery timeout: '+str(exc))
             if time.time()>=end:raise Transient('sensor recovery stability timeout')
             time.sleep(.04)
 
     def settle(self):
-        self.stop();start=time.time();last=None;stable=0
+        self.stop();start=time.time();last=None;stable=0;fault=None
         while time.time()-start<3:
-            s=self.ready()
+            # No velocity is authorized here. A camera heartbeat outage must
+            # not hide fresh zero-velocity feedback or spend the stop deadline
+            # waiting for permission to move. The next ready()/pulse() still
+            # requires the normal vision gate before any nonzero output.
+            try:
+                s=(self.boundary_read(check_vision=False) if getattr(self,'boundary_recovery',False)
+                   else self.state(check_vision=False))
+            except Transient as exc:
+                fault=str(exc);stable=0;time.sleep(.03);continue
             if s['odom_stamp']!=last:
                 last=s['odom_stamp'];stable=stable+1 if abs(s['vx'])<.01 and abs(s['wz'])<.02 else 0
             if stable>=3 and time.time()-start>=.45:return s
             time.sleep(.03)
-        raise Transient('stop feedback timeout')
+        raise Transient('stop feedback timeout'+(': '+fault if fault else ''))
 
     def pulse(self,vx,wz,duration):
         initial=self.ready();start=time.time();self.report['pulses']+=1
@@ -205,16 +311,39 @@ class Runner:
                 if vx:
                     brake=getattr(self,'front_brake_m',.5)
                     if getattr(self,'boundary_micro',False) and duration<=.08:brake=min(brake,.35)
-                    if s['front']<brake:raise Transient('front brake')
-                    if not self.policy.stopping_path_allowed(pose,.35*max(0,duration-(time.time()-start))+stop_reserve(duration)):raise Transient('predicted stop crosses mask')
+                    if not getattr(self,'boundary_recovery',False) and s['front']<brake:
+                        raise Transient('front brake')
+                    distance=.35*max(0,duration-(time.time()-start))+stop_reserve(duration)
+                    if not self.policy.stopping_path_allowed(pose,distance):raise Transient('predicted stop crosses mask')
+                    if getattr(self,'boundary_recovery',False):
+                        # Operator-declared empty room: short returns may be the
+                        # robot itself. Physical fitted walls and the fixed bin
+                        # replace the independent 50cm laser brake, not scan
+                        # freshness or the predicted stopping-path check.
+                        geometry=RecoveryPolicy(self.policy)
+                        end=(pose[0]+distance*math.cos(pose[2]),pose[1]+distance*math.sin(pose[2]))
+                        if not geometry.segment(pose,end):raise Transient('predicted stop violates physical wall/bin geometry')
+                        self.report['front_check']='map_walls_and_fixed_bin'
+                        if s['front']<brake:self.report['near_scan_admissions']=self.report.get('near_scan_admissions',0)+1
                 else:
                     if not self.rotation_allowed(pose):
+                        if getattr(self,'boundary_recovery',False):
+                            self.stop();self.recover_boundary()
+                            raise Transient('replan required after boundary escape')
                         raise RuntimeError('turn drift reserve outside mask')
                     if abs(wrap(s['odom'][2]-initial['odom'][2]))>math.radians(20):raise RuntimeError('pulse angular limit')
                 self.sock.sendall((json.dumps({'action':'velocity','vx':vx,'wz':wz})+'\n').encode('ascii'))
                 time.sleep(.04)
+        except BoundaryRequired:
+            self.stop()
+            if not getattr(self,'boundary_recovery',False):raise
+            self.recover_boundary()
+            raise Transient('replan required after boundary escape')
         finally:self.stop()
         final=self.settle();self.report['trace'].append(final);checkpoint(self.report)
+        if getattr(self,'boundary_recovery',False) and not self.policy.allowed(*final['pose'][:2]):
+            self.recover_boundary()
+            raise Transient('replan required after boundary escape at stop')
 
     def navigate(self,goal,label):
         self.report['active_goal']={'label':label,'point':goal};checkpoint(self.report)
@@ -351,19 +480,24 @@ def main():
         runner.boundary_micro=args.boundary_micro
         runner.max_forward_duration=args.forward_pulse_max
         runner.vision_permit=args.vision_permit
+        runner.boundary_recovery=policy.layout.get('boundary_recovery',{}).get('enabled') is True
         if args.vision_permit:
             with open('/proc/sys/kernel/random/boot_id') as f:runner.vision_boot=f.read().strip()
         report['boundary_micro']=args.boundary_micro
-        report['initial']=runner.ready(8)
+        report['initial']=runner.ready(8,allow_boundary=runner.boundary_recovery)
+        planning_start=report['initial']['pose'][:2]
+        if runner.boundary_recovery:
+            planning_start=list(RecoveryPolicy(policy).target(report['initial']['pose']))
+            report['escape_preflight_target']=planning_start
         if args.destination:
-            goals=resolve_destination(policy,report['initial']['pose'][:2],args.destination)
+            goals=resolve_destination(policy,planning_start,args.destination)
             report['destination']=args.destination
         elif args.point:
-            policy.plan(report['initial']['pose'][:2],args.point)
+            policy.plan(planning_start,args.point)
             goals=[('requested_point',args.point)]
         if goals:
             report['requested_goals']=[{'name':name,'point':goal} for name,goal in goals]
-            previous=report['initial']['pose'][:2];report['preflight_paths']=[]
+            previous=planning_start;report['preflight_paths']=[]
             for name,goal in goals:
                 report['preflight_paths'].append({'label':name,'points':policy.plan(previous,goal)})
                 previous=goal
@@ -374,6 +508,8 @@ def main():
             if not result.get('ok'):raise RuntimeError('unlock refused')
             unlocked=True
             runner.sock=socket.create_connection(('127.0.0.1',7000),timeout=1);runner.sock.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
+            if runner.boundary_recovery and not RecoveryPolicy(policy).recovered(runner.boundary_read()['pose']):
+                runner.recover_boundary()
             # Enter the interior before rotating when parked near the centre-mask
             # edge. No reverse/blind turn; each forward pulse retains all gates.
             for _ in range(3):

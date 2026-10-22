@@ -1,5 +1,14 @@
 {
   "schema": 1,
+  "boundary_recovery": {
+    "enabled": true,
+    "environment": "walls_and_fixed_bin",
+    "body_radius_m": 0.25,
+    "error_budget_m": 0.10,
+    "source": "operator: outer body radius <25cm; no unmodeled obstacles, 2026-10-22",
+    "hardware_validated": false,
+    "scope": "offline-configured bounded recovery; normal patrol mask remains separate"
+  },
   "frame_id": "map",
   "map": "demo_box.yaml",
   "state": "outer_route_segments_and_operator_guided_dock_pose_confirmed_full_mission_pending",

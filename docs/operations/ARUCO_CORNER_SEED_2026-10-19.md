@@ -1,4 +1,6 @@
-> 最新接手狀態：請先讀 [koala小工具交接](KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。v2已加入本輪讀到的C牆ID1／5，巡航碰撞驗收失敗，現在暫停；下方保留較早階段紀錄。
+> **2026-10-21 最新：** 正式表 v3 已含 ID0～7，並以新 ID0＋ID3 取樣獲 AMCL ack、回報 LOCALIZED。
+> 後續 producer 使用 `coarse_wall_layout_20261021_v3`；見 [八 ID 登錄與實測](ARUCO_REGISTRY_2026-10-21.md)。
+> 下方 v1／v2、只有三或五張的內容為歷史紀錄。
 
 # ArUco 分辨角落 → LiDAR 起點 → AMCL 確認
 

@@ -7,7 +7,7 @@ name: tests
 
 on:
   push:
-    branches: [main, v23-grasp-test, 'merge-**']
+    branches: [main, v23-grasp-test, 'merge-**', 'codex/mission-recovery-*']
   pull_request:
     branches: [main, v23-grasp-test]
   workflow_dispatch:
@@ -115,3 +115,6 @@ jobs:
 
       - name: NCU ArUco corner initialization and wait/resume
         run: python -m pytest tests/test_g2_aruco_corner_seed.py tests/test_g2_corner_snapshot.py tests/test_g2_corner_camera_capture.py tests/test_g2_boot_idle.py tests/test_g2_patrol_vision_gate.py tests/test_v23_task_resume_guard.py -q
+
+      - name: AMCL supervisor and bounded task recovery
+        run: python -m pytest tests/test_g2_amcl_watchdog_runtime.py tests/test_g2_mission_recovery.py tests/test_g2_prepare_koala.py tests/test_g2_boundary_recovery.py tests/test_g2_patrol_reentry.py tests/test_g2_offline_workspace_plan.py tests/test_v23_mission_entry.py -q

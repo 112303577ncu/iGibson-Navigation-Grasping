@@ -8,6 +8,7 @@ __pycache__/
 dist/
 build/
 .cache/
+.runtime/
 
 # Agent/IDE local hidden folders
 .agents/

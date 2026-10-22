@@ -1,4 +1,16 @@
-## 2026-10-19 小工具接手入口（本次發布）
+## 2026-10-22 任務恢復規格（離線、未部署）
+
+入口 `integration/v23_mission_entry.py`；先用 `g2_prepare_koala.py`建立固定e8766f0完整runtime。
+定位背景更新執行緒逾時2秒使監督器退出；systemd watchdog5秒、stop5秒、restart1秒。
+任務層最多等待30秒，計入監督器已等時間；同owner／boot／map及五筆新穩定停車資料才續行。
+巡航最多重新派發一次；保留實際後退進度，不重播未知手臂動作。種子期限與重啟預算不放寬。
+八ID已納入v3粗略定位表，metric驗證旗標仍false。
+25cm車體、空場邊界脫困與35cm路線提案已離線整合；現行40cm地圖未自動改用35cm。
+放置後每段最多退10cm，完整轉向圈合法且三筆停穩才接下一圈；PPO接近尚未全面接全域mask。
+完整限制、故障表與日後配套部署見 [任務恢復](docs/operations/MISSION_RECOVERY_2026-10-22.md)。
+本段規格優先於下方歷史交接；沒有本版實車驗收，勿把舊PID／seed／機器狀態視為當前值。
+
+## 2026-10-19 小工具接手入口（歷史）
 
 先讀 [koala角落工具交接](docs/operations/KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。
 ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2／5／7。

@@ -293,7 +293,7 @@ def test_moved_box_blocks_old_route_even_after_geometry_validation():
 
 def test_transient_sensor_recovery_requires_five_distinct_odom_frames(monkeypatch):
     from unittest.mock import Mock
-    r=patrol.Runner.__new__(patrol.Runner);r.stop=Mock()
+    r=patrol.Runner.__new__(patrol.Runner);r.stop=Mock();r.report={}
     stamps=[1,1,2,3,4,5];calls=[patrol.Transient('stale AMCL')]+[{'odom_stamp':n} for n in stamps]
     def state():
         value=calls.pop(0)
@@ -302,6 +302,8 @@ def test_transient_sensor_recovery_requires_five_distinct_odom_frames(monkeypatc
     r.state=state;monkeypatch.setattr(patrol.time,'sleep',lambda _:None)
     assert r.ready()['odom_stamp']==5
     assert r.stop.call_count==1 and r.recovery_generation==1
+    assert r.report['sensor_wait_elapsed_s']==0.
+    assert r.report['last_sensor_wait_elapsed_s']>=0.
 
 
 @pytest.mark.parametrize('degraded,stamp,kind', [(True,100,RuntimeError),(False,100,patrol.Transient),(True,90,patrol.Transient)])

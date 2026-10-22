@@ -1,0 +1,164 @@
+{
+  "scope": "Recorded metadata replay only; raw scan omitted; never a live reference",
+  "snapshot_metadata": {
+    "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+    "capture_id": "dabe0e753e7544309073f337d52027a3",
+    "lidar_forward_m": 0.1,
+    "lidar_yaw_rad": 3.141592653589793,
+    "odom": {
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "received": 1792559110.663355,
+      "child": "base_footprint",
+      "stamp": 1792559110.6534548,
+      "frame": "odom",
+      "pose": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "time": 1792559111.001266,
+    "schema": 1,
+    "owner_pid": 22711,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2"
+  },
+  "observations": {
+    "capture_id": "dabe0e753e7544309073f337d52027a3",
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owner_pid": 22711,
+    "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+    "schema": 1,
+    "clock": "jetson",
+    "registration_id": "coarse_wall_layout_20261021_v3",
+    "camera_id": "rear-sonix-640x480",
+    "frames": [
+      {
+        "seq": 126,
+        "stamp": 1792559111.1301556,
+        "source_monotonic": 700.19016,
+        "source_age_s": 0.025277089000041997,
+        "markers": [
+          {
+            "id": 3,
+            "side": "left",
+            "center_px": [
+              191.5,
+              169.0
+            ]
+          },
+          {
+            "id": 0,
+            "side": "right",
+            "center_px": [
+              437.0,
+              163.5
+            ]
+          }
+        ],
+        "file": "frame_00.jpg"
+      },
+      {
+        "seq": 127,
+        "stamp": 1792559111.1621826,
+        "source_monotonic": 700.222186,
+        "source_age_s": 0.030822069000009833,
+        "markers": [
+          {
+            "id": 3,
+            "side": "left",
+            "center_px": [
+              191.75,
+              169.0
+            ]
+          },
+          {
+            "id": 0,
+            "side": "right",
+            "center_px": [
+              437.0,
+              163.5
+            ]
+          }
+        ],
+        "file": "frame_01.jpg"
+      },
+      {
+        "seq": 128,
+        "stamp": 1792559111.1981769,
+        "source_monotonic": 700.258181,
+        "source_age_s": 0.024854080999944017,
+        "markers": [
+          {
+            "id": 3,
+            "side": "left",
+            "center_px": [
+              191.75,
+              169.0
+            ]
+          },
+          {
+            "id": 0,
+            "side": "right",
+            "center_px": [
+              437.0,
+              163.5
+            ]
+          }
+        ],
+        "file": "frame_02.jpg"
+      }
+    ]
+  },
+  "candidates": {
+    "accepted": false,
+    "reason": "independent corner/heading reference required; paper-box map position is still a candidate",
+    "points": 476,
+    "hypotheses": [
+      {
+        "pose": [
+          0.19420185931183692,
+          0.32214825415416215,
+          0.3315735755007867
+        ],
+        "score_m": 0.004525936423620384,
+        "wall_p90_m": 0.0348851893540669,
+        "within_5cm_fraction": 0.9222689075630253,
+        "candidate_box_bearing_left_deg": 1.522506776038109,
+        "candidate_box_range_m": 1.4582692694056705
+      },
+      {
+        "pose": [
+          0.8039266339384892,
+          0.0636097477642279,
+          1.9279928523068852
+        ],
+        "score_m": 0.006808760073358362,
+        "wall_p90_m": 0.061333748529897945,
+        "within_5cm_fraction": 0.8718487394957983,
+        "candidate_box_bearing_left_deg": -64.95125134921578,
+        "candidate_box_range_m": 1.078899774739864
+      },
+      {
+        "pose": [
+          0.44888174057123487,
+          0.9125182826254319,
+          -1.2352037582318083
+        ],
+        "score_m": 0.008056577566903193,
+        "wall_p90_m": 0.03466446153856052,
+        "within_5cm_fraction": 0.9432773109243697,
+        "candidate_box_bearing_left_deg": 66.69513497158472,
+        "candidate_box_range_m": 1.1138781373110287
+      }
+    ],
+    "source_stamp": 1792559111.001266,
+    "lidar_forward_m": 0.1,
+    "snapshot_sha256": "2d95c9690313d2b377687dce8bac6c30e5ecdfbd5338248cf9ea9933c650d39e",
+    "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f"
+  },
+  "snapshot_sha256": "2d95c9690313d2b377687dce8bac6c30e5ecdfbd5338248cf9ea9933c650d39e"
+}

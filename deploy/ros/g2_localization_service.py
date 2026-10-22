@@ -14,7 +14,7 @@ import socket
 import subprocess
 import sys
 import time
-from g2_map_patrol import Sensors, rpc, available_mb
+from g2_map_patrol import Sensors, rpc, available_mb, LocalizationWorkerStalled
 from g2_localization_policy import RestartBudget, propagated_seed, restart_pose, resident_stopped, turn_clear, FaultDelay, RecoveryWatchdog
 
 
@@ -78,9 +78,12 @@ def main():
     launch=os.path.join(os.path.dirname(__file__),'g2_scene_localization.launch')
     def stop_child():
         if child is not None and child.poll() is None:
+            systemd_notify('WATCHDOG=1\nSTATUS=Stopping owned AMCL child')
             os.killpg(child.pid,signal.SIGINT)
             until=monotonic_seconds()+4
-            while child.poll() is None and monotonic_seconds()<until:time.sleep(.1)
+            while child.poll() is None and monotonic_seconds()<until:
+                systemd_notify('WATCHDOG=1\nSTATUS=Waiting for owned AMCL child to stop')
+                time.sleep(.1)
             if child.poll() is None:os.killpg(child.pid,signal.SIGKILL)
             child.wait()
     systemd_notify('READY=1\nSTATUS=AMCL supervisor running; robot readiness is in health JSON')
@@ -151,6 +154,10 @@ def main():
                         atomic(args.last_good,dict(seed,consumed_external_stamp=consumed_stamp))
                         out.update(ready=True,status='localized',state=state,seed=seed)
                         bad_since=None
+                    except LocalizationWorkerStalled:
+                        # Restarting only roslaunch cannot replace a hung ROS
+                        # Timer/ServiceProxy thread owned by this supervisor.
+                        raise
                     except Exception as exc:
                         out.update(status='waiting_for_localization',reason=str(exc))
                         if bad_since is None:bad_since=monotonic_seconds()
@@ -167,6 +174,8 @@ def main():
                     child=subprocess.Popen(command,preexec_fn=os.setsid)
                     launched=time.time();launched_clock=monotonic_seconds();bad_since=launched_clock
                     out['status']='starting_localization'
+            except LocalizationWorkerStalled:
+                raise
             except Exception as exc:
                 out['reason']=str(exc)
                 out.update(ready=False,status='waiting_for_recovery')

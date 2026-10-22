@@ -22,7 +22,7 @@ from g2_localization_policy import RecoveryWatchdog,RestartBudget
 def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
                 seed_age=0,no_seed=False,new_reference_at=None,memory_gap=None,owner_change=None,
                 jump_at=None,cached_amcl=False,cached_seed=None,persisted_budget=None,cached_source=False,
-                busy_gap=None):
+                busy_gap=None,nomotion_stuck_at=None):
     clock=SimpleNamespace(t=0.)
     reports=[];children=[];killed=[];notifications=[]
     seed_path=tmp_path/'seed.json'
@@ -46,6 +46,8 @@ def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
             stamp=1000+clock.t-(2 if inside(scan_gap) else 0)
             return (stamp,stamp,'laser',[])
         def state(self):
+            if nomotion_stuck_at is not None and clock.t>=nomotion_stuck_at:
+                raise service.LocalizationWorkerStalled('AMCL no-motion update worker stuck')
             if inside(amcl_gap):raise RuntimeError('stale AMCL')
             self.amcl=(999 if cached_amcl else 1000+clock.t,999 if cached_source else 1000+clock.t)
             return dict(pose=[1.5 if jump_at is not None and clock.t>=jump_at else 1,2,0],
@@ -86,7 +88,9 @@ def run_monitor(monkeypatch,tmp_path,seconds=20,scan_gap=None,amcl_gap=None,
     monkeypatch.setattr(service.os,'setsid',lambda:None,raising=False)
     monkeypatch.setattr(sys,'argv',['monitor','--map','unused.yaml','--seed',str(seed_path),
         '--health',str(health_path),'--last-good',str(cache_path),'--restart-budget',str(budget_path)])
-    service.main()
+    if nomotion_stuck_at is not None:
+        with pytest.raises(service.LocalizationWorkerStalled):service.main()
+    else:service.main()
     return SimpleNamespace(reports=reports[:-1],children=children,killed=killed,notifications=notifications)
 
 
@@ -186,7 +190,7 @@ def test_long_grasp_does_not_expire_healthy_localization(monkeypatch,tmp_path):
     assert run.reports[-1]['reference_age_s']==0
 
 
-@pytest.mark.parametrize('age,starts',[(2,True),(16,False)])
+@pytest.mark.parametrize('age,starts',[(2,True),(11,True),(16,False)])
 def test_crashed_supervisor_only_restores_recent_verified_pose(monkeypatch,tmp_path,age,starts):
     cache=dict(stamp=1000-age,boot_id='boot',owner_pid=7,map_hash='map',pose=[1,2,0],
                odom=[0,0,0],consumed_external_stamp=900)
@@ -223,7 +227,27 @@ def test_restart_retry_time_respects_both_cooldown_and_window():
     assert b.retry_after(25)==575 and b.retry_after(601)==0
 
 
+def test_hung_nomotion_thread_exits_supervisor_instead_of_restarting_amcl_forever(monkeypatch,tmp_path):
+    run=run_monitor(monkeypatch,tmp_path,seconds=20,nomotion_stuck_at=3)
+    assert len(run.children)==1
+    assert run.reports[-1]['ready']
+    assert run.killed==[run.children[0].pid]
+    assert run.notifications[-1]=='STOPPING=1'
+
+
+def test_stalled_nomotion_worker_is_detected_even_without_new_amcl_callback(monkeypatch):
+    from g2_map_patrol import Sensors,LocalizationWorkerStalled
+    sensor=Sensors.__new__(Sensors);sensor.nomotion_started=10.
+    # No ROS import or sensor callbacks needed; the deadline ignores wall time.
+    import g2_map_patrol
+    monkeypatch.setattr(g2_map_patrol,'monotonic_seconds',lambda:13.)
+    with pytest.raises(LocalizationWorkerStalled,match='no-motion'):
+        sensor.state()
+
+
 def test_systemd_watchdog_covers_stalled_supervisor():
     unit=(ROOT/'deploy/systemd/x3plus-g2-localization.service').read_text()
-    assert 'Type=notify' in unit and 'WatchdogSec=15' in unit
+    assert 'Type=notify' in unit and 'WatchdogSec=5' in unit
+    fields=dict(line.split('=',1) for line in unit.splitlines() if '=' in line)
+    assert sum(float(fields[k]) for k in ('WatchdogSec','TimeoutStopSec','RestartSec'))<15
     assert 'TimeoutStartSec=20' in unit and 'LimitCORE=0' in unit

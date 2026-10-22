@@ -323,3 +323,20 @@ def test_real_default_landmark_table_is_disabled():
 def test_scan_match_keeps_nonacceptance_and_adds_input_hash_contract():
     source = (ROOT/'integration/g2_scan_match.py').read_text(encoding='utf-8')
     assert "'accepted':False" in source and "'snapshot_sha256':file_hash(args.snapshot)" in source
+
+
+def test_formal_registry_accepts_recorded_id0_id3_and_rejects_symmetric_poses():
+    replay = tool.load(ROOT/'tests/fixtures/g2_aruco_id0_id3_20261021.json')
+    registry = tool.load(ROOT/'maps/demo_box_20261018_patrol/aruco_corner_landmarks.json')
+    camera, markers = tool.checked_registry(registry)
+    assert set(markers) == set(map(str, range(8)))
+    assert all(marker['position_uncertainty_m'] == .2 for marker in markers.values())
+    assert camera['offset_uncertainty_m'] == .2
+    packet = replay['observations']
+    packet['registration_id'] = registry['registration_id']
+    result = tool.select(replay['snapshot_metadata'], replay['candidates'], packet,
+                         registry, replay['snapshot_sha256'])
+    assert result['selected_index'] == 0
+    assert set(result['stable_marker_ids']) == {0, 3}
+    assert not result['localized']  # replay must never claim a live AMCL ack
+    assert all(not row['landmark_compatible'] for row in result['candidates'][1:])
