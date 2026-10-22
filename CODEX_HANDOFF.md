@@ -4,18 +4,54 @@
 PC入口與Jetson監督器須配套；準備固定e8766f0完整runtime後才用新入口。
 本版未SSH、未開實車。歷史PID／seed／停車狀態不是當前值；硬體驗證旗標仍保留false。
 
-## 2026-10-19 小工具接手入口（歷史）
+## 2026-10-21 八 ID 登錄與重新定位
 
-先讀 [koala角落工具交接](docs/operations/KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。
-ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2／5／7。
-199項相關回歸通過；巡航曾碰到糖果盒，辨識亦有牆夾誤認，夾取／投放全流程尚未驗收。
-目前暫停、輪零、maintenance=true、travel、空爪；不要用舊seed或PID直接啟動。
-本次只提交ncu工具與定位配套，未匯入／覆寫koala最新接近、mission_loop、手臂controller或模型；可精選檔案接入組員分支。
-下方保留舊交接紀錄，狀態與本入口衝突時以上述新交接為準。
+正式地標表 v3 已含 ID0～7，保留 20cm 粗略位置誤差；PC／Jetson 雜湊一致。
+新相機 ID0＋ID3 已唯一選解並獲 AMCL ack、LOCALIZED；詳細證據與 producer registration_id 見
+[八 ID 正式表](docs/operations/ARUCO_REGISTRY_2026-10-21.md)。下方五 ID 與等待下次開機為較早紀錄。
+
+## 新對話接續入口（2026-10-19 暫停後）
+
+先讀 [完整接續與下次開機順序](docs/handoff/NEXT_CHAT_2026-10-19.md)。GitHub已推送e359fb5；目前暫停、輪零且鎖定，未關機。下次啟動須重新檢查與定位；先修正低矮物／牆夾誤辨識，再接巡航夾取。
+
+## 10/19後續碰撞回報：巡航驗收失敗，暫停實車移動
+
+使用者將車移向場內後，attempt4_center/以新相機ID2／7及scan重新初始化AMCL成功；外側最近路段接入後因turn drift reserve outside mask停車（2脈衝）。未放寬mask；後改用臨時75cm inset測試圈，attempt5_patrol_watch/記錄116脈衝、5次到點、AMCL估計最終誤差4.01cm、RAM最低1484.09MB，PC同步169張YOLO觀察，12張候選、0次三張穩定確認，未發夾取／投放。
+
+**使用者回報撞到糖果盒，以上只證明軟體路線完成，不能視為碰撞／找物驗收通過。** 已另外發三次stop並maintenance-lock，health核對輪零、moving=false、holding=false、travel、owner4443。沒有自行後退或繼續巡航；後相機釋放。原始JSON不改成成功驗收；collision_stop.json及collision_assessment.json記錄覆核。
+
+已知流程缺口：候選未達三幀時繼續移動，標定hull外的目標被排除，且無獨立的低矮物視覺停車閘。精確碰撞時間及接觸部位尚未確定，不能把所有近回波當作線材。先修正第一筆疑似物先停、停穩後確認，以及低矮物／相機盲區覆蓋，再實車測試；不宣稱本次已修好。持續外側路線未修改，完整夾取／投放交接仍未驗收。
 
 # 接續入口（2026-10-18）
 
+## 10/19實車：相機＋LiDAR初始化AMCL已成功（未push）
+
+- Jetson172.20.10.3，boot b42f4b8d-3521-4120-90c0-f9571cb62008。配套部署AMCL監督器／task_resume_guard／corner工具後，以V4L2來源時間的實際三張影格（ID0左、2中、7右）排除候選，寫seed並通過AMCL ack及五個健康新幀，結果LOCALIZED。此位置單次實測，未完成所有任意起點驗收。
+- 初始owner8033從未移動時stopped_for_s=null；已只在現車chassis精選加入first-zero telemetry，不改手臂controller。明確重啟後owner4443、travel、空爪、輪零。現車60項chassis回歸通過。
+- AMCL child中斷後6.03秒恢復、Serial owner維持4443；隨後124.54秒／246樣本全ready，odom增加2473筆，等待段RAM最低1569.27MB。新supervisor/unit不再是「尚未部署」。
+- 正式**部分**粗略表maps/demo_box_20261018_patrol/aruco_corner_landmarks.json目前只確認0／2／7。8張example仍false，其他ID、其他位置待驗證。位置仍保留20cm誤差界，沒有宣稱metric ArUco標定。
+- 新g2_corner_camera_capture.py可在後相機未被其他reader持有時取得來源時間三幀＋同步scan；原始capture須逐位元組複製，不能重新排版破壞hash。已修正首輪實際整合拒絕案例。
+- 現車map YAML含絕對image路徑，hash2274a1c2...；Windows匹配須用下載的active_map.yaml搭配--reference-map-yaml，保留現車地圖不改。
+- 巡航僅做preflight，0脈衝，原因current centre outside navigation mask；先向場內調整再驗證巡航，不能套用一律後退規則。未發底盤非零／夾取／投放命令，相機已釋放，維持maintenance=true。
+- 證據與備份manifest docs/calibration/aruco_live_2026-10-19/；操作更新 docs/operations/ARUCO_CORNER_SEED_2026-10-19.md。下方同日「離線待部署」是較早紀錄，以上優先。
+
+## 10/19 ArUco角落選擇工具（已寫，離線驗證，未部署／未push）
+
+- 新`deploy/ros/g2_corner_snapshot.py`可在沒有AMCL時唯讀取得停穩／唯一owner／TF驗證過的scan與odom，產生boot綁定capture ID。筆電用g2_scan_match.py計算，新增capture SHA256與map hash。
+- 新`integration/g2_aruco_corner_seed.py`以三個新影格的ID＋畫面左右方向排除候選；唯一可信才允許Jetson `--real`核對live狀態並寫seed，等accepted_reference_stamp及五個健康新幀。預設只預覽，無底盤／手臂輸出。重複同capture只查結果、不重打時間。
+- `maps/demo_box_20261018_patrol/aruco_corner_landmarks.example.json`目前是8張配置圖估計，registration_verified及相機方向確認皆false，不能直接當已登錄地標。下次需確認實貼ID／約略位置、相機左右／朝向／視野上界及來源影像時效；不用完整相機PnP標定。
+- koala輸入範本`deploy/ros/aruco_corner_observations.example.json`；命令、結果狀態與配套部署見`docs/operations/ARUCO_CORNER_SEED_2026-10-19.md`。此工具是新增的LiDAR＋粗略ArUco橋接，不是metric ArUco producer，也不是投放導航交接工具。
+
+## 10/19 koala 更新與地圖／視覺交接（離線，未部署／未push）
+
+- GitHub已fetch koala `codex/approach-lidar-frame`最新`a2c6f19`（六個新提交）；匯入紙盒模型、placement接近／投放、E1配對與有限前挪、mission_loop及測試／現場證據。組員紀錄兩次投放成功但未使用AMCL，不等於本分支整輪驗收。
+- 新v23入口`mission`／`object-approach`；完整流程新增`v23_koala_map_handoff.py`：持物確認→定位續行檢查→地圖到可視交接點／面向紙盒→釋放底盤控制→組員視覺接近／投放→退出／定位與mask核對。範本交接點未量測，預設false，完整real循環先擋在preflight；`--no-patrol`保留組員獨立流程。
+- 最新路徑／禁航圖`output/png/patrol_keepout_latest_2026-10-19.png`，直接取目前outer route與中心mask；一般中心離牆40cm、巡航約55cm、盒角排除。紙盒仍候選座標。
+- 部署前須核對現車控制器的TCP高度補償；本次只精選合入夾爪停滯修正，保留本分支Serial transport／monotonic／盒高6cm。詳見`docs/operations/KOALA_NAV_INTEGRATION_2026-10-19.md`；不得整份覆寫現車組員校正。
+
 ## 最新：常駐定位與隨機起點導航
+
+- **下一步腳本已離線完成，尚未部署／自動串任務**：integration/v23_task_resume_guard.py提供begin／wait／resume。長時間任務等待不當作定位故障；續行須travel／停穩、5個穩定新幀，夾取／投放須同operation ID成功回報及holding一致。可選已校正ArUco metric producer橋接，一次只送一個seed並等待accepted_reference_stamp及新AMCL；只讀ID不通過，producer與相機校正仍待做。相關261 tests及既有回歸通過。下次開機先依 docs/operations/TASK_WAIT_RESUME_2026-10-18.md部署配套並測idle120秒→resume，再接入組員任務。此段為本輪新增，尚未push。
 
 - **離線新增AMCL監督強化，尚未部署Jetson**：整段恢復20秒上限、具體reason_code／next_action、導航不重複追加等待、15秒systemd heartbeat、最近15秒健康cache回復、同boot持久化3次／600秒AMCL重啟預算。正常AMCL持續更新參考，不以運行時間判過期；缺新參考仍不盲開。218相關tests及既有回歸通過。下次開機先依 docs/operations/AMCL_WATCHDOG_2026-10-18.md 配套更新script／policy／patrol／unit，再做實車故障注入與巡航。本段優先於下方較早「監督器已部署」敘述，先前已部署版本沒有本輪所有強化。
 

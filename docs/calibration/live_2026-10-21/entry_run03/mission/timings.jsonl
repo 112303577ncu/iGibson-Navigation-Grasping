@@ -1,0 +1,12 @@
+{"event": "service", "seconds": 1.485, "command": "status"}
+{"event": "service", "seconds": 0.015, "command": "health"}
+{"event": "service", "seconds": 0.031, "command": "status"}
+{"event": "service", "seconds": 0.0, "command": "health"}
+{"event": "models_ready", "seconds": 37.765}
+{"event": "service", "seconds": 0.031, "command": "status"}
+{"event": "service", "seconds": 0.031, "command": "status"}
+{"event": "service", "seconds": 0.016, "command": "health"}
+{"event": "service", "seconds": 0.031, "command": "status"}
+{"event": "service", "seconds": 0.062, "command": "stow"}
+{"event": "service", "seconds": 0.031, "command": "status"}
+{"event": "stage", "seconds": 17.282, "target": "sugarbox", "log": "D:\\OneDrive - 國立中央大學\\桌面\\Slam\\0920\\repo_v23_grasp_test\\docs\\calibration\\live_2026-10-21\\entry_run03\\mission\\grasp_1.log", "exit_code": 6}

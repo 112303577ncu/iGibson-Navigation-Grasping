@@ -1,0 +1,85 @@
+{
+  "ok": false,
+  "physical_mission_started": false,
+  "koala_root": "C:\\tmp\\x3_koala_fa61b64_20261021",
+  "stage": "LOCALIZATION",
+  "koala_source_sha256": {
+    "mission_loop.py": "c708d25b2a0a26b7a6610255690ba19b6ba931df78e933e802befd84887a7f3f",
+    "mission_runtime.py": "c2ccfbb67f13ae0a8e93a5507821bb2abd77dfb7d69aea3e344e748290fdc751",
+    "robot_rpc.py": "2a38621f680b0e67da589ebcf458f4a017242356bb6b028c2f291fdec4a255b4",
+    "sugarbox_approach_grasp.py": "e153eb7415bb73b2435265e70f8f89195ec94a7e740f2e0747b1d0c3f67282f9",
+    "sugarbox_rl_approach_final2.py": "c8561b55b9cc5813c6b139e7b60267400ba0d6a6fda6519a2bb484739dad9375"
+  },
+  "error": "corner initialization refused: {\"ok\": false, \"localized\": false, \"seed_written\": true, \"arm_or_motion_executed\": false, \"status\": \"AMCL_TIMEOUT\", \"selected_index\": 0, \"seed\": {\"stamp\": 1792560752.689335, \"pose\": [0.19139002901946933, 0.32973469665894317, 0.3192227256435314], \"odom\": [0.0, 0.0, 0.0], \"boot_id\": \"f07aa026-32f7-44b8-ae58-8103722d32c2\", \"owner_pid\": 22711, \"map_hash\": \"2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f\", \"source\": \"lidar_with_coarse_aruco_disambiguation\", \"capture_id\": \"dca38ac4df444312af71ffbd9c9a33dd\", \"registration_id\": \"coarse_wall_layout_20261021_v3\", \"camera_id\": \"rear-sonix-640x480\"}, \"stable_marker_ids\": [0, 3], \"candidates\": [{\"index\": 0, \"wall_quality_ok\": true, \"landmark_compatible\": true}, {\"index\": 1, \"wall_quality_ok\": true, \"landmark_compatible\": false}, {\"index\": 2, \"wall_quality_ok\": true, \"landmark_compatible\": false}], \"next_action\": \"inspect health reason; do not resubmit this capture or start patrol\"}",
+  "final_health": {
+    "ok": true,
+    "serial": null,
+    "stack_version": "v23",
+    "service_pid": 22711,
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+    "holding": false,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": true,
+      "moving": false,
+      "stopped_for_s": 1912.56,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 37994,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "chassis_tcp_ready": true,
+    "rss_mb": 507.8,
+    "uptime_s": 1912.6,
+    "capabilities": {
+      "independent_health": true,
+      "owner_restart": false,
+      "serial_transport_diagnostics": false
+    }
+  },
+  "maintenance_lock": {
+    "ok": true
+  }
+}

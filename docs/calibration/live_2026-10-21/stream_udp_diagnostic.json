@@ -1,0 +1,12 @@
+{
+  "packets": 421,
+  "bytes": 526239,
+  "rtp_headers": [
+    "80604483f015f14b1d4a5a2a",
+    "80604484f015f14b1d4a5a2a",
+    "80604485f015f14b1d4a5a2a"
+  ],
+  "sender_exit": 124,
+  "sender_stdout": "Setting pipeline to PAUSED ...\nOpening in BLOCKING MODE \nPipeline is live and does not need PREROLL ...\nSetting pipeline to PLAYING ...\nNew clock: GstSystemClock\nRedistribute latency...\nhandling interrupt.\nInterrupt: Stopping pipeline ...\nEOS on shutdown enabled -- Forcing EOS on the pipeline\nWaiting for EOS...\nGot EOS from element \"pipeline0\".\nEOS received - stopping pipeline...\nExecution ended after 0:00:05.459980025\nSetting pipeline to PAUSED ...\nSetting pipeline to READY ...\nSetting pipeline to NULL ...\nFreeing pipeline ...\n",
+  "sender_stderr": "NvMMLiteOpen : Block : BlockType = 4 \n===== NVMEDIA: NVENC =====\nNvMMLiteBlockCreate : Block : BlockType = 4 \nH264: Profile = 66, Level = 0 \n"
+}

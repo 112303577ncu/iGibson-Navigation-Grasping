@@ -10,16 +10,42 @@
 完整限制、故障表與日後配套部署見 [任務恢復](docs/operations/MISSION_RECOVERY_2026-10-22.md)。
 本段規格優先於下方歷史交接；沒有本版實車驗收，勿把舊PID／seed／機器狀態視為當前值。
 
-## 2026-10-19 小工具接手入口（歷史）
-
-先讀 [koala角落工具交接](docs/operations/KOALA_CORNER_TOOL_HANDOFF_2026-10-19.md)。
-ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2／5／7。
-199項相關回歸通過；巡航曾碰到糖果盒，辨識亦有牆夾誤認，夾取／投放全流程尚未驗收。
-目前暫停、輪零、maintenance=true、travel、空爪；不要用舊seed或PID直接啟動。
-本次只提交ncu工具與定位配套，未匯入／覆寫koala最新接近、mission_loop、手臂controller或模型；可精選檔案接入組員分支。
-下方保留舊交接紀錄，狀態與本入口衝突時以上述新交接為準。
-
 # X3Plus 專題 — Sim-to-Real 夾取部署
+
+> **2026-10-22 放置後回巡航（本機離線，未部署）：** `v23_mission_entry.py` 自動載入
+> `g2_patrol_reentry.py`，將koala相容最新版的 `place_held -> Room.leave` 改為實際回授確認退出。
+> 放置成功後不要求固定退20cm；逐段≤10cm直退，中心及6／7cm轉向圈均合法且三筆新停穩回授確認才進下一圈。
+> 仍保留原近盒牆／盒倒車檢查；舊koala入口不相容時明確拒絕。見 `docs/operations/POST_PLACE_PATROL_REENTRY_2026-10-22.md`。
+
+> **2026-10-22 空場／25cm車體（本機離線，未部署）：** 巡航新增軟禁航區自動脫離；
+> 以牆面與固定投放盒幾何取代空場模式的獨立50cm雷射煞停，仍檢查新鮮定位／影像／感測、travel、唯一owner及停止路徑。
+> `g2_boundary_recovery.py` 必須與新版 `g2_map_patrol.py`、scene 的 `boundary_recovery` 設定配套。
+> 現用40cm導航mask未覆寫；35cm候選圖、新巡航與糖果中心區見 `docs/planning/patrol_workspace_2026-10-22/README.md`。
+> 此輪無SSH、實車移動或實機驗收；局部接近／投放控制器尚未共用這個脫離閘。
+
+> **2026-10-21 地標表 v3：** 正式 `aruco_corner_landmarks.json` 已納入 ID0～7。
+> 以保存的巡航影像重新解碼並核對牆面方向；仍是座標誤差界 20cm 的粗略消歧，不是 metric 標記量測。
+> producer 必須使用 `coarse_wall_layout_20261021_v3`；部署與實車結果見 `docs/operations/ARUCO_REGISTRY_2026-10-21.md`。
+> PC 新入口 `integration/v23_mission_entry.py` 已串接八 ID 初始化／健康定位續用、八幀影像 gate 與 koala 最新總控；
+> 使用方式及實測界線見 `docs/operations/MISSION_ENTRY_2026-10-21.md`。
+
+> **2026-10-19實車更新：** AMCL監督器、corner seed及source-timestamp相機helper已配套部署，當前位置用0／2／7成功LOCALIZED；
+> AMCL child中斷6.03秒恢復，124.54秒等待全ready。正式粗略registry只含本輪確認的0／2／7，完整8-ID與其他起點仍待驗。
+> bootstrap牆面gate至少85%點在5cm內；使用共同相機位置／方向誤差區間，不能讓每張標記各用不同的相機偏移。
+> 現車YAML含絕對路徑，PC matcher新增--reference-map-yaml維持原byte hash；不改現車map。
+> first-zero telemetry修正從未移動開機的stopped_for_s=null，保留內部運動／手臂閘。詳見ARUCO_CORNER_SEED_2026-10-19.md。
+
+> **2026-10-19 粗略ArUco角落參考（離線，待部署）：** `g2_corner_snapshot.py`在無AMCL時取停穩且綁定boot／owner／map的scan／odom；
+> 筆電scan_match後，`g2_aruco_corner_seed.py`以已確認牆面ID及三個影格的左右區間排除候選。
+> 公尺位姿來自LiDAR，無須完整相機內參；仍需實貼位、相機朝向／鏡像／視野上界及時效確認，範本預設關閉。
+> 只有新seed被AMCL確認且五個新幀通過才localized=true；無速度／手臂輸出，不與metric ReferenceCollector介面混用。
+> 見`docs/operations/ARUCO_CORNER_SEED_2026-10-19.md`。
+
+> **2026-10-19 組員接近／投放整合（離線、待部署）：** 已匯入koala `a2c6f19`的placement模型／模式、E1讀數配對與夾爪停滯修正。
+> v23 `mission`完整模式須先確認交接點；地圖到可見位置後才讓組員相機接近接管，兩者不能同時輸出TCP。
+> `placement_navigation_handoff.example.json`預設未驗證，不以舊56cm準備點直接啟動近盒辨識。
+> 地圖使用40cm中心mask，局部接近仍為其自己的距離／LiDAR閘，尚未共用全域mask。
+> 實車版本差異與未驗收項目見`docs/operations/KOALA_NAV_INTEGRATION_2026-10-19.md`；本輪不覆寫現車TCP高度校正。
 
 > **2026-10-07 決賽主線：v23 常駐服務。** 使用 `grasp/v23/demo.py` 與
 > [FINAL_DEMO.md](grasp/v23/FINAL_DEMO.md)；導航、手臂共用 grasp-service 的序列埠。
@@ -35,6 +61,11 @@ ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2�
 > **AMCL監督新版（同日離線完成、待部署）：** 恢復等待20秒後明確降級；systemd heartbeat 15秒。
 > 快速監督器退出只可沿用仍在15秒內的健康cache；AMCL重啟預算同boot持久保存，不因重啟監督器歸零。
 > 詳見 `docs/operations/AMCL_WATCHDOG_2026-10-18.md`，Type=notify單元須與新版程式配套安裝。
+
+> **等待／續行腳本（離線完成、待接入）：** `integration/v23_task_resume_guard.py`分開任務等待與定位故障。
+> 續行要求travel、停穩、5個穩定新幀；arm結果以operation ID與holding核對，不重做結果不明的動作。
+> 可選已登錄metric ArUco參考橋接只提交AMCL seed，須等監督器確認及新位置，沒有底盤／手臂輸出。
+> 未完成校正的範本預設禁止啟用。見 `docs/operations/TASK_WAIT_RESUME_2026-10-18.md`。
 
 > **接手這個專案？先讀 [`docs/handoff/HANDOFF_2026-09-20.md`](docs/handoff/HANDOFF_2026-09-20.md)。**
 > 那份講的是「現在做到哪裡、能跑什麼指令、卡在哪一步、下一步做什麼」，以及機器上的
@@ -127,7 +158,7 @@ ArUco＋LiDAR初始化及AMCL確認已實車成功；v2粗略表登錄0／1／2�
 | `v24/run_candidate.py` / `manifest.json` | v24 E1 replacement 候選入口；鎖定新 pair 並重用 v23 controller；未通過新 hash 真機 gate，不是正式主線 |
 | `x3plus_real_grasp.py`（根目錄） | v17 舊版，**保留備援**。契約是 `obs_28_absolute`。無人匯入，只能手動執行 |
 | `trained_6d_models_v17/*.zip` `.pkl` | v17 權重（配上面那支） |
-| `x3plus/[use existing SSH credential]car.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
+| `x3plus/yahboomcar.urdf` + `meshes/` | PyBullet FK 用的 URDF 與模型（v17/v21 共用） |
 | `Rosmaster_Lib/` | 硬體驅動（本地化到此，見下方指令） |
 | `fk_test.py` / `servo_test.py` / `workspace_scan.py` / `joint_direction_calibration.py` | 測試/校正小工具 |
 

@@ -1,0 +1,5 @@
+{"event": "service", "seconds": 1.437, "command": "status"}
+{"event": "service", "seconds": 0.016, "command": "health"}
+{"event": "service", "seconds": 0.047, "command": "status"}
+{"event": "service", "seconds": 0.016, "command": "health"}
+{"event": "models_ready", "seconds": 28.094}

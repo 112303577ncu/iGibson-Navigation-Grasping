@@ -1,0 +1,10 @@
+C:\tmp\x3_visionenv\lib\site-packages\OpenSSL\SSL.py:16: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography import x509
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+Users of this version of Gym should be able to simply replace 'import gym' with 'import gymnasium as gym' in the vast majority of cases.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[RL] model:
+C:\tmp\x3_koala_fa61b64_20261021\integration\nav_best_model\doorway_ft_final.zip
+[RL] VecNormalize:
+C:\tmp\x3_koala_fa61b64_20261021\integration\nav_best_model\doorway_ft_final_vecnormalize.pkl

@@ -8,7 +8,6 @@ __pycache__/
 dist/
 build/
 .cache/
-.runtime/
 
 # Agent/IDE local hidden folders
 .agents/
@@ -68,6 +67,7 @@ build/
 # they are captured output, not source, and they made the root look like a
 # scratch directory.
 *.log
+!/docs/operations/placement_20261018/runs/*.log
 
 # Bounded 10/16 hardware evidence and regression transcripts are deliverables.
 !/docs/calibration/odom_new_floor_2026-10-16/*.log
@@ -101,3 +101,9 @@ grasp/deploy_v23/
 !/docs/calibration/geometry_dock_2026-10-17/*.log
 
 !/docs/calibration/release_preview_2026-10-17/*.log
+
+# Pinned local koala runtime
+.runtime/
+
+# Bounded localization/mission evidence included in the daily release.
+!/docs/calibration/live_2026-10-21/**/*.log

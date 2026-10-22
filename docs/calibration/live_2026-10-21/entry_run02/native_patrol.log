@@ -1,0 +1,2 @@
+/dev/ttyUSB1:       
+{"pulses": 22, "recoveries": ["vision observer source stale", "vision observer source stale"], "ok": false, "arrivals": [{"error_m": 0.04338640918909532, "pose": [0.18556329031829952, 0.2596054038851442, -0.3069083235367813], "goal": [0.17220971490390496, 0.21832511166263574], "cov": [0.0003047917485753155, 7.912838897397757e-05, 0.0009846463219736828], "label": "join_outer_ccw_0"}], "error": "stop feedback timeout"}

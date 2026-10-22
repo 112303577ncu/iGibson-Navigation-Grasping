@@ -1,0 +1,176 @@
+{
+  "repository": "https://github.com/koala915/iGibson-Navigation-Grasping",
+  "branch": "codex/approach-lidar-frame",
+  "commit": "a2c6f19edf3903ce954480776bfa5c43f209ec8c",
+  "prior_commit": "eafba63f3ba32673738f2daa29aa8ec80686e7ab",
+  "files": [
+    {
+      "path": "detection/debug_tools/autolabel_rear_dataset.py",
+      "sha256": "927fc175590c4a2efcf602bd64fa684914b6b000a6d98c95b31e86185e1519ac"
+    },
+    {
+      "path": "detection/debug_tools/capture_rear_dataset.py",
+      "sha256": "694f2a9d2977253e1180eaa3651313222c9d47aa72ba9bdfbcf5e44f34b350f3"
+    },
+    {
+      "path": "detection/models/placement_box.pt",
+      "sha256": "8e256e80b770a6ff7a5a3187ab7cbeb7e30fb84a5d6a1fc1515f84a3025406a0"
+    },
+    {
+      "path": "docs/operations/placement_20261018/README.md",
+      "sha256": "3665c41ab43f2d3cd30cf4acce0124ab5880cac290271efd64134a8a1cd5f39a"
+    },
+    {
+      "path": "docs/operations/placement_20261018/images/dry1_corner_box_outside_calibration.jpg",
+      "sha256": "59c56a3a1a49f7292a66f636d8bfdc4ed929ef27a0f49887d06c3a96983117bd"
+    },
+    {
+      "path": "docs/operations/placement_20261018/images/full1_e1_parked_short_floor_only.jpg",
+      "sha256": "65adba91200f47b38745811365aecbaa69b5e4445a4b0b9e1c8439be81b58eb2"
+    },
+    {
+      "path": "docs/operations/placement_20261018/images/place3_start_box_left.jpg",
+      "sha256": "40c2dfb7bce8d6312554f5961032f019ed5d7f81bdb39059cb4972694f77fe53"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full1_grasp.log",
+      "sha256": "841bb70715ad302c8caf44761a6d7b17147e97fb15c0d98f654356258fe73479"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full2_grasp.log",
+      "sha256": "9b8fa74efc59a373afac2dc51b3431e258bb03564a88be6256f65c2c842bbd17"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full2_place.log",
+      "sha256": "84f270cf623056e5523711f207fe5dd0c266d0012d51328b604f965480ab9efa"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full2_place_obs.jsonl",
+      "sha256": "2a6fa5b858e7e8752d777f2aecf7f0b99b5d734084759bff3c50ca8268643266"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full3_place.log",
+      "sha256": "01df3a9c8232c2bbbe2ae4fd713c7597ad534fe2809fd24b387d97e5a0e404b8"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full3_place_obs.jsonl",
+      "sha256": "c6976392b7e300e7689b4fb506fe7d51ac73b0768fe84a0fb5e23de213fc1927"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full4_grasp.log",
+      "sha256": "398e71d339b2acee577850b64f3900f3080a75c8221bc3d2bfd60549bd8238e8"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full4_handoff.log",
+      "sha256": "b8d30de20dead9d1a65aa2408b3a89540a07a2155db10fe00a13a8faebc5f9bd"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full4_handoff2.log",
+      "sha256": "79dd7d49bb5773f66615c62dfb3c7c979b2b7fcca522624f4c515c0eb0632f03"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full4_place.log",
+      "sha256": "249b56b9e1a372ea23b2dc9363b8512643ac1cc71598a0b6b8c254f4a565481f"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/full4_place_obs.jsonl",
+      "sha256": "18cbc4584b5ee149d4aacade8a2e550dd2a3f48c9cc0516e5f07302abb0b9dc5"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/placement_dry1.log",
+      "sha256": "867952940ac1c91129c356d859d5778b8be1ce62782d60755c2fb3989226dfcd"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/placement_dry2.log",
+      "sha256": "378752a8eae79845d8729d87e21d34c6e1ccebfe2d523a3dddc28fa577531f38"
+    },
+    {
+      "path": "docs/operations/placement_20261018/runs/placement_run1.log",
+      "sha256": "54fbb12787da65097be4781312a1e8a2b3635854879f65caf59c0d2b15f9f79b"
+    },
+    {
+      "path": "integration/mission_loop.py",
+      "sha256": "d98b39bf8a237cc356bbc6b25cedf347510d6902fe6c2e8685e500451cb5ae36"
+    },
+    {
+      "path": "integration/placement_box_map.json",
+      "sha256": "1ecb99fe527eaed6f1348953b6cfd570e3b15eb30ce7811a5704b98521cc3e7f"
+    },
+    {
+      "path": "integration/placement_dock.py",
+      "sha256": "364a7b06c2697e25b90d3a3e4164eb1781d3de797d8234423f20868b6e5bc211"
+    },
+    {
+      "path": "integration/rear_stream.py",
+      "sha256": "8bb6f6e90e6c357bc73bf39ef00519e1c45115696e7e963f2ec1ecfcd2d1cdbb"
+    },
+    {
+      "path": "integration/sugarbox_approach_grasp.py",
+      "sha256": "2430b45a733293f4a60eb7d0ed6f44bdb475798589c9466c76a0b55295cfebea"
+    },
+    {
+      "path": "integration/sugarbox_rl_approach_final2.py",
+      "sha256": "4a30011fa0bf93840b75d4f84b989152dae39487996509640a95fd3a0f1d2b54"
+    },
+    {
+      "path": "tests/test_capture_rear_dataset.py",
+      "sha256": "f06072bef190bb3c31660e112ed76bbdb9e9de2a047c6248283025078b8b1f57"
+    },
+    {
+      "path": "tests/test_mission_loop.py",
+      "sha256": "ab815f85586afea521e77c76cb967041953ff09e29f815f767517c48ab746f46"
+    },
+    {
+      "path": "tests/test_placement_dock.py",
+      "sha256": "e10783d37d61640ff0bfc6d8cb9d059fef81eb1246acf1ef54015b11ad8a574f"
+    },
+    {
+      "path": "tests/test_sugarbox_approach_grasp.py",
+      "sha256": "31e833d16d11760c8d5ba4c8fb41f205636a129ed2fd4496cbf9d42c3e14bcf6"
+    },
+    {
+      "path": "tests/test_sugarbox_blind_finish.py",
+      "sha256": "f152e13e01b2f659fd26748de0b9ed35913a7fbde53b7c6f058c1e5b00c101b5"
+    },
+    {
+      "path": "tests/test_sugarbox_lidar_geometry.py",
+      "sha256": "f12eb5fba7e88dab862adff68764d40d2d5c07052e73b147993c8b23027edfae"
+    },
+    {
+      "path": "tests/test_sugarbox_rear_ignore.py",
+      "sha256": "c807a78a0abc74df22e1ed20bed20f66d63cc94d84bc6c95417da76b89b2b516"
+    },
+    {
+      "path": "tests/test_sugarbox_seed_target.py",
+      "sha256": "9f859c86ea943665c356be7f438db8eff6bed455c78a0016c88a69a2140851a1"
+    }
+  ],
+  "selectively_patched": [
+    "grasp/v23/x3plus_real_grasp.py",
+    "grasp/v23/test_deploy_controller.py"
+  ],
+  "not_imported": [
+    ".gitignore",
+    "CLAUDE.md"
+  ],
+  "hardware_deployed": false,
+  "local_adaptations": [
+    {
+      "path": "integration/mission_loop.py",
+      "sha256": "8f1f98f0dda0a8047660a0ae1c03f88d689e750567608a4e90e1f98aa0cffb39"
+    },
+    {
+      "path": "tests/test_mission_loop.py",
+      "sha256": "8fa2691201e7e29e7e23e242c178ef9739ec21082a0eb165b2775ae62dfc3612"
+    },
+    {
+      "path": "grasp/v23/x3plus_real_grasp.py",
+      "sha256": "82407512a8f2723a034c5160f96b2cc0ab1494186f4d1a3c0418526845c5dce7"
+    },
+    {
+      "path": "grasp/v23/test_deploy_controller.py",
+      "sha256": "50f87c3183a8b65f8bd88ac95ce03a50a39a78a269325317c974d282bb8c83ea"
+    }
+  ],
+  "placement_model_sha256": "8e256e80b770a6ff7a5a3187ab7cbeb7e30fb84a5d6a1fc1515f84a3025406a0"
+}

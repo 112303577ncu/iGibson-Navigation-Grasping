@@ -1,0 +1,5 @@
+[WARN] the placement box position in ncu's scene layout is not verified: the robot turns toward it but never drives at it unseen, and the delivered-sugarbox check uses the unverified position
+[MISSION] PC 172.20.10.5 | patrol maps/demo_box_20261018_patrol | at most 1 deliveries
+[MISSION] warming models once; camera remains connected between stages
+[MISSION] stopped in PATROL 1: no rear camera frames; is the stream reaching this PC?
+[MISSION] logs in C:\tmp\x3_koala_fa61b64_20261021\logs\mission_registry_v3

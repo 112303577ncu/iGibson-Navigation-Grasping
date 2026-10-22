@@ -1,0 +1,3 @@
+{"ok": true, "capture_id": "dca38ac4df444312af71ffbd9c9a33dd", "output_dir": "/tmp/v23_mission/entry_run01/corner", "ids": [3, 0], "max_source_age_s": 0.025633674000346218, "arm_or_motion_executed": false}
+C:\Users\User\AppData\Local\Programs\Python\Python38\lib\site-packages\paramiko\transport.py:32: CryptographyDeprecationWarning: Python 3.8 is no longer supported by the Python core team and support for it is deprecated in cryptography. The next release of cryptography will remove support for Python 3.8.
+  from cryptography.hazmat.backends import default_backend

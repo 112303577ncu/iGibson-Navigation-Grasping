@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scene": "maps/demo_box_20261018_patrol",
+  "verified": false,
+  "box_registration_verified": false,
+  "camera_handoff_verified": false,
+  "calibration_id": null,
+  "map_hash": "063cd6bc6e3ff1f6942edc4fb6acced5435b95b5df700ed6fa45488706f297f6",
+  "point_map": [
+    0.663,
+    0.521
+  ],
+  "box_center_map": [
+    1.55994134056,
+    0.83332819454
+  ],
+  "status": "candidate only; survey box and test holding-pose camera visibility before enabling; do not reuse old too-close preparation point"
+}

@@ -1,0 +1,8 @@
+[ENTRY] new ArUco/LiDAR reference acknowledged by AMCL
+[ENTRY] eight fresh rear frames received; video gate passed
+[WARN] the placement box position in ncu's scene layout is not verified: the robot turns toward it but never drives at it unseen, and the delivered-sugarbox check uses the unverified position
+[MISSION] PC 172.20.10.5 | patrol maps/demo_box_20261018_patrol | until two laps find nothing
+[MISSION] warming models once; camera remains connected between stages
+[PATROL] lap 1 started (pid 5739)
+[MISSION] stopped in PATROL 1: patrol stopped: stop feedback timeout
+[MISSION] logs in D:\OneDrive - 國立中央大學\桌面\Slam\0920\repo_v23_grasp_test\docs\calibration\live_2026-10-21\entry_run02\mission

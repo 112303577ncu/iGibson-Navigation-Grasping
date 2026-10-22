@@ -1,0 +1,1580 @@
+{
+  "scope": "Historical decode and coarse wall-order/bearing check; not a metric marker survey",
+  "anchor": "docs/calibration/aruco_patrol_2026-10-18/start_localization.json",
+  "counts": {
+    "0": {
+      "decoded": 7,
+      "bearing_compatible": 7,
+      "files": [
+        "camera_frame_009.jpg",
+        "camera_frame_010.jpg",
+        "camera_frame_011.jpg"
+      ]
+    },
+    "1": {
+      "decoded": 3,
+      "bearing_compatible": 3,
+      "files": [
+        "camera_frame_029.jpg",
+        "camera_frame_030.jpg",
+        "camera_frame_031.jpg"
+      ]
+    },
+    "2": {
+      "decoded": 19,
+      "bearing_compatible": 19,
+      "files": [
+        "camera_frame_000.jpg",
+        "camera_frame_001.jpg",
+        "camera_frame_002.jpg"
+      ]
+    },
+    "3": {
+      "decoded": 12,
+      "bearing_compatible": 12,
+      "files": [
+        "camera_frame_012.jpg",
+        "camera_frame_013.jpg",
+        "camera_frame_014.jpg"
+      ]
+    },
+    "4": {
+      "decoded": 42,
+      "bearing_compatible": 42,
+      "files": [
+        "camera_frame_019.jpg",
+        "camera_frame_020.jpg",
+        "camera_frame_021.jpg"
+      ]
+    },
+    "5": {
+      "decoded": 8,
+      "bearing_compatible": 8,
+      "files": [
+        "camera_frame_022.jpg",
+        "camera_frame_023.jpg",
+        "camera_frame_024.jpg"
+      ]
+    },
+    "6": {
+      "decoded": 6,
+      "bearing_compatible": 6,
+      "files": [
+        "camera_frame_031.jpg",
+        "camera_frame_034.jpg",
+        "camera_frame_035.jpg"
+      ]
+    },
+    "7": {
+      "decoded": 3,
+      "bearing_compatible": 3,
+      "files": [
+        "camera_frame_039.jpg",
+        "camera_frame_040.jpg",
+        "camera_frame_041.jpg"
+      ]
+    }
+  },
+  "observations": [
+    {
+      "file": "camera_frame_000.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_001.jpg",
+      "id": 2,
+      "center_px": [
+        451.75,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_002.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_003.jpg",
+      "id": 2,
+      "center_px": [
+        452.5,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_004.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        228.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_005.jpg",
+      "id": 2,
+      "center_px": [
+        452.5,
+        227.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_006.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        227.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_007.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_008.jpg",
+      "id": 2,
+      "center_px": [
+        452.75,
+        228.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.821652964039731,
+        0.6906265373821172,
+        -0.8897302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_009.jpg",
+      "id": 0,
+      "center_px": [
+        59.5,
+        284.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8239676969290317,
+        0.6928041534298146,
+        -0.6664302016469805
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_009.jpg",
+      "id": 2,
+      "center_px": [
+        576.75,
+        238.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8239676969290317,
+        0.6928041534298146,
+        -0.6664302016469805
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_010.jpg",
+      "id": 0,
+      "center_px": [
+        253.75,
+        259.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8274552467940454,
+        0.7001503766730223,
+        -0.34943020164698035
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_011.jpg",
+      "id": 0,
+      "center_px": [
+        404.75,
+        258.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8293846048796298,
+        0.7028294767789515,
+        -0.04103020164698057
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_012.jpg",
+      "id": 3,
+      "center_px": [
+        100.5,
+        309.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8280320883626057,
+        0.7049008770471704,
+        0.20236979835301927
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_012.jpg",
+      "id": 0,
+      "center_px": [
+        534.0,
+        270.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8280320883626057,
+        0.7049008770471704,
+        0.20236979835301927
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_013.jpg",
+      "id": 3,
+      "center_px": [
+        105.5,
+        333.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9204655924010489,
+        0.7243263070597886,
+        0.2515697983530192
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_014.jpg",
+      "id": 3,
+      "center_px": [
+        176.25,
+        333.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9574728588417644,
+        0.7400031125566329,
+        0.37826979835301966
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_015.jpg",
+      "id": 3,
+      "center_px": [
+        337.5,
+        321.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9542299050278216,
+        0.7441712357026825,
+        0.6857697983530198
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_016.jpg",
+      "id": 3,
+      "center_px": [
+        521.5,
+        338.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9475920617422648,
+        0.7492799573154139,
+        1.0392697983530201
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_019.jpg",
+      "id": 4,
+      "center_px": [
+        73.75,
+        297.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9575619857030462,
+        0.8133740336112482,
+        1.4812697983530194
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_020.jpg",
+      "id": 4,
+      "center_px": [
+        261.25,
+        277.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.948314821369376,
+        0.8171555613165675,
+        1.8230697983530195
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_021.jpg",
+      "id": 4,
+      "center_px": [
+        432.5,
+        279.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.9346704097661351,
+        0.818355574650388,
+        2.1478551055326056
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_022.jpg",
+      "id": 4,
+      "center_px": [
+        521.5,
+        288.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.930182375851661,
+        0.8154251221968358,
+        2.3041551055326064
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_022.jpg",
+      "id": 5,
+      "center_px": [
+        142.5,
+        245.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.930182375851661,
+        0.8154251221968358,
+        2.3041551055326064
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_023.jpg",
+      "id": 5,
+      "center_px": [
+        150.0,
+        268.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8094821779181509,
+        0.9466460131357848,
+        2.3709551055326052
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_024.jpg",
+      "id": 5,
+      "center_px": [
+        269.75,
+        259.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8055456629626252,
+        0.947928140276486,
+        2.5927551055326052
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_025.jpg",
+      "id": 5,
+      "center_px": [
+        279.25,
+        284.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.7049644989762914,
+        1.0057934965024198,
+        2.609255105532606
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_026.jpg",
+      "id": 5,
+      "center_px": [
+        287.5,
+        316.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.5946087536699365,
+        1.0692684480808095,
+        2.6493551055326057
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_027.jpg",
+      "id": 5,
+      "center_px": [
+        318.75,
+        342.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.5367653576933964,
+        1.0990771974994147,
+        2.724655105532605
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_028.jpg",
+      "id": 5,
+      "center_px": [
+        411.75,
+        370.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.481711592624788,
+        1.1202217701309547,
+        2.9284551055326062
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_029.jpg",
+      "id": 5,
+      "center_px": [
+        547.25,
+        396.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.47645651380689813,
+        1.1179780797294585,
+        -3.1038302016469803
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_029.jpg",
+      "id": 1,
+      "center_px": [
+        39.5,
+        259.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.47645651380689813,
+        1.1179780797294585,
+        -3.1038302016469803
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_030.jpg",
+      "id": 1,
+      "center_px": [
+        250.0,
+        240.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.4692368608187751,
+        1.1079632601738656,
+        -2.75593020164698
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_031.jpg",
+      "id": 6,
+      "center_px": [
+        96.5,
+        202.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.46560295374860317,
+        1.1050111898147186,
+        -2.4825302016469806
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_031.jpg",
+      "id": 1,
+      "center_px": [
+        402.25,
+        239.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.46560295374860317,
+        1.1050111898147186,
+        -2.4825302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_034.jpg",
+      "id": 6,
+      "center_px": [
+        331.25,
+        227.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.31063100675766164,
+        0.8332133501510508,
+        -2.0520302016469802
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_035.jpg",
+      "id": 6,
+      "center_px": [
+        331.0,
+        283.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.16262234948023968,
+        0.5474239917576098,
+        -2.0513302016469805
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_036.jpg",
+      "id": 6,
+      "center_px": [
+        339.75,
+        344.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.07363151092885811,
+        0.37721952456029473,
+        -2.0460302016469805
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_037.jpg",
+      "id": 6,
+      "center_px": [
+        376.25,
+        357.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.06159646105682748,
+        0.34902719272027605,
+        -1.9893302016469805
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_038.jpg",
+      "id": 6,
+      "center_px": [
+        474.75,
+        368.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.06309163007499285,
+        0.3428778456324041,
+        -1.7883302016469806
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_039.jpg",
+      "id": 7,
+      "center_px": [
+        99.75,
+        248.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.06885930706316545,
+        0.34455829264439375,
+        -1.5249302016469806
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_040.jpg",
+      "id": 7,
+      "center_px": [
+        300.75,
+        232.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.07514825505964362,
+        0.35573233099664564,
+        -1.1736302016469804
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_041.jpg",
+      "id": 2,
+      "center_px": [
+        119.75,
+        199.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.07936950749191973,
+        0.36523764676746573,
+        -0.9003302016469803
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_041.jpg",
+      "id": 7,
+      "center_px": [
+        446.5,
+        234.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.07936950749191973,
+        0.36523764676746573,
+        -0.9003302016469803
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_042.jpg",
+      "id": 2,
+      "center_px": [
+        150.0,
+        215.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.17723496347876233,
+        0.24494445276012636,
+        -0.8062302016469802
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_043.jpg",
+      "id": 2,
+      "center_px": [
+        254.0,
+        217.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.26211020906867355,
+        0.19148070161926212,
+        -0.6030302016469804
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_044.jpg",
+      "id": 2,
+      "center_px": [
+        290.0,
+        248.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.422054650340818,
+        0.10094653289749417,
+        -0.5192302016469803
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_045.jpg",
+      "id": 2,
+      "center_px": [
+        295.0,
+        282.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.5639753887347038,
+        0.026393169366837554,
+        -0.48753020164698047
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_046.jpg",
+      "id": 2,
+      "center_px": [
+        293.0,
+        335.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.727585858776159,
+        -0.05853205711395609,
+        -0.4714302016469807
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_047.jpg",
+      "id": 2,
+      "center_px": [
+        317.0,
+        346.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.755488527798396,
+        -0.07553561737160479,
+        -0.41213020164698033
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_048.jpg",
+      "id": 2,
+      "center_px": [
+        327.75,
+        359.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.7829027006229482,
+        -0.08593528699835655,
+        -0.3884302016469805
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_049.jpg",
+      "id": 2,
+      "center_px": [
+        443.0,
+        364.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.7789884138915244,
+        -0.08655039624410095,
+        -0.13863020164698048
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_050.jpg",
+      "id": 0,
+      "center_px": [
+        72.25,
+        243.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.7754768048468881,
+        -0.08374529340861935,
+        0.15796979835301972
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_053.jpg",
+      "id": 0,
+      "center_px": [
+        516.25,
+        255.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8724745673864898,
+        0.037376191317712366,
+        0.9362697983530195
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_053.jpg",
+      "id": 3,
+      "center_px": [
+        212.5,
+        204.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8724745673864898,
+        0.037376191317712366,
+        0.9362697983530195
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_054.jpg",
+      "id": 0,
+      "center_px": [
+        589.0,
+        264.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8703185692443873,
+        0.04054505105131537,
+        1.0405697983530189
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_054.jpg",
+      "id": 3,
+      "center_px": [
+        277.0,
+        202.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.8703185692443873,
+        0.04054505105131537,
+        1.0405697983530189
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_055.jpg",
+      "id": 3,
+      "center_px": [
+        303.0,
+        237.75
+      ],
+      "pose_map_from_recorded_odom": [
+        1.002406264120502,
+        0.2843080729851485,
+        1.10716979835302
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_056.jpg",
+      "id": 3,
+      "center_px": [
+        314.0,
+        261.75
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0526894738901802,
+        0.3869192751770075,
+        1.152569798353019
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_057.jpg",
+      "id": 3,
+      "center_px": [
+        335.5,
+        264.5
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0579859575637387,
+        0.3991253089593516,
+        1.1958697983530193
+      ],
+      "side": "center",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_058.jpg",
+      "id": 3,
+      "center_px": [
+        407.75,
+        270.75
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0576741093148299,
+        0.4122460082802588,
+        1.316469798353019
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_059.jpg",
+      "id": 3,
+      "center_px": [
+        586.5,
+        290.75
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0491217267597566,
+        0.4134108055294306,
+        1.6123697983530194
+      ],
+      "side": "right",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_059.jpg",
+      "id": 4,
+      "center_px": [
+        127.5,
+        213.75
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0491217267597566,
+        0.4134108055294306,
+        1.6123697983530194
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_060.jpg",
+      "id": 4,
+      "center_px": [
+        142.25,
+        217.25
+      ],
+      "pose_map_from_recorded_odom": [
+        1.045298965370668,
+        0.4589691910952306,
+        1.6454697983530195
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_061.jpg",
+      "id": 4,
+      "center_px": [
+        224.5,
+        225.25
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0305827592554535,
+        0.5894394301445038,
+        1.8300697983530192
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_062.jpg",
+      "id": 4,
+      "center_px": [
+        215.5,
+        235.25
+      ],
+      "pose_map_from_recorded_odom": [
+        1.0142062894319561,
+        0.6510743328873498,
+        1.8092697983530197
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_063.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_064.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_065.jpg",
+      "id": 4,
+      "center_px": [
+        217.5,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_066.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_067.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_068.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_069.jpg",
+      "id": 4,
+      "center_px": [
+        217.0,
+        245.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_070.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_071.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_072.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_073.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_074.jpg",
+      "id": 4,
+      "center_px": [
+        217.5,
+        245.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_075.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_076.jpg",
+      "id": 4,
+      "center_px": [
+        217.75,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_077.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_078.jpg",
+      "id": 4,
+      "center_px": [
+        217.5,
+        245.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_079.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_080.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_081.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_082.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_083.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_084.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_085.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_086.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_087.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_088.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_089.jpg",
+      "id": 4,
+      "center_px": [
+        217.75,
+        245.75
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_090.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_091.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_092.jpg",
+      "id": 4,
+      "center_px": [
+        217.75,
+        245.5
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_093.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_094.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_095.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.25
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    },
+    {
+      "file": "camera_frame_096.jpg",
+      "id": 4,
+      "center_px": [
+        217.25,
+        246.0
+      ],
+      "pose_map_from_recorded_odom": [
+        0.997529042678626,
+        0.7086893434378004,
+        1.836269798353019
+      ],
+      "side": "left",
+      "compatible": true
+    }
+  ]
+}

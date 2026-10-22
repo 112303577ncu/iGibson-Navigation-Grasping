@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "physical_mission_started": false,
+  "koala_root": "C:\\tmp\\x3_koala_fa61b64_20261021",
+  "stage": "PREFLIGHT",
+  "koala_source_sha256": {
+    "mission_loop.py": "c708d25b2a0a26b7a6610255690ba19b6ba931df78e933e802befd84887a7f3f",
+    "mission_runtime.py": "c2ccfbb67f13ae0a8e93a5507821bb2abd77dfb7d69aea3e344e748290fdc751",
+    "robot_rpc.py": "2a38621f680b0e67da589ebcf458f4a017242356bb6b028c2f291fdec4a255b4",
+    "sugarbox_approach_grasp.py": "e153eb7415bb73b2435265e70f8f89195ec94a7e740f2e0747b1d0c3f67282f9",
+    "sugarbox_rl_approach_final2.py": "c8561b55b9cc5813c6b139e7b60267400ba0d6a6fda6519a2bb484739dad9375"
+  },
+  "exit_code": 0
+}

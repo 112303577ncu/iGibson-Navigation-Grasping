@@ -1,0 +1,14 @@
+[
+  {
+    "suite": "grasp/v21/test_deploy_controller.py",
+    "exit_code": 0,
+    "test_only_ascii_urdf_path": true,
+    "tail": "rs of this version of Gym should be able to simply replace 'import gym' with 'import gymnasium as gym' in the vast majority of cases.\r\nSee the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.\r\n"
+  },
+  {
+    "suite": "grasp/v21/test_deploy_floor_guard.py",
+    "exit_code": 0,
+    "test_only_ascii_urdf_path": true,
+    "tail": "rs of this version of Gym should be able to simply replace 'import gym' with 'import gymnasium as gym' in the vast majority of cases.\r\nSee the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.\r\n"
+  }
+]

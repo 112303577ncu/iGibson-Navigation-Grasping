@@ -1,0 +1,220 @@
+{"t": 1792561050.0204234, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 297.259, "cov": null}
+{"t": 1792561050.2713046, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 297.57, "cov": null}
+{"t": 1792561050.5224714, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 297.777, "cov": null}
+{"t": 1792561050.773351, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 297.993, "cov": null}
+{"t": 1792561051.0242562, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 298.306, "cov": null}
+{"t": 1792561051.2751143, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 298.514, "cov": null}
+{"t": 1792561051.5259612, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 298.826, "cov": null}
+{"t": 1792561051.7768857, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 299.033, "cov": null}
+{"t": 1792561052.0277672, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 299.239, "cov": null}
+{"t": 1792561052.2786238, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 299.549, "cov": null}
+{"t": 1792561052.5294542, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 299.756, "cov": null}
+{"t": 1792561052.7803514, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 300.072, "cov": null}
+{"t": 1792561053.031178, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 300.282, "cov": null}
+{"t": 1792561053.2820492, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 300.489, "cov": null}
+{"t": 1792561053.532987, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 300.801, "cov": null}
+{"t": 1792561053.7838411, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 301.01, "cov": null}
+{"t": 1792561054.0346591, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 301.32, "cov": null}
+{"t": 1792561054.285555, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 301.531, "cov": null}
+{"t": 1792561054.5364552, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 301.843, "cov": null}
+{"t": 1792561054.7872877, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 302.052, "cov": null}
+{"t": 1792561055.0381143, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 302.26, "cov": null}
+{"t": 1792561055.2890255, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 302.57, "cov": null}
+{"t": 1792561055.5433445, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 302.78, "cov": null}
+{"t": 1792561055.7941833, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 303.093, "cov": null}
+{"t": 1792561056.0450501, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 303.302, "cov": null}
+{"t": 1792561056.2959697, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 303.51, "cov": null}
+{"t": 1792561056.546888, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 303.82, "cov": null}
+{"t": 1792561056.7990708, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 304.027, "cov": null}
+{"t": 1792561057.049931, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 304.345, "cov": null}
+{"t": 1792561057.3007722, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 304.559, "cov": null}
+{"t": 1792561057.5527823, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 304.766, "cov": null}
+{"t": 1792561057.8036335, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 305.079, "cov": null}
+{"t": 1792561058.0545046, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 305.287, "cov": null}
+{"t": 1792561058.3054786, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 305.597, "cov": null}
+{"t": 1792561058.5563772, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 305.805, "cov": null}
+{"t": 1792561058.807596, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 306.023, "cov": null}
+{"t": 1792561059.058568, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 306.34, "cov": null}
+{"t": 1792561059.3094733, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 306.547, "cov": null}
+{"t": 1792561059.5603647, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 306.857, "cov": null}
+{"t": 1792561059.811225, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 307.065, "cov": null}
+{"t": 1792561060.0620887, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 307.281, "cov": null}
+{"t": 1792561060.3130748, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 307.591, "cov": null}
+{"t": 1792561060.5639718, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 307.802, "cov": null}
+{"t": 1792561060.8149173, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 308.117, "cov": null}
+{"t": 1792561061.0657482, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 308.327, "cov": null}
+{"t": 1792561061.3183012, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 308.535, "cov": null}
+{"t": 1792561061.570609, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 308.849, "cov": null}
+{"t": 1792561061.821474, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 309.055, "cov": null}
+{"t": 1792561062.0755024, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 309.373, "cov": null}
+{"t": 1792561062.3263633, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 309.581, "cov": null}
+{"t": 1792561062.5806692, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 309.795, "cov": null}
+{"t": 1792561062.8315518, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 310.105, "cov": null}
+{"t": 1792561063.0824368, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 310.313, "cov": null}
+{"t": 1792561063.3335347, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 310.629, "cov": null}
+{"t": 1792561063.584412, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 310.836, "cov": null}
+{"t": 1792561063.8354738, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 311.044, "cov": null}
+{"t": 1792561064.0865126, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 311.361, "cov": null}
+{"t": 1792561064.3376563, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 311.568, "cov": null}
+{"t": 1792561064.5885508, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 311.878, "cov": null}
+{"t": 1792561064.8394194, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 312.085, "cov": null}
+{"t": 1792561065.0902448, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 312.398, "cov": null}
+{"t": 1792561065.341127, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 312.605, "cov": null}
+{"t": 1792561065.591998, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 312.813, "cov": null}
+{"t": 1792561065.8428578, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 313.129, "cov": null}
+{"t": 1792561066.0937054, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 313.336, "cov": null}
+{"t": 1792561066.344482, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 313.649, "cov": null}
+{"t": 1792561066.5953476, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 313.856, "cov": null}
+{"t": 1792561066.8461995, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 314.063, "cov": null}
+{"t": 1792561067.0970492, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 314.375, "cov": null}
+{"t": 1792561067.3479111, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 314.582, "cov": null}
+{"t": 1792561067.5987787, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 314.899, "cov": null}
+{"t": 1792561067.8505738, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 315.109, "cov": null}
+{"t": 1792561068.1014068, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 315.316, "cov": null}
+{"t": 1792561068.352933, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 315.627, "cov": null}
+{"t": 1792561068.6037655, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 315.834, "cov": null}
+{"t": 1792561068.8552675, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 316.145, "cov": null}
+{"t": 1792561069.1061778, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 316.353, "cov": null}
+{"t": 1792561069.3570158, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 316.663, "cov": null}
+{"t": 1792561069.6078439, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 316.874, "cov": null}
+{"t": 1792561069.8586895, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 317.084, "cov": null}
+{"t": 1792561070.1095412, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 317.394, "cov": null}
+{"t": 1792561070.3606048, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 317.604, "cov": null}
+{"t": 1792561070.6117113, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 317.916, "cov": null}
+{"t": 1792561070.862685, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 318.128, "cov": null}
+{"t": 1792561071.1135294, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 318.335, "cov": null}
+{"t": 1792561071.3644967, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 318.651, "cov": null}
+{"t": 1792561071.615353, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 318.868, "cov": null}
+{"t": 1792561071.8662014, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 319.075, "cov": null}
+{"t": 1792561072.1170604, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 319.385, "cov": null}
+{"t": 1792561072.367901, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 319.592, "cov": null}
+{"t": 1792561072.6187634, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 319.902, "cov": null}
+{"t": 1792561072.8696675, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 320.109, "cov": null}
+{"t": 1792561073.1204476, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 320.429, "cov": null}
+{"t": 1792561073.371356, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 320.637, "cov": null}
+{"t": 1792561073.6223078, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 320.843, "cov": null}
+{"t": 1792561073.8731842, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 321.154, "cov": null}
+{"t": 1792561074.1241164, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 321.36, "cov": null}
+{"t": 1792561074.374959, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 321.676, "cov": null}
+{"t": 1792561074.6258519, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 321.883, "cov": null}
+{"t": 1792561074.8766906, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 322.09, "cov": null}
+{"t": 1792561075.12752, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 322.404, "cov": null}
+{"t": 1792561075.3784392, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 322.611, "cov": null}
+{"t": 1792561075.6292868, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 322.922, "cov": null}
+{"t": 1792561075.8802485, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 323.13, "cov": null}
+{"t": 1792561076.1311088, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 323.338, "cov": null}
+{"t": 1792561076.3819385, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 323.653, "cov": null}
+{"t": 1792561076.6327946, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 323.859, "cov": null}
+{"t": 1792561076.8836503, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 324.169, "cov": null}
+{"t": 1792561077.1344793, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 324.377, "cov": null}
+{"t": 1792561077.385341, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 324.694, "cov": null}
+{"t": 1792561077.6362324, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 324.901, "cov": null}
+{"t": 1792561077.887152, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 325.108, "cov": null}
+{"t": 1792561078.1380012, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 325.419, "cov": null}
+{"t": 1792561078.3888671, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 325.625, "cov": null}
+{"t": 1792561078.6397443, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 325.937, "cov": null}
+{"t": 1792561078.8910718, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 326.147, "cov": null}
+{"t": 1792561079.141935, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 326.358, "cov": null}
+{"t": 1792561079.3927786, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 326.669, "cov": null}
+{"t": 1792561079.6441233, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 326.88, "cov": null}
+{"t": 1792561079.895023, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 327.19, "cov": null}
+{"t": 1792561080.14589, "ready": false, "status": "needs_reference", "reason": "seed expired; fresh localization reference required", "retry_after_s": 0.0, "reference_age_s": 327.398, "cov": null}
+{"t": 1792561080.3967268, "ready": false, "status": "degraded", "reason": null, "retry_after_s": 130.54, "reference_age_s": 25.24, "cov": null}
+{"t": 1792561080.647737, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 130.23, "reference_age_s": 25.554, "cov": null}
+{"t": 1792561080.8986778, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 130.02, "reference_age_s": 25.766, "cov": null}
+{"t": 1792561081.149813, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 129.81, "reference_age_s": 25.977, "cov": null}
+{"t": 1792561081.400467, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 129.5, "reference_age_s": 26.287, "cov": null}
+{"t": 1792561081.651425, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 129.29, "reference_age_s": 26.493, "cov": null}
+{"t": 1792561081.904064, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 128.98, "reference_age_s": 26.805, "cov": null}
+{"t": 1792561082.1604705, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 128.77, "reference_age_s": 27.013, "cov": null}
+{"t": 1792561082.4140959, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 128.56, "reference_age_s": 27.228, "cov": null}
+{"t": 1792561082.6662416, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 128.25, "reference_age_s": 27.538, "cov": null}
+{"t": 1792561082.9172254, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 128.04, "reference_age_s": 27.745, "cov": null}
+{"t": 1792561083.168119, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 127.72, "reference_age_s": 28.064, "cov": null}
+{"t": 1792561083.419307, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 127.51, "reference_age_s": 28.271, "cov": null}
+{"t": 1792561083.670164, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 127.3, "reference_age_s": 28.48, "cov": null}
+{"t": 1792561083.9210148, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 126.99, "reference_age_s": 28.791, "cov": null}
+{"t": 1792561084.172742, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 126.78, "reference_age_s": 29.0, "cov": null}
+{"t": 1792561084.4237113, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 126.47, "reference_age_s": 29.312, "cov": null}
+{"t": 1792561084.6745856, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 126.27, "reference_age_s": 29.519, "cov": null}
+{"t": 1792561084.925485, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 125.95, "reference_age_s": 29.831, "cov": null}
+{"t": 1792561085.1763668, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 125.75, "reference_age_s": 30.038, "cov": null}
+{"t": 1792561085.4272149, "ready": false, "status": "degraded", "reason": "stale AMCL", "retry_after_s": 125.54, "reference_age_s": 30.25, "cov": null}
+{"t": 1792561085.678112, "ready": true, "status": "localized", "reason": null, "retry_after_s": 125.2, "reference_age_s": 0.009, "cov": [0.007091985899329441, 0.007137260465279059, 0.0066076234765658345]}
+{"t": 1792561085.9291413, "ready": true, "status": "localized", "reason": null, "retry_after_s": 124.97, "reference_age_s": 0.009, "cov": [0.007091985899329441, 0.007137260465279059, 0.0066076234765658345]}
+{"t": 1792561086.18015, "ready": true, "status": "localized", "reason": null, "retry_after_s": 124.73, "reference_age_s": 0.023, "cov": [0.005841887956298397, 0.0067456206526413445, 0.005490423084784703]}
+{"t": 1792561086.431094, "ready": true, "status": "localized", "reason": null, "retry_after_s": 124.5, "reference_age_s": 0.008, "cov": [0.005841887956298397, 0.0067456206526413445, 0.005490423084784703]}
+{"t": 1792561086.6819932, "ready": true, "status": "localized", "reason": null, "retry_after_s": 124.26, "reference_age_s": 0.021, "cov": [0.00533690075818041, 0.005607025512649984, 0.005600671129857757]}
+{"t": 1792561086.9329228, "ready": true, "status": "localized", "reason": null, "retry_after_s": 124.02, "reference_age_s": 0.019, "cov": [0.00533690075818041, 0.005607025512649984, 0.005600671129857757]}
+{"t": 1792561087.185436, "ready": true, "status": "localized", "reason": null, "retry_after_s": 123.79, "reference_age_s": 0.009, "cov": [0.0043621968467564675, 0.00472558768457112, 0.005182262787602225]}
+{"t": 1792561087.4364188, "ready": true, "status": "localized", "reason": null, "retry_after_s": 123.55, "reference_age_s": 0.023, "cov": [0.0043621968467564675, 0.00472558768457112, 0.005182262787602225]}
+{"t": 1792561087.6873672, "ready": true, "status": "localized", "reason": null, "retry_after_s": 123.2, "reference_age_s": 0.009, "cov": [0.004409840065613577, 0.005011673230082344, 0.0051465017529261775]}
+{"t": 1792561087.9383564, "ready": true, "status": "localized", "reason": null, "retry_after_s": 122.95, "reference_age_s": 0.023, "cov": [0.004409840065613577, 0.005011673230082344, 0.0051465017529261775]}
+{"t": 1792561088.1894636, "ready": true, "status": "localized", "reason": null, "retry_after_s": 122.71, "reference_age_s": 0.017, "cov": [0.004714986608478403, 0.004430958266651144, 0.005582583140380364]}
+{"t": 1792561088.4405386, "ready": true, "status": "localized", "reason": null, "retry_after_s": 122.47, "reference_age_s": 0.009, "cov": [0.004714986608478403, 0.004430958266651144, 0.005582583140380364]}
+{"t": 1792561088.691485, "ready": true, "status": "localized", "reason": null, "retry_after_s": 122.24, "reference_age_s": 0.009, "cov": [0.004273646519683211, 0.0042490879344621564, 0.004981690531912786]}
+{"t": 1792561088.9422274, "ready": true, "status": "localized", "reason": null, "retry_after_s": 122.0, "reference_age_s": 0.015, "cov": [0.004273646519683211, 0.0042490879344621564, 0.004981690531912786]}
+{"t": 1792561089.193118, "ready": true, "status": "localized", "reason": null, "retry_after_s": 121.77, "reference_age_s": 0.015, "cov": [0.0042207762780460895, 0.0040105607392447356, 0.00467302759484914]}
+{"t": 1792561089.4469147, "ready": true, "status": "localized", "reason": null, "retry_after_s": 121.54, "reference_age_s": 0.011, "cov": [0.0042207762780460895, 0.0040105607392447356, 0.00467302759484914]}
+{"t": 1792561089.697962, "ready": true, "status": "localized", "reason": null, "retry_after_s": 121.18, "reference_age_s": 0.016, "cov": [0.004010587619185548, 0.0039021449459010994, 0.0047584506217527986]}
+{"t": 1792561089.94886, "ready": true, "status": "localized", "reason": null, "retry_after_s": 120.95, "reference_age_s": 0.01, "cov": [0.0036977410005461803, 0.0038555103087789468, 0.004877073780693206]}
+{"t": 1792561090.1998348, "ready": true, "status": "localized", "reason": null, "retry_after_s": 120.72, "reference_age_s": 0.01, "cov": [0.0036977410005461803, 0.0038555103087789468, 0.004877073780693206]}
+{"t": 1792561090.4526699, "ready": true, "status": "localized", "reason": null, "retry_after_s": 120.49, "reference_age_s": 0.013, "cov": [0.0036977410005461803, 0.0038555103087789468, 0.004877073780693206]}
+{"t": 1792561090.703734, "ready": true, "status": "localized", "reason": null, "retry_after_s": 120.25, "reference_age_s": 0.014, "cov": [0.0033162537866225903, 0.0036835338143616594, 0.00479440969157843]}
+{"t": 1792561090.9577854, "ready": true, "status": "localized", "reason": null, "retry_after_s": 120.0, "reference_age_s": 0.011, "cov": [0.0033162537866225903, 0.0036835338143616594, 0.00479440969157843]}
+{"t": 1792561091.2085202, "ready": true, "status": "localized", "reason": null, "retry_after_s": 119.77, "reference_age_s": 0.008, "cov": [0.0034553125804130764, 0.0034527410601480975, 0.005130619404788281]}
+{"t": 1792561091.459342, "ready": true, "status": "localized", "reason": null, "retry_after_s": 119.52, "reference_age_s": 0.026, "cov": [0.0034553125804130764, 0.0034527410601480975, 0.005130619404788281]}
+{"t": 1792561091.7107418, "ready": true, "status": "localized", "reason": null, "retry_after_s": 119.28, "reference_age_s": 0.02, "cov": [0.003578243630391466, 0.0034486084710420844, 0.0046479422521227875]}
+{"t": 1792561091.9616578, "ready": true, "status": "localized", "reason": null, "retry_after_s": 118.93, "reference_age_s": 0.019, "cov": [0.003578243630391466, 0.0034486084710420844, 0.0046479422521227875]}
+{"t": 1792561092.2128537, "ready": true, "status": "localized", "reason": null, "retry_after_s": 118.69, "reference_age_s": 0.009, "cov": [0.003245948429211437, 0.003615953537541167, 0.004637426372090163]}
+{"t": 1792561092.4637666, "ready": true, "status": "localized", "reason": null, "retry_after_s": 118.42, "reference_age_s": 0.013, "cov": [0.003245948429211437, 0.003615953537541167, 0.004637426372090163]}
+{"t": 1792561092.714837, "ready": true, "status": "localized", "reason": null, "retry_after_s": 118.18, "reference_age_s": 0.012, "cov": [0.0032501008848902853, 0.0032431220736176924, 0.004824536176487861]}
+{"t": 1792561092.9657626, "ready": true, "status": "localized", "reason": null, "retry_after_s": 117.94, "reference_age_s": 0.01, "cov": [0.0032501008848902853, 0.0032431220736176924, 0.004824536176487861]}
+{"t": 1792561093.2167466, "ready": true, "status": "localized", "reason": null, "retry_after_s": 117.7, "reference_age_s": 0.011, "cov": [0.0033930550922521346, 0.0037703573097315557, 0.0043242697632369246]}
+{"t": 1792561093.467814, "ready": true, "status": "localized", "reason": null, "retry_after_s": 117.46, "reference_age_s": 0.016, "cov": [0.0033930550922521346, 0.0037703573097315557, 0.0043242697632369246]}
+{"t": 1792561093.7187955, "ready": true, "status": "localized", "reason": null, "retry_after_s": 117.21, "reference_age_s": 0.017, "cov": [0.003214202483623304, 0.0039145379726677944, 0.0037938776734165597]}
+{"t": 1792561093.969843, "ready": true, "status": "localized", "reason": null, "retry_after_s": 116.98, "reference_age_s": 0.01, "cov": [0.003214202483623304, 0.0039145379726677944, 0.0037938776734165597]}
+{"t": 1792561094.2207289, "ready": true, "status": "localized", "reason": null, "retry_after_s": 116.75, "reference_age_s": 0.012, "cov": [0.0029953908569333412, 0.004067809763955499, 0.003318171380071817]}
+{"t": 1792561094.4718306, "ready": true, "status": "localized", "reason": null, "retry_after_s": 116.5, "reference_age_s": 0.02, "cov": [0.0029953908569333412, 0.004067809763955499, 0.003318171380071817]}
+{"t": 1792561094.7229567, "ready": true, "status": "localized", "reason": null, "retry_after_s": 116.25, "reference_age_s": 0.012, "cov": [0.0027725662278575355, 0.0038694504379621366, 0.003403333326887873]}
+{"t": 1792561094.973851, "ready": true, "status": "localized", "reason": null, "retry_after_s": 116.02, "reference_age_s": 0.01, "cov": [0.0027725662278575355, 0.0038694504379621366, 0.003403333326887873]}
+{"t": 1792561095.2247458, "ready": true, "status": "localized", "reason": null, "retry_after_s": 115.76, "reference_age_s": 0.01, "cov": [0.0025705124666169296, 0.003946486153032564, 0.0033199737380341116]}
+{"t": 1792561095.484543, "ready": true, "status": "localized", "reason": null, "retry_after_s": 115.5, "reference_age_s": 0.024, "cov": [0.0025705124666169296, 0.003946486153032564, 0.0033199737380341116]}
+{"t": 1792561095.7359653, "ready": true, "status": "localized", "reason": null, "retry_after_s": 115.27, "reference_age_s": 0.013, "cov": [0.0025643124668521277, 0.003463914228158925, 0.003449986196217963]}
+{"t": 1792561095.9870026, "ready": true, "status": "localized", "reason": null, "retry_after_s": 114.91, "reference_age_s": 0.009, "cov": [0.0026416113730388, 0.0037930508562527884, 0.0036414606107059806]}
+{"t": 1792561096.2379084, "ready": true, "status": "localized", "reason": null, "retry_after_s": 114.66, "reference_age_s": 0.016, "cov": [0.0026416113730388, 0.0037930508562527884, 0.0036414606107059806]}
+{"t": 1792561096.4887824, "ready": true, "status": "localized", "reason": null, "retry_after_s": 114.42, "reference_age_s": 0.017, "cov": [0.002475444707043433, 0.003569663691549849, 0.00357658942063496]}
+{"t": 1792561096.7396798, "ready": true, "status": "localized", "reason": null, "retry_after_s": 114.18, "reference_age_s": 0.011, "cov": [0.002475444707043433, 0.003569663691549849, 0.00357658942063496]}
+{"t": 1792561096.9906952, "ready": true, "status": "localized", "reason": null, "retry_after_s": 113.93, "reference_age_s": 0.03, "cov": [0.002475444707043433, 0.003569663691549849, 0.00357658942063496]}
+{"t": 1792561097.2416635, "ready": true, "status": "localized", "reason": null, "retry_after_s": 113.7, "reference_age_s": 0.01, "cov": [0.0024046712332099793, 0.003948641421247134, 0.003563371425092372]}
+{"t": 1792561097.4925466, "ready": true, "status": "localized", "reason": null, "retry_after_s": 113.46, "reference_age_s": 0.009, "cov": [0.002083638147836528, 0.004390634713517615, 0.0036980962390784533]}
+{"t": 1792561097.746537, "ready": true, "status": "localized", "reason": null, "retry_after_s": 113.22, "reference_age_s": 0.015, "cov": [0.002083638147836528, 0.004390634713517615, 0.0036980962390784533]}
+{"t": 1792561097.9974222, "ready": true, "status": "localized", "reason": null, "retry_after_s": 112.97, "reference_age_s": 0.02, "cov": [0.002083638147836528, 0.004390634713517615, 0.0036980962390784533]}
+{"t": 1792561098.248699, "ready": true, "status": "localized", "reason": null, "retry_after_s": 112.74, "reference_age_s": 0.015, "cov": [0.002214607558854442, 0.0041412339376281845, 0.0040390646287025295]}
+{"t": 1792561098.499624, "ready": true, "status": "localized", "reason": null, "retry_after_s": 112.49, "reference_age_s": 0.023, "cov": [0.002214607558854442, 0.0041412339376281845, 0.0040390646287025295]}
+{"t": 1792561098.7513936, "ready": true, "status": "localized", "reason": null, "retry_after_s": 112.14, "reference_age_s": 0.008, "cov": [0.00221951194255182, 0.0040332617962901916, 0.004018524224434189]}
+{"t": 1792561099.0024729, "ready": true, "status": "localized", "reason": null, "retry_after_s": 111.88, "reference_age_s": 0.011, "cov": [0.0021754564368838096, 0.00380393947939289, 0.003889245286198643]}
+{"t": 1792561099.2537081, "ready": true, "status": "localized", "reason": null, "retry_after_s": 111.64, "reference_age_s": 0.01, "cov": [0.0021754564368838096, 0.00380393947939289, 0.003889245286198643]}
+{"t": 1792561099.50462, "ready": true, "status": "localized", "reason": null, "retry_after_s": 111.41, "reference_age_s": 0.018, "cov": [0.0021754564368838096, 0.00380393947939289, 0.003889245286198643]}
+{"t": 1792561099.755545, "ready": true, "status": "localized", "reason": null, "retry_after_s": 111.18, "reference_age_s": 0.009, "cov": [0.002032866423401525, 0.0035395736613376546, 0.0037429997763641586]}
+{"t": 1792561100.0065994, "ready": true, "status": "localized", "reason": null, "retry_after_s": 110.92, "reference_age_s": 0.009, "cov": [0.002032866423401525, 0.0035395736613376546, 0.0037429997763641586]}
+{"t": 1792561100.2579608, "ready": true, "status": "localized", "reason": null, "retry_after_s": 110.68, "reference_age_s": 0.01, "cov": [0.0020323961509889424, 0.003754549911662737, 0.0038591417569496136]}
+{"t": 1792561100.5092125, "ready": true, "status": "localized", "reason": null, "retry_after_s": 110.43, "reference_age_s": 0.013, "cov": [0.0020323961509889424, 0.003754549911662737, 0.0038591417569496136]}
+{"t": 1792561100.7601511, "ready": true, "status": "localized", "reason": null, "retry_after_s": 110.18, "reference_age_s": 0.01, "cov": [0.0019850437083122068, 0.0037333359985244415, 0.004040479053299901]}
+{"t": 1792561101.0110402, "ready": true, "status": "localized", "reason": null, "retry_after_s": 109.93, "reference_age_s": 0.01, "cov": [0.001979540010669363, 0.003332460420524253, 0.004043087410380102]}
+{"t": 1792561101.2631035, "ready": true, "status": "localized", "reason": null, "retry_after_s": 109.67, "reference_age_s": 0.019, "cov": [0.001979540010669363, 0.003332460420524253, 0.004043087410380102]}
+{"t": 1792561101.5145462, "ready": true, "status": "localized", "reason": null, "retry_after_s": 109.43, "reference_age_s": 0.009, "cov": [0.0020107019795051577, 0.003484680938417341, 0.004061183693500182]}
+{"t": 1792561101.766975, "ready": true, "status": "localized", "reason": null, "retry_after_s": 109.19, "reference_age_s": 0.011, "cov": [0.0020107019795051577, 0.003484680938417341, 0.004061183693500182]}
+{"t": 1792561102.0182948, "ready": true, "status": "localized", "reason": null, "retry_after_s": 108.94, "reference_age_s": 0.029, "cov": [0.0020107019795051577, 0.003484680938417341, 0.004061183693500182]}
+{"t": 1792561102.270425, "ready": true, "status": "localized", "reason": null, "retry_after_s": 108.72, "reference_age_s": 0.011, "cov": [0.0023651210100051508, 0.003385160659524783, 0.004328244417818702]}
+{"t": 1792561102.5213766, "ready": true, "status": "localized", "reason": null, "retry_after_s": 108.46, "reference_age_s": 0.01, "cov": [0.0023651210100051508, 0.003385160659524783, 0.004328244417818702]}
+{"t": 1792561102.7731838, "ready": true, "status": "localized", "reason": null, "retry_after_s": 108.22, "reference_age_s": 0.01, "cov": [0.0024183508361879822, 0.003338984022531838, 0.004132223309689122]}
+{"t": 1792561103.0240998, "ready": true, "status": "localized", "reason": null, "retry_after_s": 107.85, "reference_age_s": 0.015, "cov": [0.0024508058354332854, 0.0033130758887691277, 0.0038028281727247636]}
+{"t": 1792561103.2749991, "ready": true, "status": "localized", "reason": null, "retry_after_s": 107.61, "reference_age_s": 0.011, "cov": [0.0024508058354332854, 0.0033130758887691277, 0.0038028281727247636]}
+{"t": 1792561103.5259302, "ready": true, "status": "localized", "reason": null, "retry_after_s": 107.38, "reference_age_s": 0.01, "cov": [0.002188192740173159, 0.0031439379929821994, 0.0035914548398129982]}
+{"t": 1792561103.776841, "ready": true, "status": "localized", "reason": null, "retry_after_s": 107.14, "reference_age_s": 0.02, "cov": [0.002188192740173159, 0.0031439379929821994, 0.0035914548398129982]}
+{"t": 1792561104.0277095, "ready": true, "status": "localized", "reason": null, "retry_after_s": 106.9, "reference_age_s": 0.01, "cov": [0.002092503447794512, 0.0029844229839759233, 0.003611493535126306]}
+{"t": 1792561104.2786446, "ready": true, "status": "localized", "reason": null, "retry_after_s": 106.66, "reference_age_s": 0.019, "cov": [0.002092503447794512, 0.0029844229839759233, 0.003611493535126306]}
+{"t": 1792561104.5295284, "ready": true, "status": "localized", "reason": null, "retry_after_s": 106.43, "reference_age_s": 0.011, "cov": [0.002167315425200016, 0.002871759859842831, 0.0036757968073356335]}
+{"t": 1792561104.7804968, "ready": true, "status": "localized", "reason": null, "retry_after_s": 106.2, "reference_age_s": 0.011, "cov": [0.002167315425200016, 0.002871759859842831, 0.0036757968073356335]}
+{"t": 1792561105.0314372, "ready": true, "status": "localized", "reason": null, "retry_after_s": 105.94, "reference_age_s": 0.035, "cov": [0.001967946701551014, 0.0029384413497310934, 0.0037154769881273747]}

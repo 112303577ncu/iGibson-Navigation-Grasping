@@ -1,0 +1,27 @@
+[
+  {
+    "suite": "grasp/v21/test_deploy_controller.py",
+    "exit_code": 1,
+    "tail": "347, in run_test\r\n    fn()\r\n  File \"grasp/v21/test_deploy_controller.py\", line 187, in test_long_move_needs_many_steps\r\n    ctrl, cfg = build(plant)\r\n  File \"grasp/v21/test_deploy_controller.py\", line 162, in build\r\n    ctrl.fk = X.FKComputer(cfg.urdf_path)\r\n  File \"D:\\OneDrive - \u570b\u7acb\u4e2d\u592e\u5927\u5b78\\\u684c\u9762\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\x3plus_real_grasp.py\", line 1028, in __init__\r\n    self.body_id = p.loadURDF(\r\npybullet.error: Cannot load URDF file.\r\n"
+  },
+  {
+    "suite": "grasp/v21/test_servo_read.py",
+    "exit_code": 0,
+    "tail": "ort NumPy 2.0 amongst other critical functionality.\r\nPlease upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.\r\nUsers of this version of Gym should be able to simply replace 'import gym' with 'import gymnasium as gym' in the vast majority of cases.\r\nSee the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.\r\n"
+  },
+  {
+    "suite": "grasp/v21/test_deploy_floor_guard.py",
+    "exit_code": 1,
+    "tail": " for additional information.\r\nTraceback (most recent call last):\r\n  File \"grasp/v21/test_deploy_floor_guard.py\", line 171, in <module>\r\n    sys.exit(main())\r\n  File \"grasp/v21/test_deploy_floor_guard.py\", line 49, in main\r\n    fk = FKComputer(cfg.urdf_path)\r\n  File \"D:\\OneDrive - \u570b\u7acb\u4e2d\u592e\u5927\u5b78\\\u684c\u9762\\Slam\\0920\\repo_v23_grasp_test\\grasp\\v21\\x3plus_real_grasp.py\", line 1028, in __init__\r\n    self.body_id = p.loadURDF(\r\npybullet.error: Cannot load URDF file.\r\n"
+  },
+  {
+    "suite": "ui/test_server.py",
+    "exit_code": 0,
+    "tail": "ole (__main__.TestStatusIngest)\r\nEnd to end over the loopback, using the mission's own emitter. ... ok\r\ntest_garbage_datagrams_are_ignored (__main__.TestStatusIngest) ... ok\r\ntest_the_mission_defaults_to_the_throttled_period (__main__.TestTelemetryCost) ... ok\r\ntest_unchanged_ticks_are_collapsed (__main__.TestTelemetryCost) ... ok\r\n\r\n----------------------------------------------------------------------\r\nRan 50 tests in 3.070s\r\n\r\nOK (skipped=1)\r\n"
+  },
+  {
+    "suite": "integration/mission_fsm.py",
+    "exit_code": 0,
+    "tail": "[fsm] AMCL scoped to map states only OK\r\n[fsm] ESTOP latches everywhere OK\r\n[fsm] FAULT latches OK\r\n[fsm] stationary gate fails closed OK\r\n[fsm] target-lost and approach-timeout recovery OK\r\n[fsm] detection streak gate OK\r\n[fsm] goal-source changes reset ActionDelay/tracker OK\r\n[fsm] deliver_enabled=False path OK\r\n[fsm] paused-while-carrying resumes all 4 carrying states, others land in IDLE OK\r\n[fsm] config validation OK\r\n[fsm] SELFTEST PASSED\r\n"
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "registration_id": "coarse_wall_layout_20261021_v3",
+  "ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "localized": true,
+  "live_used_ids": [
+    0,
+    3
+  ],
+  "localization_output": "localization_v3_all_ids/result.json",
+  "corner_tests_passed": 70,
+  "controller_checks_passed": 138,
+  "servo_checks_passed": 37,
+  "floor_checks_passed": 641,
+  "ui_cases": 50,
+  "ui_skipped": 1,
+  "fsm_passed": true,
+  "test_environment_note": "Two FK suites required test-only ASCII asset paths for Windows/PyBullet; workspace sources unchanged by workaround.",
+  "patrol_pulses": 0,
+  "patrol_result": "No rear camera frames reached PC, motion never started",
+  "camera_udp_packets_in_read_only_4s_probe": 0,
+  "camera_sender_stopped": true
+}

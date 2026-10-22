@@ -1,0 +1,22 @@
+[
+  {
+    "suite": "grasp/v21/test_deploy_controller.py",
+    "exit_code": 0
+  },
+  {
+    "suite": "grasp/v21/test_servo_read.py",
+    "exit_code": 0
+  },
+  {
+    "suite": "grasp/v21/test_deploy_floor_guard.py",
+    "exit_code": 0
+  },
+  {
+    "suite": "ui/test_server.py",
+    "exit_code": 0
+  },
+  {
+    "suite": "integration/mission_fsm.py",
+    "exit_code": 0
+  }
+]

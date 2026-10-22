@@ -1,0 +1,1 @@
+{"ok": true, "capture_id": "72dcd31d2c2a45389f7bb327e8692bd4", "output_dir": "/tmp/ncu_test_20261021/initial_localization", "ids": [3, 0], "max_source_age_s": 0.028774128000009114, "arm_or_motion_executed": false}

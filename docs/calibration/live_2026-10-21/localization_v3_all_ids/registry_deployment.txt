@@ -1,0 +1,1 @@
+{"backup": "maps/demo_box_20261018_patrol/aruco_corner_landmarks.json.before_v3_20261021", "ids": [0, 1, 2, 3, 4, 5, 6, 7], "registration_id": "coarse_wall_layout_20261021_v3", "sha256": "3934d5357209a18fa48d8b2280e4e66be3d0b492d49f192a82f9d0ea25900f00"}

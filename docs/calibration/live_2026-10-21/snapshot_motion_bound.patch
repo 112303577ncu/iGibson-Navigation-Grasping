@@ -1,0 +1,64 @@
+--- a/integration/mission_loop.py
++++ b/integration/mission_loop.py
+@@ -381,6 +381,12 @@
+         turned = max(abs(dock.wrap(p[2] - pose[2])) for _, p in span)
+         uncovered = (max(0.0, span[0][0] - start) + max(0.0, end - span[-1][0])
+                      if moving else 0.0)
++        # Equal endpoint poses do not rule out motion between samples. Every
++        # instant inside a sampled interval lies within half its duration of
++        # one endpoint, so add that speed-bound allowance before map exclusion.
++        if moving:
++            uncovered += max((at1 - at0 for (at0, _), (at1, _) in
++                              zip(span, span[1:])), default=0.0) / 2.0
+         return pose, moved + PATROL_MAX_VX * uncovered, turned + PATROL_MAX_WZ * uncovered
+ 
+     def patrol_alive(self, pid):
+--- a/tests/test_flow_contracts.py
++++ b/tests/test_flow_contracts.py
+@@ -227,15 +227,15 @@
+     def test_a_still_robot_places_the_frame_exactly(self):
+         pose = (0.0, 0.2, 0.0)
+         samples = [(at, pose) for at in (9.9, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6)]
+-        self.assertEqual(self.link(samples).frame_pose(10.5), (pose, 0.0, 0.0))
++        self.assertEqual(self.link(samples).frame_pose(10.5, moving=False), (pose, 0.0, 0.0))
+ 
+     def test_motion_and_turning_within_the_frames_window_are_bounded(self):
+         # The frame arrived at 10.5, so it was taken in 10.2..10.5.
+         samples = [(10.1, (0.00, 0, 0.0)), (10.2, (0.01, 0, 0.0)), (10.3, (0.02, 0, 0.0)),
+                    (10.4, (0.03, 0, 0.0)), (10.5, (0.04, 0, 0.3)), (10.6, (0.05, 0, 0.3))]
+         pose, moved, turned = self.link(samples).frame_pose(10.5)
+-        self.assertAlmostEqual(moved, 0.02, places=6)
+-        self.assertAlmostEqual(turned, 0.3)
++        self.assertAlmostEqual(moved, 0.02 + mission.PATROL_MAX_VX * 0.05, places=6)
++        self.assertAlmostEqual(turned, 0.3 + mission.PATROL_MAX_WZ * 0.05)
+         # Turning 0.3 rad blurs a sighting 1 m away by 0.3 m: no exclusion.
+         self.assertGreater(moved + 1.0 * turned, mission.SPOT_ERROR_MAX_M)
+ 
+@@ -245,8 +245,16 @@
+         self.assertIsNotNone(found)
+         _, moved, turned = found
+         # 10.2..10.4 and 10.45..10.5 uncovered: 0.25 s at the patrol's top speeds.
+-        self.assertAlmostEqual(moved, mission.PATROL_MAX_VX * 0.25)
+-        self.assertAlmostEqual(turned, mission.PATROL_MAX_WZ * 0.25)
++        self.assertAlmostEqual(moved, mission.PATROL_MAX_VX * 0.275)
++        self.assertAlmostEqual(turned, mission.PATROL_MAX_WZ * 0.275)
++
++    def test_equal_samples_cannot_hide_a_turn_and_wall_exclude_a_real_box(self):
++        pose, moved, turned = self.link(
++            [(9.9, (0., 0., 0.)), (10.4, (0., 0., 0.))], now=10.4).frame_pose(10.3)
++        actual_error = math.hypot(0.8225403876886757 - 0.9, 0.41644604767119964 - 0.2)
++        error_bound = moved + math.hypot(0.9, 0.2) * turned
++        self.assertGreaterEqual(error_bound, actual_error)
++        self.assertGreater(error_bound, mission.SPOT_ERROR_MAX_M)
+ 
+     def test_stale_missing_future_and_gapped_frames_have_no_pose(self):
+         pose = (0.0, 0.0, 0.0)
+@@ -258,7 +266,7 @@
+     def test_yaw_wrap_is_not_mistaken_for_a_full_turn(self):
+         poses = [(at, (0.0, 0.0, math.pi - 0.001 if i % 2 else -math.pi + 0.001))
+                  for i, at in enumerate((10.1, 10.2, 10.3, 10.4, 10.5, 10.6))]
+-        self.assertLess(self.link(poses).frame_pose(10.5)[2], 0.01)
++        self.assertLess(self.link(poses).frame_pose(10.5)[2], 0.06)
+ 
+     def test_pose_age_is_not_reset_by_receipt_and_bad_reports_clear_the_cache(self):
+         link = self.link([], now=10.0)

@@ -1,0 +1,45 @@
+{
+  "koala_python312": {
+    "passed": 194,
+    "exit_code": 0
+  },
+  "navigation_resume_and_initial_bridge": {
+    "passed": 157,
+    "exit_code": 0
+  },
+  "final_bridge": {
+    "passed": 23,
+    "exit_code": 0
+  },
+  "mandatory_regressions": [
+    {
+      "name": "v21_controller",
+      "exit_code": 0
+    },
+    {
+      "name": "servo",
+      "exit_code": 0
+    },
+    {
+      "name": "floor_guard",
+      "exit_code": 0
+    },
+    {
+      "name": "v23_controller",
+      "exit_code": 0
+    },
+    {
+      "name": "ui",
+      "exit_code": 0
+    },
+    {
+      "name": "fsm",
+      "exit_code": 0
+    }
+  ],
+  "python38_ast": "passed",
+  "workflow_yaml": "passed",
+  "robot_connected": false,
+  "deployed": false,
+  "pushed": false
+}

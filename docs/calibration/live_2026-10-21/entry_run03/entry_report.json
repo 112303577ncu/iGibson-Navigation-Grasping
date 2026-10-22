@@ -1,0 +1,85 @@
+{
+  "ok": false,
+  "physical_mission_started": true,
+  "koala_root": "C:\\tmp\\x3_koala_fa61b64_20261021",
+  "stage": "MISSION",
+  "koala_source_sha256": {
+    "mission_loop.py": "c708d25b2a0a26b7a6610255690ba19b6ba931df78e933e802befd84887a7f3f",
+    "mission_runtime.py": "c2ccfbb67f13ae0a8e93a5507821bb2abd77dfb7d69aea3e344e748290fdc751",
+    "robot_rpc.py": "2a38621f680b0e67da589ebcf458f4a017242356bb6b028c2f291fdec4a255b4",
+    "sugarbox_approach_grasp.py": "e153eb7415bb73b2435265e70f8f89195ec94a7e740f2e0747b1d0c3f67282f9",
+    "sugarbox_rl_approach_final2.py": "c8561b55b9cc5813c6b139e7b60267400ba0d6a6fda6519a2bb484739dad9375"
+  },
+  "exit_code": 2,
+  "final_health": {
+    "ok": true,
+    "serial": null,
+    "stack_version": "v23",
+    "service_pid": 22711,
+    "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+    "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+    "holding": false,
+    "chassis": {
+      "motors": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maintenance": false,
+      "moving": false,
+      "stopped_for_s": 14.13,
+      "arm_busy": false,
+      "arm_pose": "travel",
+      "pose_blocked_total": 0,
+      "board_rx_age_s": 0.0,
+      "rx_blocked_total": 0,
+      "dropped_total": 0,
+      "refused_total": 0,
+      "client": null
+    },
+    "odom": {
+      "rosbridge": true,
+      "published": 53578,
+      "skipped_invalid": 1,
+      "skipped_board_silent": 0,
+      "failures": 0,
+      "valid": true,
+      "pose": [
+        0.8939,
+        0.2058,
+        2.4833
+      ],
+      "twist": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reason": ""
+    },
+    "startup_pose": {
+      "enabled": true,
+      "ok": true,
+      "reason": "travel_verified",
+      "servo_deg": [
+        90.0,
+        140.0,
+        0.0,
+        0.0,
+        90.0,
+        30.0
+      ]
+    },
+    "chassis_tcp_ready": true,
+    "rss_mb": 507.8,
+    "uptime_s": 2697.5,
+    "capabilities": {
+      "independent_health": true,
+      "owner_restart": false,
+      "serial_transport_diagnostics": false
+    }
+  },
+  "maintenance_lock": {
+    "ok": true
+  }
+}

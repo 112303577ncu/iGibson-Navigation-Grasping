@@ -1,0 +1,802 @@
+[
+  {
+    "health": {
+      "ok": true,
+      "serial": null,
+      "stack_version": "v23",
+      "service_pid": 22711,
+      "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+      "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+      "holding": false,
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 273.68,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      },
+      "odom": {
+        "rosbridge": true,
+        "published": 50373,
+        "skipped_invalid": 1,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1336,
+          -0.2425,
+          -0.9151
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "startup_pose": {
+        "enabled": true,
+        "ok": true,
+        "reason": "travel_verified",
+        "servo_deg": [
+          90.0,
+          140.0,
+          0.0,
+          0.0,
+          90.0,
+          30.0
+        ]
+      },
+      "chassis_tcp_ready": true,
+      "rss_mb": 507.8,
+      "uptime_s": 2535.9,
+      "capabilities": {
+        "independent_health": true,
+        "owner_restart": false,
+        "serial_transport_diagnostics": false
+      }
+    },
+    "localization": {
+      "status": "localized",
+      "odom_age_s": 0.05,
+      "next_action": "none",
+      "board_rx_age_s": 0.01,
+      "reason_code": "OK",
+      "available_mb": 1556.6484375,
+      "retry_after_s": 0.0,
+      "seed": {
+        "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+        "stamp": 1792561435.798012,
+        "pose": [
+          0.43030526088405086,
+          0.11209723703208488,
+          -0.5146457056242006
+        ],
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+        "owner_pid": 22711
+      },
+      "ready": true,
+      "wait_elapsed_s": 0.0,
+      "degraded": false,
+      "reference_age_s": 0.023,
+      "wait_timed_out": false,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792561435.798012,
+      "accepted_reference_stamp": 1792561055.090172,
+      "scan_age_s": 0.236,
+      "state": {
+        "tf_age": -0.26337194442749023,
+        "front": 0.9991515822743154,
+        "odom_stamp": 1792561435.7481012,
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "scan_age": 0.23662805557250977,
+        "vx": 0.0,
+        "pose": [
+          0.43030526088405086,
+          0.11209723703208488,
+          -0.5146457056242006
+        ],
+        "turn_clear": true,
+        "wz": 0.0,
+        "cov": [
+          3.1675192952446034e-07,
+          2.0606150867681384e-07,
+          2.6290508077701255e-07
+        ]
+      },
+      "last_good_age_s": 0.0,
+      "owner_pid": 22711,
+      "reference_kind": "last_good_amcl",
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "restart_attempts_10min": 1,
+      "wait_limit_s": 20,
+      "amcl_pid": 2725
+    },
+    "reference": {
+      "stamp": 1792561055.090172,
+      "pose": [
+        0.19262483528680663,
+        0.33172138333126927,
+        0.3124276494299618
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "owner_pid": 22711,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "source": "lidar_with_coarse_aruco_disambiguation",
+      "capture_id": "0b6cbec071984f8190a38b0c0052afa3",
+      "registration_id": "coarse_wall_layout_20261021_v3",
+      "camera_id": "rear-sonix-640x480"
+    },
+    "now": 1792561435.835147,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owners": [
+      "22711"
+    ]
+  },
+  {
+    "health": {
+      "ok": true,
+      "serial": null,
+      "stack_version": "v23",
+      "service_pid": 22711,
+      "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+      "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+      "holding": false,
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 274.01,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      },
+      "odom": {
+        "rosbridge": true,
+        "published": 50380,
+        "skipped_invalid": 1,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1336,
+          -0.2425,
+          -0.9151
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "startup_pose": {
+        "enabled": true,
+        "ok": true,
+        "reason": "travel_verified",
+        "servo_deg": [
+          90.0,
+          140.0,
+          0.0,
+          0.0,
+          90.0,
+          30.0
+        ]
+      },
+      "chassis_tcp_ready": true,
+      "rss_mb": 507.8,
+      "uptime_s": 2536.3,
+      "capabilities": {
+        "independent_health": true,
+        "owner_restart": false,
+        "serial_transport_diagnostics": false
+      }
+    },
+    "localization": {
+      "status": "localized",
+      "odom_age_s": 0.048,
+      "next_action": "none",
+      "board_rx_age_s": 0.0,
+      "reason_code": "OK",
+      "available_mb": 1551.8515625,
+      "retry_after_s": 0.0,
+      "seed": {
+        "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+        "stamp": 1792561436.149047,
+        "pose": [
+          0.43029446614782946,
+          0.1120899524618604,
+          -0.5146536592939577
+        ],
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+        "owner_pid": 22711
+      },
+      "ready": true,
+      "wait_elapsed_s": 0.0,
+      "degraded": false,
+      "reference_age_s": 0.013,
+      "wait_timed_out": false,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792561436.149047,
+      "accepted_reference_stamp": 1792561055.090172,
+      "scan_age_s": 0.199,
+      "state": {
+        "tf_age": -0.3009061813354492,
+        "front": 1.0004130990710427,
+        "odom_stamp": 1792561436.1006367,
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "scan_age": 0.19909381866455078,
+        "vx": 0.0,
+        "pose": [
+          0.43029446614782946,
+          0.1120899524618604,
+          -0.5146536592939577
+        ],
+        "turn_clear": true,
+        "wz": 0.0,
+        "cov": [
+          2.9939237682761146e-07,
+          1.9786066556752878e-07,
+          2.5309064513465135e-07
+        ]
+      },
+      "last_good_age_s": 0.0,
+      "owner_pid": 22711,
+      "reference_kind": "last_good_amcl",
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "restart_attempts_10min": 1,
+      "wait_limit_s": 20,
+      "amcl_pid": 2725
+    },
+    "reference": {
+      "stamp": 1792561055.090172,
+      "pose": [
+        0.19262483528680663,
+        0.33172138333126927,
+        0.3124276494299618
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "owner_pid": 22711,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "source": "lidar_with_coarse_aruco_disambiguation",
+      "capture_id": "0b6cbec071984f8190a38b0c0052afa3",
+      "registration_id": "coarse_wall_layout_20261021_v3",
+      "camera_id": "rear-sonix-640x480"
+    },
+    "now": 1792561436.164601,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owners": [
+      "22711"
+    ]
+  },
+  {
+    "health": {
+      "ok": true,
+      "serial": null,
+      "stack_version": "v23",
+      "service_pid": 22711,
+      "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+      "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+      "holding": false,
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 274.33,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      },
+      "odom": {
+        "rosbridge": true,
+        "published": 50386,
+        "skipped_invalid": 1,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1336,
+          -0.2425,
+          -0.9151
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "startup_pose": {
+        "enabled": true,
+        "ok": true,
+        "reason": "travel_verified",
+        "servo_deg": [
+          90.0,
+          140.0,
+          0.0,
+          0.0,
+          90.0,
+          30.0
+        ]
+      },
+      "chassis_tcp_ready": true,
+      "rss_mb": 507.8,
+      "uptime_s": 2536.6,
+      "capabilities": {
+        "independent_health": true,
+        "owner_restart": false,
+        "serial_transport_diagnostics": false
+      }
+    },
+    "localization": {
+      "status": "localized",
+      "odom_age_s": 0.038,
+      "next_action": "none",
+      "board_rx_age_s": 0.0,
+      "reason_code": "OK",
+      "available_mb": 1548.4609375,
+      "retry_after_s": 0.0,
+      "seed": {
+        "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+        "stamp": 1792561436.389083,
+        "pose": [
+          0.43029446614782946,
+          0.1120899524618604,
+          -0.5146536592939577
+        ],
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+        "owner_pid": 22711
+      },
+      "ready": true,
+      "wait_elapsed_s": 0.0,
+      "degraded": false,
+      "reference_age_s": 0.009,
+      "wait_timed_out": false,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792561436.389083,
+      "accepted_reference_stamp": 1792561055.090172,
+      "scan_age_s": 0.143,
+      "state": {
+        "tf_age": -0.2627260684967041,
+        "front": 1.0016265004918226,
+        "odom_stamp": 1792561436.3514345,
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "scan_age": 0.14339494705200195,
+        "vx": 0.0,
+        "pose": [
+          0.43029446614782946,
+          0.1120899524618604,
+          -0.5146536592939577
+        ],
+        "turn_clear": true,
+        "wz": 0.0,
+        "cov": [
+          2.9939237682761146e-07,
+          1.9786066556752878e-07,
+          2.5309064513465135e-07
+        ]
+      },
+      "last_good_age_s": 0.0,
+      "owner_pid": 22711,
+      "reference_kind": "last_good_amcl",
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "restart_attempts_10min": 1,
+      "wait_limit_s": 20,
+      "amcl_pid": 2725
+    },
+    "reference": {
+      "stamp": 1792561055.090172,
+      "pose": [
+        0.19262483528680663,
+        0.33172138333126927,
+        0.3124276494299618
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "owner_pid": 22711,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "source": "lidar_with_coarse_aruco_disambiguation",
+      "capture_id": "0b6cbec071984f8190a38b0c0052afa3",
+      "registration_id": "coarse_wall_layout_20261021_v3",
+      "camera_id": "rear-sonix-640x480"
+    },
+    "now": 1792561436.4916391,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owners": [
+      "22711"
+    ]
+  },
+  {
+    "health": {
+      "ok": true,
+      "serial": null,
+      "stack_version": "v23",
+      "service_pid": 22711,
+      "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+      "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+      "holding": false,
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 274.65,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.01,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      },
+      "odom": {
+        "rosbridge": true,
+        "published": 50393,
+        "skipped_invalid": 1,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1336,
+          -0.2425,
+          -0.9151
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "startup_pose": {
+        "enabled": true,
+        "ok": true,
+        "reason": "travel_verified",
+        "servo_deg": [
+          90.0,
+          140.0,
+          0.0,
+          0.0,
+          90.0,
+          30.0
+        ]
+      },
+      "chassis_tcp_ready": true,
+      "rss_mb": 507.8,
+      "uptime_s": 2536.9,
+      "capabilities": {
+        "independent_health": true,
+        "owner_restart": false,
+        "serial_transport_diagnostics": false
+      }
+    },
+    "localization": {
+      "status": "localized",
+      "odom_age_s": 0.01,
+      "next_action": "none",
+      "board_rx_age_s": 0.0,
+      "reason_code": "OK",
+      "available_mb": 1552.34765625,
+      "retry_after_s": 0.0,
+      "seed": {
+        "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+        "stamp": 1792561436.765027,
+        "pose": [
+          0.4302824959494571,
+          0.11208341382907169,
+          -0.5146605013789771
+        ],
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+        "owner_pid": 22711
+      },
+      "ready": true,
+      "wait_elapsed_s": 0.0,
+      "degraded": false,
+      "reference_age_s": 0.015,
+      "wait_timed_out": false,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792561436.765027,
+      "accepted_reference_stamp": 1792561055.090172,
+      "scan_age_s": 0.224,
+      "state": {
+        "tf_age": -0.27591705322265625,
+        "front": 1.0019467520446899,
+        "odom_stamp": 1792561436.7546875,
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "scan_age": 0.22408294677734375,
+        "vx": 0.0,
+        "pose": [
+          0.4302824959494571,
+          0.11208341382907169,
+          -0.5146605013789771
+        ],
+        "turn_clear": true,
+        "wz": 0.0,
+        "cov": [
+          2.752205363894427e-07,
+          1.8614514221294974e-07,
+          2.3900386055033613e-07
+        ]
+      },
+      "last_good_age_s": 0.0,
+      "owner_pid": 22711,
+      "reference_kind": "last_good_amcl",
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "restart_attempts_10min": 1,
+      "wait_limit_s": 20,
+      "amcl_pid": 2725
+    },
+    "reference": {
+      "stamp": 1792561055.090172,
+      "pose": [
+        0.19262483528680663,
+        0.33172138333126927,
+        0.3124276494299618
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "owner_pid": 22711,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "source": "lidar_with_coarse_aruco_disambiguation",
+      "capture_id": "0b6cbec071984f8190a38b0c0052afa3",
+      "registration_id": "coarse_wall_layout_20261021_v3",
+      "camera_id": "rear-sonix-640x480"
+    },
+    "now": 1792561436.810954,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owners": [
+      "22711"
+    ]
+  },
+  {
+    "health": {
+      "ok": true,
+      "serial": null,
+      "stack_version": "v23",
+      "service_pid": 22711,
+      "model_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000.zip",
+      "vecnorm_path": "/home/jetson/Documents/deploy_jetson2/grasp/v23/models/candidate_v23_seed23401_ckpt250000_vec.pkl",
+      "holding": false,
+      "chassis": {
+        "motors": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maintenance": true,
+        "moving": false,
+        "stopped_for_s": 274.97,
+        "arm_busy": false,
+        "arm_pose": "travel",
+        "pose_blocked_total": 0,
+        "board_rx_age_s": 0.0,
+        "rx_blocked_total": 0,
+        "dropped_total": 0,
+        "refused_total": 0,
+        "client": null
+      },
+      "odom": {
+        "rosbridge": true,
+        "published": 50399,
+        "skipped_invalid": 1,
+        "skipped_board_silent": 0,
+        "failures": 0,
+        "valid": true,
+        "pose": [
+          0.1336,
+          -0.2425,
+          -0.9151
+        ],
+        "twist": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reason": ""
+      },
+      "startup_pose": {
+        "enabled": true,
+        "ok": true,
+        "reason": "travel_verified",
+        "servo_deg": [
+          90.0,
+          140.0,
+          0.0,
+          0.0,
+          90.0,
+          30.0
+        ]
+      },
+      "chassis_tcp_ready": true,
+      "rss_mb": 507.8,
+      "uptime_s": 2537.2,
+      "capabilities": {
+        "independent_health": true,
+        "owner_restart": false,
+        "serial_transport_diagnostics": false
+      }
+    },
+    "localization": {
+      "status": "localized",
+      "odom_age_s": 0.05,
+      "next_action": "none",
+      "board_rx_age_s": 0.01,
+      "reason_code": "OK",
+      "available_mb": 1557.45703125,
+      "retry_after_s": 0.0,
+      "seed": {
+        "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+        "stamp": 1792561437.00867,
+        "pose": [
+          0.4302838321933208,
+          0.11208630742846015,
+          -0.5146569574745241
+        ],
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+        "owner_pid": 22711
+      },
+      "ready": true,
+      "wait_elapsed_s": 0.0,
+      "degraded": false,
+      "reference_age_s": 0.014,
+      "wait_timed_out": false,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "stamp": 1792561437.00867,
+      "accepted_reference_stamp": 1792561055.090172,
+      "scan_age_s": 0.172,
+      "state": {
+        "tf_age": -0.3280189037322998,
+        "front": 1.0019467520446899,
+        "odom_stamp": 1792561436.9582524,
+        "odom": [
+          0.1336137016522882,
+          -0.24251107041730396,
+          -0.9151131850080252
+        ],
+        "scan_age": 0.1719810962677002,
+        "vx": 0.0,
+        "pose": [
+          0.4302838321933208,
+          0.11208630742846015,
+          -0.5146569574745241
+        ],
+        "turn_clear": true,
+        "wz": 0.0,
+        "cov": [
+          2.7139708666312735e-07,
+          1.839350585716312e-07,
+          2.3626800912404685e-07
+        ]
+      },
+      "last_good_age_s": 0.0,
+      "owner_pid": 22711,
+      "reference_kind": "last_good_amcl",
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "restart_attempts_10min": 1,
+      "wait_limit_s": 20,
+      "amcl_pid": 2725
+    },
+    "reference": {
+      "stamp": 1792561055.090172,
+      "pose": [
+        0.19262483528680663,
+        0.33172138333126927,
+        0.3124276494299618
+      ],
+      "odom": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+      "owner_pid": 22711,
+      "map_hash": "2274a1c2b4775645633fee7ac1dc4b730cdba773381bd89e241a098ab267ed7f",
+      "source": "lidar_with_coarse_aruco_disambiguation",
+      "capture_id": "0b6cbec071984f8190a38b0c0052afa3",
+      "registration_id": "coarse_wall_layout_20261021_v3",
+      "camera_id": "rear-sonix-640x480"
+    },
+    "now": 1792561437.1347764,
+    "boot_id": "f07aa026-32f7-44b8-ae58-8103722d32c2",
+    "owners": [
+      "22711"
+    ]
+  }
+]

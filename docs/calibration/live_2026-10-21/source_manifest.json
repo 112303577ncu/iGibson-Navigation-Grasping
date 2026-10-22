@@ -1,0 +1,14 @@
+{
+  "upstream_repository": "https://github.com/koala915/iGibson-Navigation-Grasping",
+  "branch": "codex/approach-lidar-frame",
+  "commit": "fa61b642c733556ff425df7191872e10e33d5625",
+  "snapshot": "C:\\tmp\\x3_koala_fa61b64_20261021",
+  "upstream_test_cases": 304,
+  "patched_test_cases": 305,
+  "patch_location": "isolated PC snapshot only",
+  "jetson_controller_overwritten": false,
+  "patched_sha256": {
+    "integration/mission_loop.py": "c708d25b2a0a26b7a6610255690ba19b6ba931df78e933e802befd84887a7f3f",
+    "tests/test_flow_contracts.py": "5c03fcaf02b93fa64bd1493f3422ffa2505d14cca6bf3c73c91eeb9ee54f6c61"
+  }
+}
