@@ -1,5 +1,6 @@
 """PC-side placement reservation; the existing native/vision clients own motion."""
 import importlib.util
+import inspect
 import json
 import math
 from pathlib import Path
@@ -135,12 +136,14 @@ class Supervisor:
         if self.active is None:
             raise RuntimeError('release has no placement reservation')
         active = self.active
+        if active.get('box', {}).get('verified') is False:
+            self.observe_release(args, kwargs)
         read = kwargs.pop('read', self.mission.runner.ctl)
         drive = kwargs.pop('drive', self.mission.runner.drive)
         def checked_read(host, command):
             if command in ('release', 'release-preview'):
                 actual = active['room']._snapshot(holding=True)
-                expected = active['plan']['release']
+                expected = active.get('observed_release', active['plan']['release'])
                 if math.hypot(actual['pose'][0] - expected[0], actual['pose'][1] - expected[1]) > .10:
                     raise RuntimeError('RELEASE_POSE_REFUSED: actual stop differs from reserved release point')
                 problem = active['geometry'].command_problem(active['plan'], actual['pose'], 0., 0.)
@@ -161,6 +164,47 @@ class Supervisor:
                     raise RuntimeError('wall correction would lose placement exit')
             return drive(host, metres, **options)
         return self.original_place(*args, **dict(kwargs, read=checked_read, drive=checked_drive))
+
+    def observe_release(self, args, kwargs):
+        """Use this run's vision/odometry arrival, never promote a map candidate.
+
+        The native report measures the box EDGE in base coordinates. Capture
+        its map position before the native taught-wall correction moves again.
+        Keep the old conservative obstacle too; an observation cannot erase it.
+        """
+        values = inspect.signature(self.original_place).bind(*args, **kwargs).arguments
+        report = values.get('report')
+        final_x, aim_y = values.get('final_x'), values.get('aim_y')
+        problem = self.mission.dock.arrival_problem(report, final_x, aim_y)
+        if problem:
+            raise RuntimeError('RELEASE_OBSERVATION_REFUSED: ' + problem)
+        numbers = [report.get(k) for k in ('t', 'visual_age_s')]
+        if (any(type(v) not in (int, float) or not math.isfinite(v) for v in numbers)
+                or not 0 <= time.time() - numbers[0] <= 5.
+                or not 0 <= numbers[1] <= 12.
+                or report.get('target_kind') != 'placement' or report.get('blocked') is not False):
+            raise RuntimeError('RELEASE_OBSERVATION_REFUSED: stale or invalid placement arrival')
+        active = self.active
+        snapshot = active['room']._snapshot(holding=True)
+        if snapshot['context'] != active['context']:
+            raise RuntimeError('RELEASE_OBSERVATION_REFUSED: localization context changed')
+        pose = snapshot['pose']
+        depth = corridor.half_depth(active['box'], pose[2], self.mission.dock.BOX_DEPTH_M / 2)
+        point = self.mission.dock.to_map(pose, (report['x'] + depth, report['y']))
+        if math.hypot(point[0] - active['box']['x'], point[1] - active['box']['y']) > .25:
+            raise RuntimeError('RELEASE_OBSERVATION_REFUSED: observed bin exceeds candidate uncertainty')
+        observed = dict(active['box'], x=point[0], y=point[1], verified=False)
+        obstacle = (point[0], point[1], self.mission.dock.BIN_HALF_DIAGONAL_M + .04)
+        room = active['room']
+        geometry = corridor.Geometry(room.mask, room.walls, list(room.obstacles) + [obstacle], self.mission.dock)
+        if geometry.exit(pose) is None:
+            raise RuntimeError('RELEASE_EXIT_REFUSED: observed bin has no straight return')
+        expected = self.mission.dock.to_map(pose, (report['x'] - final_x, report['y'] - aim_y))
+        active['observed_release'] = [expected[0], expected[1], pose[2]]
+        active['geometry'] = geometry
+        room.obstacles = geometry.obstacles
+        self.save('BIN_OBSERVATION_CHECKED', bin=observed, pose=pose,
+                  registration_verified=False, exit=geometry.exit(pose))
 
     def transit(self, host, plan, real):
         output = '/dev/shm/g2_placement_transit_' + uuid.uuid4().hex + '.json'
@@ -196,10 +240,12 @@ class Supervisor:
         if all(v is not None for v in (pose.get('yaw'), dimensions.get('length'), dimensions.get('width'))):
             box.update(orientation_rad=pose['yaw'], length_m=dimensions['length'], width_m=dimensions['width'])
         self.box_point = [box['x'], box['y']]
-        geometry = corridor.Geometry(room.mask, room.walls, room.obstacles, self.mission.dock)
         bad_headings = []
         try:
             for attempt in range(2):
+                # A previous visual arrival may have added a conservative bin
+                # envelope. Carry it into planning as well as the worker gate.
+                geometry = corridor.Geometry(room.mask, room.walls, room.obstacles, self.mission.dock)
                 before = room._snapshot(holding=True)
                 plans = geometry.choose(box, before['pose'], self.mission.dock.PLACEMENT_FINAL_X_M,
                                         self.mission.dock.PLACEMENT_AIM_Y_M, bad_headings)
@@ -239,7 +285,8 @@ class Supervisor:
                 atomic(contract_path, contract)
                 atomic(self.folder / ('placement_contract_' + token + '.json'), contract)
                 feed = LocalizationFeed(args.host, state_path, arrived['context'])
-                self.active = dict(file=contract_path.resolve(), room=room, geometry=geometry, plan=selected)
+                self.active = dict(file=contract_path.resolve(), room=room, geometry=geometry,
+                                   plan=selected, box=box, context=arrived['context'])
                 failure = None
                 try:
                     argv = ['--target', 'placement', '--real', '--i-am-beside-the-robot']

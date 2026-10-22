@@ -82,15 +82,30 @@ def test_inflated_mask_does_not_forbid_a_checked_straight_exit():
     assert geometry().command_problem(dict(yaw_rad=0.), [1.72, 1., 0.], -.08, 0.) is None
 
 
-@pytest.mark.parametrize('vx,wz,part', [(.15, 0., 'predicted'), (0., .3, 'turning'),
+@pytest.mark.parametrize('vx,wz,part', [(.15, 0., 'predicted'),
                                       (.2, 0., 'speed'), (-.09, 0., 'speed')])
 def test_command_cannot_consume_the_reserved_return(vx, wz, part):
     assert part in geometry().command_problem(dict(yaw_rad=0.), [1.72, 1., 0.], vx, wz)
 
 
-def test_heading_drift_is_not_fixed_by_turning_in_the_keepout():
-    problem = geometry().command_problem(dict(yaw_rad=0.), [1.72, 1., .2], -.05, 0.)
-    assert 'heading' in problem
+def test_close_corridor_allows_motor_effective_turn_when_every_pose_retains_exit():
+    g = geometry()
+    assert not corridor.turn_ready(Mask(), [1.72, 1., 0.])
+    assert g.command_problem(dict(yaw_rad=0.), [1.72, 1., 0.], 0., .3) is None
+    assert g.command_problem(dict(yaw_rad=0.), [1.72, 1., .2], -.05, 0.) is None
+
+
+def test_turn_towards_wall_is_stopped_even_when_current_exit_exists():
+    g = geometry()
+    pose = [1.72, 1., 0.]
+    assert g.exit(pose) is not None
+    assert 'predicted' in g.command_problem(dict(yaw_rad=pose[2]), pose, 0., 1.)
+
+
+def test_rotation_cannot_sweep_deeper_into_the_conservative_bin_envelope():
+    g = corridor.Geometry(Mask(), [1], [(1.72, 1.3, .15)], Dock)
+    assert g.rotation_problem([1.72, 1., 0.], .3)
+    assert 'rotation' in g.command_problem(dict(yaw_rad=0.), [1.72, 1., 0.], 0., 1.)
 
 
 def test_permit_stale_context_and_stop_are_independent(tmp_path):
@@ -108,6 +123,10 @@ def test_permit_stale_context_and_stop_are_independent(tmp_path):
     state.write_text(json.dumps(value))
     assert permit.allows(.08, 0., clock=lambda: 10.1)
     assert not permit.allows(.08, 0., clock=lambda: 10.5)
+    value['measured_wz'] = -.3
+    state.write_text(json.dumps(value))
+    assert not permit.allows(0., .3, clock=lambda: 10.1)
+    assert 'reversing placement rotation' in permit.reason
     value['context'][1] = 8
     state.write_text(json.dumps(value))
     assert not permit.allows(.08, 0., clock=lambda: 10.1)
@@ -296,3 +315,93 @@ def test_default_demo_mission_routes_to_the_guarded_entry(monkeypatch):
     with pytest.raises(SystemExit):
         runpy.run_path(str(Path(__file__).resolve().parents[1] / 'grasp/v23/demo.py'), run_name='__main__')
     assert call.call_args.args[0][1].endswith('v23_mission_entry.py')
+
+
+def observation_fixture(tmp_path, monkeypatch):
+    calls = []
+    def original(host, report, final_x, aim_y, empty_test=False, **kw):
+        if kw.get('wall_m') is not None:
+            kw['drive'](host, .02)
+        return kw['read'](host, 'release-preview' if empty_test else 'release')
+    def arrival_problem(report, final_x, aim_y):
+        if not report or report.get('seeded') is not False or not report.get('arrived'):
+            return 'not a visual arrival'
+        if not report.get('reason', '').startswith('PURSUIT_DONE'):
+            return 'not at destination'
+        if abs(report['x'] - final_x) > .03 or abs(report['y'] - aim_y) > .04:
+            return 'outside arrival tolerance'
+    dock = SimpleNamespace(arrival_problem=arrival_problem, to_map=Dock.to_map,
+                           BOX_DEPTH_M=.135, BIN_HALF_DIAGONAL_M=.112)
+    runner = SimpleNamespace(place=original, drive=lambda *a: calls.append('drive'),
+                             ctl=lambda h, c: calls.append(c), start_engine=Mock())
+    s = supervisor.Supervisor(SimpleNamespace(runner=runner, dock=dock), {}, 'scene', tmp_path)
+    room = SimpleNamespace(mask=Mask(), walls=[1], obstacles=[(1.7, 1., .312)],
+        _snapshot=Mock(return_value=dict(pose=[1.2, 1., 0.], context=('boot', 7, 'map'))))
+    g = SimpleNamespace(exit=Mock(return_value=dict(distance_m=.2)), command_problem=Mock(return_value=None))
+    monkeypatch.setattr(supervisor.corridor, 'Geometry', lambda mask, walls, obstacles, dock:
+                        SimpleNamespace(exit=g.exit, command_problem=g.command_problem, obstacles=obstacles))
+    s.active = dict(room=room, context=('boot', 7, 'map'), geometry=g,
+                    box=dict(x=1.7, y=1., verified=False), plan=dict(release=[1.38, 1., 0.]))
+    report = dict(x=.253, y=-.028, seeded=False, arrived=True, reason='PURSUIT_DONE',
+                  t=100., visual_age_s=3., target_kind='placement', blocked=False)
+    monkeypatch.setattr(supervisor.time, 'time', lambda: 101.)
+    return s, runner, room, g, calls, report
+
+
+def test_unverified_bin_uses_visual_stop_and_keeps_both_obstacle_envelopes(tmp_path, monkeypatch):
+    s, runner, room, g, calls, report = observation_fixture(tmp_path, monkeypatch)
+    s.place('host', report, .253, -.028, wall_m=.5)
+    assert calls == ['drive', 'release']
+    assert len(room.obstacles) == 2
+    assert room.obstacles[0] == (1.7, 1., .312)
+    assert room.obstacles[1] == pytest.approx((1.5205, .972, .152))
+    assert s.active['observed_release'] == pytest.approx([1.2, 1., 0.])
+    assert s.events[0]['registration_verified'] is False
+    assert s.events[-1]['status'] == 'RELEASE_EXIT_CONFIRMED'
+
+
+@pytest.mark.parametrize('bad', ['seeded', 'stale', 'old_visual', 'wrong_target', 'blocked',
+                                  'outside_candidate', 'context', 'no_exit', 'wall_correction_exit'])
+def test_bad_bin_observation_never_sends_release_or_changes_registration(tmp_path, monkeypatch, bad):
+    s, runner, room, g, calls, report = observation_fixture(tmp_path, monkeypatch)
+    if bad == 'seeded': report['seeded'] = True
+    if bad == 'stale': report['t'] = 90.
+    if bad == 'old_visual': report['visual_age_s'] = 13.
+    if bad == 'wrong_target': report['target_kind'] = 'sugarbox'
+    if bad == 'blocked': report['blocked'] = True
+    if bad == 'outside_candidate': s.active['box']['x'] = 1.9
+    if bad == 'context': room._snapshot.return_value['context'] = ('boot', 8, 'map')
+    if bad == 'no_exit': g.exit.return_value = None
+    if bad == 'wall_correction_exit': g.command_problem.return_value = 'lost exit'
+    with pytest.raises(RuntimeError):
+        s.place('host', report, .253, -.028, wall_m=.5)
+    assert calls == []
+    assert s.active['box']['verified'] is False
+
+
+def test_verified_bin_still_requires_the_reserved_release_point(tmp_path, monkeypatch):
+    s, runner, room, g, calls, report = observation_fixture(tmp_path, monkeypatch)
+    s.active['box']['verified'] = True
+    with pytest.raises(RuntimeError, match='RELEASE_POSE_REFUSED'):
+        s.place('host', report, .253, -.028)
+    assert calls == [] and len(room.obstacles) == 1
+
+
+
+def test_retry_planning_keeps_the_observed_bin_envelope(tmp_path, monkeypatch):
+    s, room, mission, args = execute_fixture(tmp_path, monkeypatch,
+        ['holding', 'holding', 'empty'], [])
+    seen = []
+    g = supervisor.corridor.Geometry(None, None, None, None)
+    def factory(mask, walls, obstacles, dock):
+        seen.append(list(obstacles))
+        return g
+    monkeypatch.setattr(supervisor.corridor, 'Geometry', factory)
+    def stage(*a):
+        if len(seen) == 1:
+            room.obstacles = list(room.obstacles) + [(1.5, 1.5, .152)]
+            return 2
+        return 0
+    mission.run_stage.side_effect = stage
+    s.execute(*args)
+    assert seen == [[1], [1, (1.5, 1.5, .152)]]

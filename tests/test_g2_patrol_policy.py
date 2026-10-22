@@ -318,3 +318,27 @@ def test_supervisor_deadline_is_not_followed_by_another_navigation_wait(monkeypa
     if degraded and stamp==100:
         assert type(failure.value) is RuntimeError
         assert 'SCAN_STALE' in str(failure.value) and 'wait_for_fresh_scan' in str(failure.value)
+
+
+@pytest.mark.parametrize('corruption', [None, 'mask', 'margin', 'reserve', 'bin'])
+def test_35cm_scene_requires_the_matching_approved_mask(tmp_path, corruption):
+    import json
+    import shutil
+    source = ROOT / 'maps/demo_box_20261018_patrol'
+    for name in ('navigation_center_mask.yaml', 'navigation_center_mask.pgm', 'scene_layout.json'):
+        shutil.copyfile(source / name, tmp_path / name)
+    path = tmp_path / 'scene_layout.json'
+    layout = json.loads(path.read_text())
+    if corruption == 'mask':
+        mask = tmp_path / 'navigation_center_mask.pgm'
+        data = bytearray(mask.read_bytes()); data[-1] ^= 255; mask.write_bytes(data)
+    if corruption == 'margin': layout['center_wall_margin_m'] = .349
+    if corruption == 'reserve': layout['navigation_mask_reduction_20261021']['turn_reserve_m'] = .01
+    if corruption == 'bin': layout['bin']['center_keepout_buffer_m'] = .1
+    path.write_text(json.dumps(layout))
+    if corruption:
+        with pytest.raises(ValueError): Policy(str(tmp_path))
+    else:
+        policy = Policy(str(tmp_path))
+        assert policy.layout['center_wall_margin_m'] == .35
+        assert sum(v > 250 for v in policy.cells) == 3262

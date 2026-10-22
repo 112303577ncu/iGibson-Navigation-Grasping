@@ -293,7 +293,7 @@ def install_patrol_reentry(mission, folder, with_placement=True):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', required=True)
-    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0-corridor',
+    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0-review',
                         help='runtime prepared by integration/g2_prepare_koala.py')
     parser.add_argument('--gstreamer', type=Path, default=os.environ.get('GSTREAMER_LAUNCH_EXE'))
     parser.add_argument('--output', type=Path)

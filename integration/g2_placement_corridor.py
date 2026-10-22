@@ -130,17 +130,12 @@ class Geometry:
         return [item[1] for item in sorted(candidates, key=lambda item: item[0])]
 
     def command_problem(self, plan, pose, vx, wz, measured_vx=0., measured_wz=0.):
-        if not all(math.isfinite(v) for v in list(pose) + [vx, wz]):
+        if len(pose) != 3 or not all(math.isfinite(v) for v in list(pose) + [vx, wz, measured_vx, measured_wz]):
             return 'nonfinite command/pose'
         if not -.08 <= vx <= .15 or abs(wz) > 1.0:
             return 'placement speed limit'
         if self.exit(pose) is None:
             return 'current pose has no certified straight return'
-        if not turn_ready(self.mask, pose):
-            if abs(wz) > .02:
-                return 'no turning in the close placement corridor'
-            if abs(wrap(pose[2] - plan['yaw_rad'])) > math.radians(8):
-                return 'placement heading left its return corridor'
         # Include a 0.6s command/watchdog horizon. Check arcs as well as forward
         # projections; every future pose must retain a bounded way back.
         x, y, yaw = pose
@@ -154,10 +149,28 @@ class Geometry:
             yaw = wrap(yaw + predicted_wz * .05)
             if self.exit([x, y, yaw]) is None:
                 return 'predicted motion would lose the return corridor'
-            if not turn_ready(self.mask, [x, y, yaw]) and (
-                    abs(predicted_wz) > .02 or abs(wrap(yaw - plan['yaw_rad'])) > math.radians(8)):
-                return 'predicted turn outside the patrol turning region'
+            # The soft patrol mask is not a physical turning envelope. Bound
+            # the swept body against the bin as well as retaining an exit at
+            # every predicted yaw. Never rotate deeper into an already inflated
+            # bin envelope; compare total rotation, not tiny per-sample losses.
+            if predicted_wz and self.rotation_problem([x, y, pose[2]], yaw):
+                return 'predicted rotation sweeps toward the placement box'
         return None
+
+    def rotation_problem(self, pose, yaw):
+        def distance(angle, obstacle):
+            ox, oy, radius = obstacle
+            dx, dy = ox - pose[0], oy - pose[1]
+            bx = math.cos(angle) * dx + math.sin(angle) * dy
+            by = -math.sin(angle) * dx + math.cos(angle) * dy
+            return min(math.hypot(max(x1 - bx, 0., bx - x2),
+                                  max(y1 - by, 0., by - y2))
+                       for x1, y1, x2, y2 in self.dock.BODY_RECTANGLES)
+        for obstacle in self.obstacles:
+            old, new = distance(pose[2], obstacle), distance(yaw, obstacle)
+            if new <= obstacle[2] + WALL_MARGIN + .005 and new < old - .005:
+                return True
+        return False
 
 
 class Permit:
@@ -187,6 +200,8 @@ class Permit:
                 raise ValueError('invalid measured placement velocity')
             if measured * vx < -.0001:
                 raise ValueError('stop before reversing placement motion')
+            if angular * wz < 0 and abs(angular) > .02 and abs(wz) > .02:
+                raise ValueError('stop before reversing placement rotation')
             self.reason = self.geometry.command_problem(self.contract['plan'], state['pose'], vx, wz, measured, angular)
             return self.reason is None
         except (OSError, ValueError, KeyError, TypeError, OverflowError) as exc:

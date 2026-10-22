@@ -1,10 +1,10 @@
 ## 2026-10-22 投放前保留退路（離線、未部署）
 
 `demo.py mission` 現在轉到 `v23_mission_entry.py`；舊流程僅留明確的 `mission-legacy` 名稱。
-先用 `g2_prepare_koala.py`建立全新的 `.runtime/koala-e8766f0-corridor`，manifest schema2；舊schema1拒絕啟動。
+先用 `g2_prepare_koala.py`建立全新的 `.runtime/koala-e8766f0-review`，manifest schema2；舊helper拒絕啟動。
 投放前每5度搜尋可接近、可直退且可轉向的方向，優先牆距餘裕，再比較退距與轉運距離。
 原生導航至準備點並以絕對map yaw對正，再啟動PPO；前進命令先保守預測0.6秒，持續保留直退60cm內的出口。
-近盒區禁止原地旋轉；可行時只減低前進速度，不放寬巡航mask。定位／輸送延遲以capture握手時計入有效期限。
+近盒轉向依預測退出及掃掠包絡放行；巡航採批准35cm mask。定位／輸送延遲以capture握手時計入有效期限。
 放下RPC前再次檢查實際停點、持物狀態與退出路徑；失敗且確認仍持物時先退回合法轉向區，最多再接近一次。
 不重播未知放下結果；本版沒有實車部署／驗收，也不保證硬體故障時永不停車。
 見 [投放走廊規格與限制](docs/operations/PLACEMENT_CORRIDOR_2026-10-22.md)。
@@ -16,10 +16,23 @@
 任務層最多等待30秒，計入監督器已等時間；同owner／boot／map及五筆新穩定停車資料才續行。
 巡航最多重新派發一次；保留實際後退進度，不重播未知手臂動作。種子期限與重啟預算不放寬。
 八ID已納入v3粗略定位表，metric驗證旗標仍false。
-25cm車體、空場邊界脫困與35cm路線提案已離線整合；現行40cm地圖未自動改用35cm。
+25cm車體、邊界脫困與批准35cm地圖已離線整合；仍保留雷射煞停，沒有部署。
 放置後每段最多退10cm，完整轉向圈合法且三筆停穩才接下一圈；PPO接近尚未全面接全域mask。
 完整限制、故障表與日後配套部署見 [任務恢復](docs/operations/MISSION_RECOVERY_2026-10-22.md)。
 本段規格優先於下方歷史交接；沒有本版實車驗收，勿把舊PID／seed／機器狀態視為當前值。
+
+## 2026-10-22 Claude 審查修正（離線，優先於下方同日舊規格）
+
+已整合 koala `b3da080`：正式場景中心距牆35cm，縮減mask依SHA256批准紀錄核對；保留6／7cm轉向取樣圈。
+巡航保留雷射煞停，物理牆／固定盒幾何是附加檢查；一般邊界脫困只前進，後方目標先確認旋轉空間再轉向。
+15cm／10度AMCL對odom檢查只跨定位中斷，以最近停車基準比較，仍綁定owner／boot／map。
+近盒取消0.02rad/s一刀切：預測0.6秒所有位姿都須可直退，且旋轉不得更深入紙盒保守包絡；保留原生有效轉向速度。
+未驗證盒位不再作10cm絕對停點基準：須本輪非seeded視覺到達、報告≤5秒、視覺記憶≤12秒、候選差≤25cm，
+用base盒緣與停止map pose算本輪盒中心，保留原包絡並加入觀測包絡（半對角線+4cm），重驗修正及退出。
+verified仍false，不把視覺投影寫回正式定位／地圖；已驗證盒位仍維持原10cm放下停點檢查。
+PC重新準備 `.runtime/koala-e8766f0-review`；helper hash改變使舊runtime拒絕啟動。
+來源仍固定e8766f0，不宣稱已包含上游後續所有20秒等待／退出修正；本輪沒有部署或硬體驗收。
+見 [審查優化與驗證](docs/operations/CLAUDE_REVIEW_OPTIMIZATION_2026-10-22.md)。
 
 # X3Plus 專題 — Sim-to-Real 夾取部署
 
@@ -29,9 +42,9 @@
 > 仍保留原近盒牆／盒倒車檢查；舊koala入口不相容時明確拒絕。見 `docs/operations/POST_PLACE_PATROL_REENTRY_2026-10-22.md`。
 
 > **2026-10-22 空場／25cm車體（本機離線，未部署）：** 巡航新增軟禁航區自動脫離；
-> 以牆面與固定投放盒幾何取代空場模式的獨立50cm雷射煞停，仍檢查新鮮定位／影像／感測、travel、唯一owner及停止路徑。
+> 牆面與固定投放盒幾何為雷射煞停的附加檢查，仍檢查新鮮定位／影像／感測、travel、唯一owner及停止路徑。
 > `g2_boundary_recovery.py` 必須與新版 `g2_map_patrol.py`、scene 的 `boundary_recovery` 設定配套。
-> 現用40cm導航mask未覆寫；35cm候選圖、新巡航與糖果中心區見 `docs/planning/patrol_workspace_2026-10-22/README.md`。
+> 正式repo導航mask採批准35cm版；巡航與糖果中心區的離線提案見 `docs/planning/patrol_workspace_2026-10-22/README.md`。
 > 此輪無SSH、實車移動或實機驗收；局部接近／投放控制器尚未共用這個脫離閘。
 
 > **2026-10-21 地標表 v3：** 正式 `aruco_corner_landmarks.json` 已納入 ID0～7。

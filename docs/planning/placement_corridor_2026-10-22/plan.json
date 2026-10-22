@@ -44,11 +44,11 @@
     "zero_always_passes": true
   },
   "input_sha256": {
-    "scene_layout.json": "07481c0403507a30a83098737aa6821796ed0c529fcd8da5ed3b6670c054faff",
+    "scene_layout.json": "f52e06ed71b54e9cf4868e1cc0245358b2c31734a3aa34606e78122204d063de",
     "navigation_center_mask.yaml": "cbf20573351cf0687f6a84046015eed6abcb578c8a4e6f059a821b699faef0cf",
-    "navigation_center_mask.pgm": "23566c869736384cf68afd5aecea23a288b8e62dcc76cba0cb936c5338096a47"
+    "navigation_center_mask.pgm": "91829173a070731da5971ca1a1fb2066a898d7778554eb4f87c52474a8a45279"
   },
-  "guard_sha256": "94ae9c8e3869167389c2c062c938e711cbe646c1f27f23066c3e1329b277cd26",
+  "guard_sha256": "f03b2918172719e779dbbdf2a513041ef4172905f53cbda3560bab0d959cb989",
   "koala_commit": "e8766f03d0de3e48419a488f330b62e3412afab3",
   "hardware_validated": false
 }
