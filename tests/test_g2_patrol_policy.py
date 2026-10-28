@@ -294,6 +294,7 @@ def test_moved_box_blocks_old_route_even_after_geometry_validation():
 def test_transient_sensor_recovery_requires_five_distinct_odom_frames(monkeypatch):
     from unittest.mock import Mock
     r=patrol.Runner.__new__(patrol.Runner);r.stop=Mock();r.report={}
+    r.end=1000.  # normal Runner construction supplies the task deadline
     stamps=[1,1,2,3,4,5];calls=[patrol.Transient('stale AMCL')]+[{'odom_stamp':n} for n in stamps]
     def state():
         value=calls.pop(0)

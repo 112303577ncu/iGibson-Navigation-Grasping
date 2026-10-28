@@ -1,0 +1,30 @@
+{
+  "enabled": false,
+  "hardware_validated": false,
+  "proposal_only": true,
+  "preparation_pose_map": [
+    0.23446500351220656,
+    0.35483557658698084,
+    0.372327831916058
+  ],
+  "fixed_approach_yaw_rad": 0.372327831916058,
+  "proposed_sugarbox_region": {
+    "centre_map": [
+      0.9796514358123434,
+      0.6458633778634116
+    ],
+    "width_m": 0.08,
+    "depth_m": 0.08
+  },
+  "target_stop_distance_m": 0.34,
+  "exit": "retrace only after measured held-body envelope and complete return corridor validation",
+  "required_measurements": [
+    "loaded travel and release body envelope",
+    "camera source-to-decoder latency bound with capture evidence",
+    "ground homography error and visible footprint with gripper occlusion",
+    "fixed bin pose/dimensions/rim height",
+    "repeatable pickup stop error and coast distance",
+    "loaded straight exit drift and turning clearance"
+  ],
+  "warning": "No runtime loads this proposal; dimensions and coordinates are unvalidated starting candidates, not placement restrictions"
+}

@@ -7,13 +7,24 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import importlib.util
+
+# The entry verifies the manifest BEFORE selecting the coherent integration
+# package. Importing this builder must not load the local legacy package.
+_patch_spec = importlib.util.spec_from_file_location('g2_recovery_build_patches',
+    Path(__file__).with_name('g2_recovery_patches.py'))
+g2_recovery_patches = importlib.util.module_from_spec(_patch_spec)
+_patch_spec.loader.exec_module(g2_recovery_patches)
 
 UPSTREAM = 'https://github.com/koala915/iGibson-Navigation-Grasping.git'
 COMMIT = 'e8766f03d0de3e48419a488f330b62e3412afab3'
 SOURCES = ('mission_loop.py', 'mission_runtime.py', 'robot_rpc.py',
            'sugarbox_approach_grasp.py', 'sugarbox_rl_approach_final2.py',
-           'placement_dock.py', 'g2_placement_corridor.py')
-PATCHES = ['frame_sample_motion_bound', 'headless_cleanup', 'reversible_placement_gate']
+           'placement_dock.py', 'g2_placement_corridor.py', 'g2_task_recovery.py',
+           'g2_task_coordinator.py', 'patrol_vision_permit_jetson.py')
+SCHEMA = 3
+PATCHES = ['frame_sample_motion_bound', 'headless_cleanup', 'reversible_placement_gate',
+           'bounded_task_recovery_v1']
 ENGINE_SEND = '        self._send_json(\n            msg\n        )'
 ENGINE_GATE = '''        if G2_GUARD_PATH and TARGET_KIND == 'placement' and (vx or wz):
             if self.sock is None:
@@ -47,6 +58,13 @@ FLOW_TEST_EDITS = (
     ('self.link(poses).frame_pose(10.5)[2], 0.01)',
      'self.link(poses).frame_pose(10.5)[2], 0.06)'),
 )
+
+
+def recipe_sha256():
+    digest = hashlib.sha256()
+    for path in (Path(__file__), Path(g2_recovery_patches.__file__)):
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
 
 
 def patch_sources(root):
@@ -83,6 +101,11 @@ def patch_sources(root):
     approach.write_text(source, encoding='utf-8')
     shutil.copyfile(Path(__file__).with_name('g2_placement_corridor.py'),
                     root / 'integration/g2_placement_corridor.py')
+    shutil.copyfile(Path(__file__).with_name('g2_task_recovery.py'),
+                    root / 'integration/g2_task_recovery.py')
+    shutil.copyfile(Path(__file__).with_name('g2_task_coordinator.py'),
+                    root / 'integration/g2_task_coordinator.py')
+    g2_recovery_patches.apply(root)
     tests = root / 'tests/test_flow_contracts.py'
     source = tests.read_text(encoding='utf-8')
     for old, new in FLOW_TEST_EDITS:
@@ -97,10 +120,12 @@ def verify_manifest(root):
     if not path.is_file():
         raise ValueError('prepare the pinned runtime with integration/g2_prepare_koala.py first')
     manifest = json.loads(path.read_text(encoding='utf-8'))
-    if manifest.get('upstream_commit') != COMMIT or manifest.get('schema') != 2:
+    if manifest.get('upstream_commit') != COMMIT or manifest.get('schema') != SCHEMA:
         raise ValueError('incompatible koala runtime manifest')
     if manifest.get('patches') != PATCHES:
         raise ValueError('required runtime fixes are missing')
+    if manifest.get('patch_recipe_sha256') != recipe_sha256():
+        raise ValueError('runtime patch recipe changed; prepare a new runtime')
     for name in SOURCES:
         actual = hashlib.sha256((root / 'integration' / name).read_bytes()).hexdigest()
         if manifest.get('source_sha256', {}).get(name) != actual:
@@ -108,6 +133,12 @@ def verify_manifest(root):
     helper = 'g2_placement_corridor.py'
     if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
         raise ValueError('placement guard differs from PC planner; prepare a new runtime')
+    helper = 'g2_task_recovery.py'
+    if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
+        raise ValueError('recovery helper differs from PC coordinator; prepare a new runtime')
+    helper = 'g2_task_coordinator.py'
+    if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
+        raise ValueError('recovery coordinator differs from PC entry; prepare a new runtime')
     return manifest
 
 
@@ -144,8 +175,9 @@ def prepare(output, git_cache=None):
                 else:
                     raise ValueError('unsupported runtime archive entry')
     patch_sources(output)
-    manifest = {'schema': 2, 'upstream_repository': UPSTREAM, 'upstream_commit': COMMIT,
+    manifest = {'schema': SCHEMA, 'upstream_repository': UPSTREAM, 'upstream_commit': COMMIT,
                 'patches': PATCHES,
+                'patch_recipe_sha256': recipe_sha256(),
                 'hardware_validated': False,
                 'source_sha256': {name: hashlib.sha256((output / 'integration' / name).read_bytes()).hexdigest()
                                   for name in SOURCES}}

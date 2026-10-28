@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "verified": false,
+  "upper_bound_s": 0.30,
+  "sender_sha256": "MEASURE_AND_BIND_THE_ACTUAL_SENDER",
+  "receiver_sha256": "MEASURE_AND_BIND_THE_ACTUAL_RECEIVER",
+  "proof_file": "raw_capture_to_decode_measurements.jsonl",
+  "proof_sha256": "HASH_OF_THE_RAW_MEASUREMENT_FILE",
+  "note": "Template only; no measurement exists yet. Do not set verified=true without evidence."
+}

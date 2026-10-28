@@ -18,6 +18,7 @@ from g2_patrol_policy import Policy,wrap,finite,guided_heading,stop_reserve
 from g2_geometry import LIDAR_FORWARD_M
 from g2_navigation_goals import resolve_destination
 from g2_boundary_recovery import RecoveryPolicy
+import g2_task_recovery as task_recovery
 
 
 class Transient(RuntimeError):
@@ -163,7 +164,14 @@ class Runner:
                 age = time.time() - permit['source_stamp']
                 if not 0 <= age <= 1.2:
                     raise Transient('vision observer source stale')
+                required=getattr(self,'_task_observation_generation',0)
+                if getattr(self,'_task_observation_pending',False):
+                    if permit.get('recovery_ack')!=required:raise Transient('mission recovery pause')
+                    self._task_observation_pending=False
+                self.report['last_frame']=permit.get('frame')
                 if permit.get('allow') is not True:
+                    if permit.get('pause') is True:
+                        raise Transient('mission recovery pause')
                     raise RuntimeError('vision candidate requires stopped confirmation')
             except (IOError, ValueError, KeyError, TypeError):
                 raise Transient('vision observer unavailable')
@@ -174,6 +182,11 @@ class Runner:
         if hasattr(self,'report'):
             self.report['last_localization']={key:loc.get(key) for key in
                 ('ready','status','reason_code','next_action','wait_elapsed_s','retry_after_s')}
+        if getattr(self,'task_recovery_enabled',False):
+            context=(loc.get('boot_id'),loc.get('owner_pid'),loc.get('map_hash'))
+            if not all(value is not None for value in context):raise RuntimeError('localization context missing')
+            if getattr(self,'_task_context',context)!=context:raise RuntimeError('boot/owner/map changed')
+            self._task_context=context
         if loc.get('owner_pid')!=self.pid or not loc.get('ready') or not 0<=time.time()-loc['stamp']<=.4:
             detail='localization supervisor: '+str(loc.get('reason',loc.get('status')))
             if loc.get('degraded') and 0<=time.time()-loc['stamp']<=.4:
@@ -190,7 +203,22 @@ class Runner:
             raise Transient('map geometry localization uncertainty exceeds budget')
         if not self.policy.allowed(*s['pose'][:2]) and not getattr(self,'_boundary_recovery_active',False):
             raise BoundaryRequired('current centre outside navigation mask')
+        if getattr(self,'task_recovery_enabled',False):
+            self._task_last_good=dict(pose=s['pose'],odom=s['odom'],stamp=s['odom_stamp'],context=self._task_context)
         return s
+
+    def pause_task(self,episode,reason,elapsed=0.):
+        episode.pause('LOCALIZATION_NOT_READY',elapsed)
+        if getattr(self,'vision_permit',None) and not getattr(self,'_task_observation_pending',False):
+            self._task_observation_generation=getattr(self,'_task_observation_generation',0)+1
+            self._task_observation_pending=True
+        record=self.report.setdefault('task_checkpoint',{})
+        record.update(status='WAIT_LOCALIZATION',reason=reason,
+            recovery_generation=getattr(self,'_task_observation_generation',0),
+            requires_observation=getattr(self,'_task_observation_pending',False),
+            last_frame=self.report.get('last_frame'),stopped=getattr(self,'_task_last_good',None),
+            wait_used_s=episode.elapsed())
+        checkpoint(self.report)
 
     def boundary_read(self,check_vision=True):
         """Read fresh state outside the SOFT mask, retaining every other gate."""
@@ -254,15 +282,41 @@ class Runner:
         finally:
             self.stop();self._boundary_recovery_active=before;checkpoint(self.report)
 
-    def ready(self,seconds=20,allow_boundary=False):
-        end=time.time()+seconds;stable=0;last=None;wait_started=None
+    def ready(self,seconds=30,allow_boundary=False,check_vision=True):
+        end=time.time()+seconds;stable=0;last=None;wait_started=None;first=None
+        episode=getattr(self,'_task_episode',None)
+        if episode is None:
+            episode=task_recovery.Episode();self._task_episode=episode
+        if episode.started is not None:last=-1
+        anchor=getattr(self,'_task_last_good',None)
+        waiting_before=episode.elapsed()
         while True:
             try:
-                state=self.boundary_read() if allow_boundary else self.state()
+                if check_vision:state=self.boundary_read() if allow_boundary else self.state()
+                else:state=self.boundary_read(check_vision=False) if allow_boundary else self.state(check_vision=False)
                 if stable==0 and last is None:return state
+                episode.check()
+                if getattr(self,'task_recovery_enabled',False):
+                    task_recovery.continuity(anchor,dict(pose=state['pose'],odom=state['odom'],
+                        stamp=state['odom_stamp'],context=self._task_context))
+                if getattr(self,'task_recovery_enabled',False):
+                    if state['odom_stamp'] <= (anchor or {}).get('stamp',float('-inf')):
+                        time.sleep(.04);continue
+                    if last is not None and state['odom_stamp']<last and last!=-1:
+                        raise RuntimeError('odometry clock reversed during recovery')
+                    if abs(state['vx'])>=.01 or abs(state['wz'])>=.02:
+                        stable=0;first=None;time.sleep(.04);continue
+                    if first is not None and (math.hypot(state['pose'][0]-first[0],state['pose'][1]-first[1])>.03
+                            or abs(wrap(state['pose'][2]-first[2]))>math.radians(3)):
+                        stable=0;first=None
+                    first=first or state['pose']
                 if state['odom_stamp']!=last:
                     last=state['odom_stamp'];stable+=1
                 if stable>=5:
+                    local_wait=max(0.,task_recovery.monotonic()-episode.started) if episode.started is not None else 0.
+                    episode.resume()
+                    self._task_paused_total=getattr(self,'_task_paused_total',0.)+local_wait
+                    self.end+=max(0.,episode.elapsed()-waiting_before)
                     self.recovery_generation=getattr(self,'recovery_generation',0)+1
                     if hasattr(self,'report'):
                         self.report['last_sensor_wait_elapsed_s']=self.report.get('sensor_wait_elapsed_s',0.)
@@ -278,6 +332,8 @@ class Runner:
                     self.report['sensor_wait_elapsed_s']=max(0.,time.time()-wait_started)
                     self.report['sensor_wait_reason']=str(exc)
                 self.stop()
+                elapsed=self.report.get('last_localization',{}).get('wait_elapsed_s',0.) or 0.
+                self.pause_task(episode,str(exc),elapsed)
                 if time.time()>=end:raise Transient('sensor recovery timeout: '+str(exc))
             if time.time()>=end:raise Transient('sensor recovery stability timeout')
             time.sleep(.04)
@@ -293,7 +349,16 @@ class Runner:
                 s=(self.boundary_read(check_vision=False) if getattr(self,'boundary_recovery',False)
                    else self.state(check_vision=False))
             except Transient as exc:
-                fault=str(exc);stable=0;time.sleep(.03);continue
+                fault=str(exc);stable=0
+                episode=getattr(self,'_task_episode',None)
+                if episode is None:
+                    episode=task_recovery.Episode();self._task_episode=episode
+                elapsed=self.report.get('last_localization',{}).get('wait_elapsed_s',0.) or 0.
+                self.pause_task(episode,str(exc),elapsed)
+                waited=task_recovery.monotonic()
+                self.ready(allow_boundary=getattr(self,'boundary_recovery',False),check_vision=False)
+                start+=task_recovery.monotonic()-waited
+                continue
             if s['odom_stamp']!=last:
                 last=s['odom_stamp'];stable=stable+1 if abs(s['vx'])<.01 and abs(s['wz'])<.02 else 0
             if stable>=3 and time.time()-start>=.45:return s
@@ -302,6 +367,7 @@ class Runner:
 
     def pulse(self,vx,wz,duration):
         initial=self.ready();start=time.time();self.report['pulses']+=1
+        stopped=False
         try:
             if vx and duration>getattr(self,'max_forward_duration',.6):raise RuntimeError('forward pulse duration limit')
             while time.time()-start<duration:
@@ -332,12 +398,21 @@ class Runner:
                     if abs(wrap(s['odom'][2]-initial['odom'][2]))>math.radians(20):raise RuntimeError('pulse angular limit')
                 self.sock.sendall((json.dumps({'action':'velocity','vx':vx,'wz':wz})+'\n').encode('ascii'))
                 time.sleep(.04)
+        except Transient as exc:
+            self.stop()
+            stopped=True
+            episode=getattr(self,'_task_episode',None)
+            if episode is None:
+                episode=task_recovery.Episode();self._task_episode=episode
+            self.pause_task(episode,str(exc),self.report.get('last_localization',{}).get('wait_elapsed_s',0.) or 0.)
+            raise
         except BoundaryRequired:
             self.stop()
             if not getattr(self,'boundary_recovery',False):raise
             self.recover_boundary()
             raise Transient('replan required after boundary escape')
-        finally:self.stop()
+        finally:
+            if not stopped:self.stop()
         final=self.settle();self.report['trace'].append(final);checkpoint(self.report)
         if getattr(self,'boundary_recovery',False) and not self.policy.allowed(*final['pose'][:2]):
             self.recover_boundary()
@@ -350,6 +425,7 @@ class Runner:
         if math.hypot(origin[0]-current[0],origin[1]-current[1])>.13:
             origin=current
         begun=time.time();last_distance=None;stalled=0;generation=getattr(self,'recovery_generation',0)
+        paused_before=getattr(self,'_task_paused_total',0.)
         for _ in range(160):
             s=self.ready();p=s['pose'];distance=math.hypot(goal[0]-p[0],goal[1]-p[1])
             if generation!=getattr(self,'recovery_generation',0):
@@ -360,7 +436,7 @@ class Runner:
                 if error<=.065:
                     self.report['last_planned_goal']=goal
                     self.report['arrivals'].append({'label':label,'goal':goal,'pose':s['pose'],'error_m':error,'cov':s['cov']});checkpoint(self.report);return
-            if time.time()-begun>150:raise RuntimeError('waypoint timeout')
+            if time.time()-begun-(getattr(self,'_task_paused_total',0.)-paused_before)>150:raise RuntimeError('waypoint timeout')
             if not self.policy.segment_allowed(p[:2],goal):raise RuntimeError('waypoint segment crosses mask')
             err=wrap(guided_heading(p,origin,goal)-p[2])
             try:
@@ -390,16 +466,35 @@ class Runner:
 
     def goto(self,goal,label):
         current=self.ready()['pose'][:2];path=self.policy.plan(current,goal)
+        self.report['task_checkpoint']=dict(stage='PATROL_OR_TRANSIT',target=list(goal),
+            label=label,navigation_complete=False,observation_complete=False,
+            context=getattr(self,'_task_context',None),start_odom=getattr(self,'_task_last_good',{}).get('odom'),
+            remaining_path=path[1:],holding=self.report.get('holding'),arm_outcome='not_started')
+        checkpoint(self.report)
         self.report.setdefault('planned_paths',[]).append({'label':label,'points':path})
-        for attempt in range(4):
+        remaining=list(path[1:]);attempt=0
+        while remaining:
             try:
-                for i,point in enumerate(path[1:]):self.navigate(point,label if i==len(path)-2 else label+'_via%d'%i)
-                return
+                point=remaining[0]
+                self.navigate(point,label if len(remaining)==1 else label+'_via')
+                remaining.pop(0)
+                self.report['task_checkpoint']['remaining_path']=list(remaining)
+                checkpoint(self.report)
             except Transient as exc:
                 self.stop()
-                if 'replan required' not in str(exc) or attempt==3:raise
-                current=self.ready()['pose'][:2];path=self.policy.plan(current,goal)
-                self.report['planned_paths'].append({'label':label,'points':path,'reason':str(exc)})
+                if 'replan required' not in str(exc) or attempt>=3:raise
+                attempt+=1
+                # Repair toward the interrupted sub-leg endpoint, NOT straight
+                # to the final goal. Unobserved intermediate legs remain queued.
+                current=self.ready()['pose'][:2]
+                repaired=self.policy.plan(current,remaining[0])
+                remaining=list(repaired[1:])+remaining[1:]
+                self.report['task_checkpoint']['remaining_path']=list(remaining)
+                self.report['planned_paths'].append({'label':label,'points':[current]+remaining,'reason':str(exc)})
+        self.report['task_checkpoint'].update(navigation_complete=True,observation_complete=True)
+        episode=getattr(self,'_task_episode',None)
+        if episode is not None:episode.complete(True,True)
+        checkpoint(self.report)
 
     def verify_parked_goal(self,goal):
         final=self.settle();self.report['final']=final
@@ -485,11 +580,13 @@ def main():
             report['requested_goals']=[{'name':name,'point':goal} for name,goal in goals]
         if available_mb()<1024:raise RuntimeError('RAM below 1GB at start')
         h=rpc('health');ch=h['chassis'];owner=str(h['service_pid'])
+        report['holding']=h.get('holding')
         held=subprocess.check_output(['fuser','/dev/myserial']).decode().split()
         if held!=[owner] or ch['motors']!=[0,0,0,0] or ch['moving'] or ch['client'] is not None:raise RuntimeError('sole idle owner preflight failed')
         import rospy
         rospy.init_node('g2_map_patrol',disable_signals=True);sensors=Sensors();runner=Runner(sensors,policy,report,args.seconds)
         runner.boundary_micro=args.boundary_micro
+        runner.task_recovery_enabled=True
         runner.max_forward_duration=args.forward_pulse_max
         runner.vision_permit=args.vision_permit
         runner.boundary_recovery=policy.layout.get('boundary_recovery',{}).get('enabled') is True
@@ -532,7 +629,13 @@ def main():
                 runner.pulse(.15,0,.35)
             if not runner.rotation_allowed(runner.ready()['pose']):raise RuntimeError('entry turn reserve not reached')
             if goals:
-                for name,goal in goals:runner.goto(goal,name)
+                for leg_index,(name,goal) in enumerate(goals):
+                    report['remaining_route']=[{'name':n,'point':g} for n,g in goals[leg_index:]]
+                    report['leg_index']=leg_index
+                    runner.goto(goal,name)
+                    report['remaining_route']=[{'name':n,'point':g} for n,g in goals[leg_index+1:]]
+                    report['completed_leg_index']=leg_index
+                    checkpoint(report)
             else:
                 runner.goto(points[0],'diagonal_start')
                 for loop in range(args.loops):
