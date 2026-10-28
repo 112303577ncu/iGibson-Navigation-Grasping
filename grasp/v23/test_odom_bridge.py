@@ -8,6 +8,7 @@ from integration/, loaded the way the service loads them.
 
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
@@ -182,16 +183,30 @@ def main():
         detection = None
         servo = type("S", (), {"device": Dev(), "read_degrees": lambda self: None})()
 
+        def __init__(self):
+            # DeployConfig exposes metres; this is synthetic test data, not
+            # the real robot's calibrated bin rim height.
+            self.cfg = SimpleNamespace(bin_rim_height=0.123)
+
     ok(gs.build_odom_bridge(Ctl(), "") is None, "no GRASP_SERVICE_ODOM_ROSBRIDGE, no odometry")
     try:
         gs.build_odom_bridge(Ctl(), "9090")
         ok(False, "an address without a port is refused")
     except ValueError:
         ok(True, "an address without a port is refused")
-    svc = gs.GraspService(Ctl(), None, 1, "/tmp/unused.sock", odom_bridge=br)
-    ok(isinstance(svc.cmd_status().get("odom"), dict), "status reports the odometry")
+    controller = Ctl()
+    svc = gs.GraspService(controller, None, 1, "/tmp/unused.sock", odom_bridge=br)
+    status = svc.cmd_status()
+    ok(isinstance(status.get("odom"), dict), "status reports the odometry")
+    ok(status["bin_rim_height_m"] == 0.123, "status reports the configured rim height in metres")
+    controller.cfg.bin_rim_height = 0.0
+    status = svc.cmd_status()
+    ok(status["bin_rim_height_m"] == 0.0, "a zero rim height is reported, not replaced by a default")
+    ok(isinstance(status.get("odom"), dict), "rim height reporting preserves odometry")
     plain = gs.GraspService(Ctl(), None, 1, "/tmp/unused.sock")
-    ok(plain.cmd_status().get("odom") is None, "and null when it is off")
+    status = plain.cmd_status()
+    ok(status.get("odom") is None, "and null when it is off")
+    ok(status["bin_rim_height_m"] == 0.123, "rim height is also reported with odometry disabled")
 
     print()
     if failures:

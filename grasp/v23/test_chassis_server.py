@@ -345,7 +345,7 @@ def main():
     class FakeController:
         detection = None
         servo = FakeServo()
-        cfg = type("C", (), {"home_deg": E1})()
+        cfg = type("C", (), {"home_deg": E1, "bin_rim_height": 0.123})()
         _outcome = "grasped"
 
     clock = Clock()
@@ -377,6 +377,8 @@ def main():
     ok(raises(lambda: svc.run_arm_command(boom)) and not ch.status()["arm_busy"],
        "an arm command that raises still releases the wheels")
     ok(isinstance(svc.cmd_status().get("chassis"), dict), "status reports the chassis")
+    ok(svc.cmd_status()["bin_rim_height_m"] == 0.123,
+       "status reports the synthetic rim height alongside the chassis")
 
     plain = gs.GraspService(FakeController(), episode, 10, "/tmp/unused.sock")
     ok(plain.run_arm_command(lambda: {"ok": True}) == {"ok": True}
@@ -407,7 +409,8 @@ class Servo:
 class C:
     detection = None
     servo = Servo()
-    cfg = type("Cfg", (), {"home_deg": (90.0, 74.2, 8.6, 8.6, 90.0, 30.0)})()
+    cfg = type("Cfg", (), {"home_deg": (90.0, 74.2, 8.6, 8.6, 90.0, 30.0),
+                           "bin_rim_height": 0.123})()
 svc = gs.GraspService(C(), None, 1, sys.argv[3], chassis_server=srv)
 gs.install_sigterm_shutdown(svc)
 orig = srv.start
