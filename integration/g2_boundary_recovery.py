@@ -6,6 +6,10 @@ remain inside fitted walls and outside the fixed placement-box envelope.
 """
 from __future__ import division
 import math
+try:
+    from .g2_patrol_entry import BODY_RADIUS,TURN_MARGIN
+except ImportError:
+    from g2_patrol_entry import BODY_RADIUS,TURN_MARGIN
 
 
 def wrap(angle):
@@ -20,8 +24,12 @@ class RecoveryPolicy:
             raise ValueError('boundary recovery is not configured for this scene')
         if config.get('environment') != 'walls_and_fixed_bin':
             raise ValueError('boundary recovery requires the declared empty-room environment')
+        self.compact=getattr(policy,'compact',False)
         self.radius = float(config['body_radius_m']) + float(config['error_budget_m'])
-        if not (.25 <= self.radius <= .35 and config['body_radius_m'] == .25
+        if self.compact:
+            if config['body_radius_m']!=BODY_RADIUS or config['error_budget_m']!=TURN_MARGIN:
+                raise ValueError('unapproved compact recovery geometry')
+        elif not (.25 <= self.radius <= .35 and config['body_radius_m'] == .25
                 and config['error_budget_m'] >= .10):
             raise ValueError('unapproved recovery geometry')
         self.limit = .60
@@ -56,6 +64,7 @@ class RecoveryPolicy:
                    for i in range(count + 1))
 
     def recovered(self, point):
+        if self.compact:return self.hard_allowed(point) and self.policy.compact_turn_allowed(point)
         # Return far enough inside the soft mask to allow normal turns again.
         return (self.hard_allowed(point) and self.policy.allowed(*point[:2])
                 and all(self.policy.allowed(point[0] + .07 * math.cos(k * math.pi / 8),

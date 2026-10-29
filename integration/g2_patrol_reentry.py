@@ -17,6 +17,7 @@ MAX_STEP = .10
 
 
 def turn_ready(mask, point, margin=TURN_MARGIN):
+    if getattr(mask,'compact',False):return mask.compact_turn_allowed(point)
     return mask.allowed(*point[:2]) and all(
         mask.allowed(point[0] + radius * math.cos(k * math.pi / 8),
                      point[1] + radius * math.sin(k * math.pi / 8))

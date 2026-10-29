@@ -23,7 +23,7 @@ def test_real_scene_opposite_corner_route_stays_in_mask():
 
 
 def test_moved_box_envelope_requires_inward_patrol_route():
-    p=Policy(str(ROOT/'maps/demo_box_20261018_patrol'))
+    p=Policy(str(ROOT/'tests/fixtures/patrol_scene_20261018'))
     with pytest.raises(ValueError,match='patrol segment'):
         p.patrol_points(.60)
     points=p.patrol_points(.70)
@@ -81,7 +81,7 @@ def test_parking_cannot_reuse_arrival_before_turn_drift():
 
 def test_outer_route_retains_wall_box_and_turn_limits():
     import json
-    p=Policy(str(ROOT/'maps/demo_box_20261018_patrol'))
+    p=Policy(str(ROOT/'tests/fixtures/patrol_scene_20261018'))
     goals=json.loads((ROOT/'docs/calibration/nav_outer_2026-10-18/outer_goals.json').read_text())
     points=[g['point'] for g in goals]
     runner=patrol.Runner.__new__(patrol.Runner);runner.policy=p
@@ -325,7 +325,7 @@ def test_supervisor_deadline_is_not_followed_by_another_navigation_wait(monkeypa
 def test_35cm_scene_requires_the_matching_approved_mask(tmp_path, corruption):
     import json
     import shutil
-    source = ROOT / 'maps/demo_box_20261018_patrol'
+    source = ROOT / 'tests/fixtures/patrol_scene_20261018'
     for name in ('navigation_center_mask.yaml', 'navigation_center_mask.pgm', 'scene_layout.json'):
         shutil.copyfile(source / name, tmp_path / name)
     path = tmp_path / 'scene_layout.json'

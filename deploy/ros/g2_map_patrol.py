@@ -16,8 +16,9 @@ ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,os.path.join(ROOT,'integration'))
 from g2_patrol_policy import Policy,wrap,finite,guided_heading,stop_reserve
 from g2_geometry import LIDAR_FORWARD_M
-from g2_navigation_goals import resolve_destination
+from g2_navigation_goals import resolve_destination,nearest_route_entry,patrol_goals
 from g2_boundary_recovery import RecoveryPolicy
+from g2_patrol_entry import EntryGeometry,uncertainty_allowed
 import g2_task_recovery as task_recovery
 
 
@@ -149,9 +150,42 @@ class Runner:
                 try:self.sock.sendall(b'{"action":"stop"}\n')
                 except socket.error:break
 
-    def rotation_allowed(self,pose):
+    def mask_rotation_allowed(self,pose):
         return all(self.policy.allowed(pose[0]+.06*math.cos(i*math.pi/8),
                                        pose[1]+.06*math.sin(i*math.pi/8)) for i in range(16))
+
+    def rotation_allowed(self,pose):
+        if getattr(self.policy,'compact',False):return self.policy.compact_turn_allowed(pose)
+        if self.mask_rotation_allowed(pose):return True
+        if not self.policy.allowed(*pose[:2]):return False
+        try:return EntryGeometry(self.policy).box_turn_allowed(pose)
+        except (ValueError,KeyError):return False
+
+    def enter_turn_reserve(self):
+        """Join the real route; reverse is authorized only inside this startup scope."""
+        self._entry_reverse_used=0.
+        self._entry_active=True
+        try:
+            for _ in range(12):
+                state=self.ready();pose=state['pose']
+                if self.rotation_allowed(pose):return
+                entry=nearest_route_entry(self.policy,pose[:2])
+                path=entry['path']
+                target=next((p for p in path[1:] if math.hypot(p[0]-pose[0],p[1]-pose[1])>.01),entry['point'])
+                self.report['startup_route_entry']=entry
+                toward=(target[0]-pose[0])*math.cos(pose[2])+(target[1]-pose[1])*math.sin(pose[2])
+                geometry=EntryGeometry(self.policy)
+                if (toward>0 and self.policy.stopping_path_allowed(pose,.088)
+                        and not geometry.translation_problem(pose,.088)):
+                    self.pulse(.08,0,.08)
+                elif self._entry_reverse_used+.088<=.10:
+                    problem=EntryGeometry(self.policy).reverse_problem(pose,.088)
+                    if problem:raise RuntimeError(problem)
+                    self.pulse(-.08,0,.08)
+                else:raise RuntimeError('cannot enter turn reserve toward route entry')
+            raise RuntimeError('entry turn reserve not reached')
+        finally:
+            self.stop();self._entry_active=False
 
     def state(self,check_vision=True):
         vision_path = getattr(self, 'vision_permit', None)
@@ -199,6 +233,8 @@ class Runner:
             if h['service_pid']!=self.pid or ch['arm_pose']!='travel' or ch['arm_busy'] or ch['board_rx_age_s']>.2:
                 raise RuntimeError('resident feedback/arm/owner fault')
         s=self.sensors.state()
+        if getattr(self.policy,'compact',False) and not uncertainty_allowed(s):
+            raise Transient('compact patrol localization uncertainty exceeds budget')
         if getattr(self,'boundary_recovery',False) and max(s['cov'][:2])>(.04/3.)**2:
             raise Transient('map geometry localization uncertainty exceeds budget')
         if not self.policy.allowed(*s['pose'][:2]) and not getattr(self,'_boundary_recovery_active',False):
@@ -366,7 +402,10 @@ class Runner:
         raise Transient('stop feedback timeout'+(': '+fault if fault else ''))
 
     def pulse(self,vx,wz,duration):
+        if vx<0 and (not getattr(self,'_entry_active',False) or vx<-.08 or wz or duration>.08):
+            raise RuntimeError('reverse is limited to startup micro-pulses')
         initial=self.ready();start=time.time();self.report['pulses']+=1
+        reverse_origin=initial['odom'][:2] if vx<0 else None
         stopped=False
         try:
             if vx and duration>getattr(self,'max_forward_duration',.6):raise RuntimeError('forward pulse duration limit')
@@ -374,7 +413,17 @@ class Runner:
                 s=self.state();pose=s['pose']
                 if math.hypot(s['odom'][0]-initial['odom'][0],s['odom'][1]-initial['odom'][1])>.35*duration+.12:
                     raise RuntimeError('pulse translation limit')
-                if vx:
+                if vx<0:
+                    travelled=math.hypot(s['odom'][0]-reverse_origin[0],s['odom'][1]-reverse_origin[1])
+                    distance=.35*max(0,duration-(time.time()-start))+stop_reserve(duration)
+                    if getattr(self,'_entry_reverse_used',0.)+travelled+distance>.10:
+                        raise RuntimeError('startup reverse total distance limit')
+                    if not uncertainty_allowed(s,directional=True):raise Transient('entry geometry localization uncertainty')
+                    problem=EntryGeometry(self.policy).reverse_problem(pose,distance)
+                    if problem:raise RuntimeError(problem)
+                    # Retain the ordinary front/person brake even while reversing.
+                    if s['front']<getattr(self,'front_brake_m',.5):raise Transient('front brake')
+                elif vx:
                     brake=getattr(self,'front_brake_m',.5)
                     if getattr(self,'boundary_micro',False) and duration<=.08:brake=min(brake,.35)
                     # The laser brake stays in every patrol pulse: the operator
@@ -385,16 +434,30 @@ class Runner:
                         raise Transient('front brake')
                     distance=.35*max(0,duration-(time.time()-start))+stop_reserve(duration)
                     if not self.policy.stopping_path_allowed(pose,distance):raise Transient('predicted stop crosses mask')
+                    if getattr(self,'_entry_active',False) or getattr(self.policy,'compact',False):
+                        geometry=EntryGeometry(self.policy)
+                        end=(pose[0]+distance*math.cos(pose[2]),pose[1]+distance*math.sin(pose[2]))
+                        circle_safe=geometry.segment_allowed(pose,end)
+                        if not circle_safe:
+                            if not uncertainty_allowed(s,directional=True):raise Transient('entry geometry localization uncertainty')
+                            problem=geometry.translation_problem(pose,distance)
+                            if problem:raise RuntimeError(problem)
                     if getattr(self,'boundary_recovery',False):
                         geometry=RecoveryPolicy(self.policy)
                         end=(pose[0]+distance*math.cos(pose[2]),pose[1]+distance*math.sin(pose[2]))
-                        if not geometry.segment(pose,end):raise Transient('predicted stop violates physical wall/bin geometry')
+                        if not geometry.segment(pose,end):
+                            if not uncertainty_allowed(s) or not EntryGeometry(self.policy).segment_allowed(pose,end):
+                                raise Transient('predicted stop violates physical wall/bin geometry')
                 else:
                     if not self.rotation_allowed(pose):
                         if getattr(self,'boundary_recovery',False):
                             self.stop();self.recover_boundary()
                             raise Transient('replan required after boundary escape')
                         raise RuntimeError('turn drift reserve outside mask')
+                    if getattr(self.policy,'compact',False) or not self.mask_rotation_allowed(pose):
+                        if not uncertainty_allowed(s):raise Transient('entry geometry localization uncertainty')
+                        if math.hypot(s['odom'][0]-initial['odom'][0],s['odom'][1]-initial['odom'][1])>.01:
+                            raise RuntimeError('physical turn translation reserve exceeded')
                     if abs(wrap(s['odom'][2]-initial['odom'][2]))>math.radians(20):raise RuntimeError('pulse angular limit')
                 self.sock.sendall((json.dumps({'action':'velocity','vx':vx,'wz':wz})+'\n').encode('ascii'))
                 time.sleep(.04)
@@ -414,6 +477,13 @@ class Runner:
         finally:
             if not stopped:self.stop()
         final=self.settle();self.report['trace'].append(final);checkpoint(self.report)
+        if not vx and (getattr(self.policy,'compact',False) or not self.mask_rotation_allowed(initial['pose'])):
+            if (math.hypot(final['odom'][0]-initial['odom'][0],final['odom'][1]-initial['odom'][1])>.01
+                    or not self.rotation_allowed(final['pose'])):
+                raise RuntimeError('physical turn stopped outside reserve')
+        if vx<0:
+            self._entry_reverse_used+=math.hypot(final['odom'][0]-reverse_origin[0],final['odom'][1]-reverse_origin[1])
+            if self._entry_reverse_used>.10:raise RuntimeError('startup reverse total distance limit')
         if getattr(self,'boundary_recovery',False) and not self.policy.allowed(*final['pose'][:2]):
             self.recover_boundary()
             raise Transient('replan required after boundary escape at stop')
@@ -551,7 +621,7 @@ def resolve_goals(requested,policy,points):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--scene',required=True);p.add_argument('--output',required=True)
     p.add_argument('--loops',type=int,default=1);p.add_argument('--seconds',type=int,default=600);p.add_argument('--real',action='store_true');p.add_argument('--goals',help='JSON list of home, dropoff or {name,point:[x,y]}')
-    p.add_argument('--inset',type=float,default=.60,help='Patrol centre distance inside fitted walls, 0.60..0.90 m')
+    p.add_argument('--inset',type=float,default=.60,help='Legacy patrol/check inset, 0.60..0.90 m; patrol-cycle follows the scene route_file')
     p.add_argument('--face-point',type=float,nargs=2,metavar=('X','Y'),help='Face this map point after arrival; does not authorize approaching it')
     p.add_argument('--face-yaw',type=float,help='Absolute map yaw after arrival, -pi..pi; turn only in the normal turn-clear region')
     p.add_argument('--keep-heading',action='store_true',help='Keep the final travel heading when chaining navigation stages')
@@ -568,7 +638,12 @@ def main():
     if args.face_yaw is not None and (not finite(args.face_yaw) or not -math.pi<=args.face_yaw<=math.pi):p.error('face-yaw must be -pi..pi')
     if sum((bool(args.keep_heading),bool(args.face_point),args.face_yaw is not None))>1:p.error('choose keep-heading, face-point or face-yaw')
     if sum(bool(x) for x in (args.goals,args.destination,args.point))>1:p.error('choose goals, destination or point')
-    policy=Policy(args.scene);points=policy.patrol_points(args.inset);report={'ok':False,'real':args.real,'output_path':args.output,'waypoints':points,'patrol_inset_m':args.inset,'primary_patrol_point':'opposite paper-box corner','arrivals':[],'recoveries':[],'trace':[],'pulses':0}
+    policy=Policy(args.scene)
+    # Explicit destinations/goals follow their own checked paths. A legacy
+    # inset square must not reject a valid route around the moved box.
+    points=([point for _,point in patrol_goals(policy)] if args.destination or args.point or args.goals
+            else policy.patrol_points(args.inset))
+    report={'ok':False,'real':args.real,'output_path':args.output,'waypoints':points,'patrol_inset_m':args.inset,'primary_patrol_point':'opposite paper-box corner','arrivals':[],'recoveries':[],'trace':[],'pulses':0}
     runner=None;lease=None;unlocked=False
     def interrupted(*_):raise KeyboardInterrupt()
     signal.signal(signal.SIGTERM,interrupted)
@@ -595,7 +670,7 @@ def main():
         report['boundary_micro']=args.boundary_micro
         report['initial']=runner.ready(8,allow_boundary=runner.boundary_recovery)
         planning_start=report['initial']['pose'][:2]
-        if runner.boundary_recovery:
+        if runner.boundary_recovery and not policy.allowed(*planning_start):
             planning_start=list(RecoveryPolicy(policy).target(report['initial']['pose']))
             report['escape_preflight_target']=planning_start
         if args.destination:
@@ -617,17 +692,9 @@ def main():
             if not result.get('ok'):raise RuntimeError('unlock refused')
             unlocked=True
             runner.sock=socket.create_connection(('127.0.0.1',7000),timeout=1);runner.sock.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
-            if runner.boundary_recovery and not RecoveryPolicy(policy).recovered(runner.boundary_read()['pose']):
+            if runner.boundary_recovery and not policy.allowed(*runner.boundary_read()['pose'][:2]):
                 runner.recover_boundary()
-            # Enter the interior before rotating when parked near the centre-mask
-            # edge. No reverse/blind turn; each forward pulse retains all gates.
-            for _ in range(3):
-                current=runner.ready()['pose']
-                if runner.rotation_allowed(current):break
-                toward=(points[0][0]-current[0])*math.cos(current[2])+(points[0][1]-current[1])*math.sin(current[2])
-                if toward<=0 or not policy.stopping_path_allowed(current,.2725):raise RuntimeError('cannot enter turn reserve')
-                runner.pulse(.15,0,.35)
-            if not runner.rotation_allowed(runner.ready()['pose']):raise RuntimeError('entry turn reserve not reached')
+            runner.enter_turn_reserve()
             if goals:
                 for leg_index,(name,goal) in enumerate(goals):
                     report['remaining_route']=[{'name':n,'point':g} for n,g in goals[leg_index:]]

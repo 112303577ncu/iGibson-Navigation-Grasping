@@ -21,7 +21,7 @@ COMMIT = 'e8766f03d0de3e48419a488f330b62e3412afab3'
 SOURCES = ('mission_loop.py', 'mission_runtime.py', 'robot_rpc.py',
            'sugarbox_approach_grasp.py', 'sugarbox_rl_approach_final2.py',
            'placement_dock.py', 'g2_placement_corridor.py', 'g2_task_recovery.py',
-           'g2_task_coordinator.py', 'patrol_vision_permit_jetson.py')
+           'g2_task_coordinator.py', 'g2_body_geometry.py', 'g2_patrol_entry.py', 'patrol_vision_permit_jetson.py')
 SCHEMA = 3
 PATCHES = ['frame_sample_motion_bound', 'headless_cleanup', 'reversible_placement_gate',
            'bounded_task_recovery_v1']
@@ -105,6 +105,14 @@ def patch_sources(root):
                     root / 'integration/g2_task_recovery.py')
     shutil.copyfile(Path(__file__).with_name('g2_task_coordinator.py'),
                     root / 'integration/g2_task_coordinator.py')
+    shutil.copyfile(Path(__file__).with_name('g2_body_geometry.py'),
+                    root / 'integration/g2_body_geometry.py')
+    shutil.copyfile(Path(__file__).with_name('g2_patrol_entry.py'),
+                    root / 'integration/g2_patrol_entry.py')
+    dock = root / 'integration/placement_dock.py'
+    with dock.open('a', encoding='utf-8') as stream:
+        stream.write('\n# Share the exact body/back-path checker with native patrol startup.\n'
+                     'from integration.g2_body_geometry import BODY_RECTANGLES, back_path_problem\n')
     g2_recovery_patches.apply(root)
     tests = root / 'tests/test_flow_contracts.py'
     source = tests.read_text(encoding='utf-8')
@@ -139,6 +147,12 @@ def verify_manifest(root):
     helper = 'g2_task_coordinator.py'
     if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
         raise ValueError('recovery coordinator differs from PC entry; prepare a new runtime')
+    helper = 'g2_body_geometry.py'
+    if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
+        raise ValueError('body geometry differs from patrol; prepare a new runtime')
+    helper = 'g2_patrol_entry.py'
+    if manifest['source_sha256'][helper] != hashlib.sha256(Path(__file__).with_name(helper).read_bytes()).hexdigest():
+        raise ValueError('patrol geometry differs from PC planner; prepare a new runtime')
     return manifest
 
 

@@ -1,3 +1,27 @@
+## 2026-10-29 縮減正式巡航禁航區（離線、未部署；優先於下方同日舊規格）
+
+正式 `maps/demo_box_20261018_patrol` 已同步 koala `265a2bc` 的內移盒位，啟用 `compact_patrol`。
+以含線材旋轉半徑 0.308099m 加 3cm 定位／漂移餘量建立單一物理轉向檢查；不再額外疊 6／7cm 圈。
+牆邊中心 margin 35→34cm，raw map 的 occupied／unknown 仍排除並只膨脹一次，保留整格幾何防護；盒子原 0.283238m 中心禁航緩衝不減。
+中心可行格 3051→3211（+5.24%），實體可原地轉向格 2371→3133（+32.14%），均以同一份新盒位地圖比較。
+巡航、邊界恢復及放置後回巡航共用 compact 轉向規則。盒旁三個路線角點僅向外修正到可轉向的淨空；放置準備點亦改為新路線上的合法點。
+巡航路線檔不再受舊 `--inset` 方形檢查阻擋；保留雷射煞停、定位／感測／owner／travel 與停止路徑檢查。
+新圖、raw map、格網與盒子幾何均作雜湊／參數核對，舊場景仍走舊批准流程。builder 可離線重建，未 SSH、未部署、未實車驗收。
+見 [縮減範圍與驗證](docs/operations/COMPACT_PATROL_2026-10-29.md)。
+
+## 2026-10-29 巡航起步修正（離線、未部署）
+
+`g2_map_patrol.py` 起步改參照 `nearest_route_entry`，不再朝 `patrol_points(--inset)[0]` 固定角落硬走。
+近盒轉向以含線材車體完整旋轉半徑 0.308099 m 對物理盒子保守包絡與牆檢查，
+餘量 3 cm = AMCL 平移誤差 2 cm（3σ）+ 轉向漂移 1 cm；遠離盒子維持原遮罩 6 cm 圈。
+僅起步允許 ≤0.08 m/s、每脈衝 ≤0.08 秒、累計實測倒退與預測停距合計 ≤0.10 m；
+使用從 koala 投放退出抽出的同一份 `g2_body_geometry.back_path_problem`，另檢查完整車體掃掠與盒子包絡。
+直線微動另限 yaw 誤差 3σ ≤1°，每次送出前重驗新鮮定位、感測、唯一 owner、travel 與原雷射煞停。
+不改整張遮罩、盒子緩衝或正式地圖；`patrol-cycle` 走 `preferred_patrol.route_file`。
+`g2_prepare_koala.py` 將共用車體 helper 寫入並雜湊驗證，因此舊 runtime 須重新建立。
+測試使用 koala `265a2bc` 的新盒位地圖，正式本機地圖仍是舊版；沒有實車驗收。
+詳見 [離線驗證與部署配套](docs/operations/PATROL_ENTRY_FIX_2026-10-29.md)。
+
 ## 2026-10-28 定位暫停與原任務續行（離線，優先於下方舊規格）
 
 實際入口仍是 `demo.py mission → v23_mission_entry.py`，固定e8766f0；新目錄 `.runtime/koala-e8766f0-recovery`。
