@@ -7,19 +7,16 @@ import math
 import json
 from pathlib import Path
 import time
+from integration import g2_task_recovery as task
 
 
-class RecoveryFault(RuntimeError):
-    def __init__(self, code, detail, retryable=False, elapsed=0., context=None):
-        super().__init__('{}: {}'.format(code, detail))
-        self.code, self.retryable = code, retryable
-        self.elapsed, self.context = max(0., elapsed), context
+RecoveryFault = task.Fault
 
 
 def continuity(previous, current):
     if previous is None:
         return
-    if 'context' in previous and previous['context'] != current['context']:
+    if 'context' in previous and tuple(previous['context']) != tuple(current['context']):
         raise RecoveryFault('CONTEXT_CHANGED', 'owner/boot/map changed; re-anchor the task')
     old, new = previous['odom'], current['odom']
     p, q = previous['pose'], current['pose']
@@ -34,7 +31,7 @@ def continuity(previous, current):
 
 
 def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
-                  sleep=time.sleep, events=None, anchor=None):
+                  sleep=time.sleep, events=None, anchor=None, episode=None, require_anchor=False):
     """Normally one read; after a transient outage require five new stable poses.
 
     Count the supervisor's existing outage time against this same episode. A
@@ -52,6 +49,7 @@ def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
     waiting, stable, last, first = False, 0, None, None
     expected = previous['context'] if previous else None
     history = [] if events is None else events
+    episode = episode or task.Episode(seconds, clock=clock)
     for _ in range(1000):
         try:
             value = read()
@@ -59,6 +57,7 @@ def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
                 raise RecoveryFault('CONTEXT_CHANGED', 'owner/boot/map changed while stopped')
             if not waiting:
                 return value
+            episode.check()
             continuity(anchor, value)
             if clock() - started + offset >= seconds:
                 raise RecoveryFault('RECOVERY_TIMEOUT', 'localization recovery budget exhausted')
@@ -70,10 +69,12 @@ def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
                     > math.radians(3)):
                 stable, first = 0, None
             if last is None or value['stamp'] > last['stamp']:
-                stable += 1
+                if value['stamp'] > (anchor or {}).get('stamp', (previous or {}).get('stamp', float('-inf'))):
+                    stable += 1
                 first = first or value
             last = value
             if stable >= 5:
+                episode.resume()
                 history.append({'status': 'READY_TO_REPLAN', 'stable_samples': stable,
                                 'elapsed_s': clock() - started + offset})
                 return value
@@ -84,9 +85,14 @@ def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
                 raise RecoveryFault('CONTEXT_CHANGED', 'supervisor context changed during recovery')
             expected = expected or exc.context
             if not waiting:
+                episode.pause(exc.code, exc.elapsed, began=episode.clock()-max(0.,clock()-started))
                 stop()
+                if require_anchor and previous is not None and anchor is None:
+                    raise RecoveryFault('CHECKPOINT_MISSING', 'no recent motion anchor across the localization outage')
                 waiting = True
                 history.append({'status': 'WAIT_LOCALIZATION', 'reason_code': exc.code})
+            else:
+                episode.pause(exc.code, exc.elapsed)
             elapsed = clock() - started
             offset = max(offset, exc.elapsed - elapsed)
             stable, last, first = 0, None, None
@@ -96,9 +102,7 @@ def wait_snapshot(read, stop, previous=None, seconds=30., clock=time.monotonic,
     raise RecoveryFault('RECOVERY_TIMEOUT', 'recovery polling budget exhausted')
 
 
-TRANSIENT_CODES = frozenset(('AMCL_STARTING', 'AMCL_STALE', 'AMCL_UNCERTAIN', 'SCAN_STALE',
-    'ODOM_STALE', 'TF_STALE', 'BOARD_STALE', 'SUPERVISOR_FAULT', 'LOCALIZATION_NOT_READY',
-    'RESTART_BACKOFF', 'RAM_PRESSURE'))
+TRANSIENT_CODES = task.TRANSIENT
 
 
 def localization_fault(record):
@@ -133,6 +137,16 @@ def bind_patrol(mission, rooms, folder):
                     return original(*call_args, **call_kwargs)
                 except mission.MissionError as exc:
                     message = str(exc).lower()
+                    if getattr(mission, '_g2_task_coordinator', None) is not None:
+                        # The patched native patrol pauses IN PLACE on the same
+                        # leg. If it exited, do not silently start a new lap.
+                        report = mission.patrol_report(host)
+                        room = rooms.get(host)
+                        if room is not None:
+                            room.checkpoint.save(status='PATROL_RESUME_REFUSED',
+                                native_route=report.get('remaining_route'),
+                                native_checkpoint=report.get('task_checkpoint'))
+                        raise
                     link_failure = 'vision permit link to the robot ended' in message
                     localization = any(token in message for token in (
                         'localiz', 'stale amcl', 'stale map tf', 'stale scan/odom',

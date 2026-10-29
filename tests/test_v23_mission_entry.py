@@ -147,3 +147,16 @@ def test_truncated_capture_download_is_not_written(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match='truncated'):
         entry.download('host', '/capture.json', path)
     assert not path.exists()
+
+
+def test_real_recovery_requires_the_paired_jetson_sources(monkeypatch):
+    import hashlib
+    import json
+    from types import SimpleNamespace
+    names=('deploy/ros/g2_map_patrol.py','integration/g2_task_recovery.py')
+    expected={name:hashlib.sha256((entry.ROOT/name).read_bytes()).hexdigest() for name in names}
+    monkeypatch.setattr(entry,'remote',lambda *a:SimpleNamespace(stdout=json.dumps(expected).encode()))
+    assert entry.verify_recovery_deployment('host')==expected
+    monkeypatch.setattr(entry,'remote',lambda *a:SimpleNamespace(stdout=b'{}'))
+    with pytest.raises(RuntimeError,match='recovery code/hash mismatch'):
+        entry.verify_recovery_deployment('host')

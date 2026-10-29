@@ -8,6 +8,7 @@ import json
 import math
 import subprocess
 import time
+from integration import g2_task_recovery as task
 from pathlib import Path
 
 TURN_MARGIN = .07
@@ -16,6 +17,7 @@ MAX_STEP = .10
 
 
 def turn_ready(mask, point, margin=TURN_MARGIN):
+    if getattr(mask,'compact',False):return mask.compact_turn_allowed(point)
     return mask.allowed(*point[:2]) and all(
         mask.allowed(point[0] + radius * math.cos(k * math.pi / 8),
                      point[1] + radius * math.sin(k * math.pi / 8))
@@ -134,6 +136,10 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
             self._last_snapshot = None
             self._anchor = None
             self.recovery_events = []
+            self._holding = False
+            self.checkpoint = task.Checkpoint('STOPPED', path=str(folder / 'task_checkpoint.json'),
+                emit=lambda value: print('[RECOVERY] ' + json.dumps(value), flush=True))
+            self.episode = task.Episode(emit=self.checkpoint.event)
             rooms[self.host] = self
             if recovery is not None:
                 self._snapshot()
@@ -146,8 +152,13 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
                 fault.elapsed if fault else 0., fault.context if fault else None)
 
         def _snapshot_once(self, holding=False):
+            coordinator = getattr(mission, '_g2_task_coordinator', None)
+            remaining = self.episode.limit-self.episode.elapsed()
+            if remaining <= 0:
+                self.episode.check()
+            timeout = max(.01, min(3., remaining/2.))
             try:
-                h = health(self.host)
+                h = health(self.host, timeout=timeout) if coordinator is not None else health(self.host)
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 raise self._fault('HEALTH_UNAVAILABLE', str(exc), True)
             ch = h.get('chassis', {})
@@ -158,7 +169,11 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
                     or ch.get('motors') != [0, 0, 0, 0]):
                 raise self._fault('TASK_NOT_STOPPED', 'post-place reentry requires stopped travel state', True)
             try:
-                loc = mission.dock.read_localization(self.host)
+                remaining = self.episode.limit-self.episode.elapsed()
+                if remaining <= 0:
+                    self.episode.check()
+                loc = (mission.dock.read_localization(self.host, timeout=max(.01,min(3.,remaining)))
+                       if coordinator is not None else mission.dock.read_localization(self.host))
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 raise self._fault('SUPERVISOR_STALE', str(exc), True)
             if (not isinstance(loc, dict) or not isinstance(loc.get('age'), (int, float))
@@ -188,21 +203,34 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
                     or abs(vx) >= .01 or abs(wz) >= .02):
                 raise self._fault('CONTEXT_OR_FEEDBACK_INVALID', 'post-place reentry owner/odometry/stop evidence invalid')
             return {'pose': pose, 'odom': odom, 'stamp': stamp,
-                    'context': (loc['boot_id'], loc['owner_pid'], loc['map_hash'])}
+                    'context': (loc['boot_id'], loc['owner_pid'], loc['map_hash']),
+                    'localization': dict(ready=loc['ready'], age=loc['age'], state=dict(pose=list(pose)))}
 
         def _snapshot(self, holding=False):
             if recovery is None:
                 return self._snapshot_once(holding=holding)
+            coordinator = getattr(mission, '_g2_task_coordinator', None)
+            anchor = coordinator.motion_anchor(self, self._anchor) if coordinator is not None else self._anchor
             value = recovery.wait_snapshot(lambda: self._snapshot_once(holding=holding), lambda: mission.runner.stop(self.host),
                                            previous=self._last_snapshot, events=self.recovery_events,
-                                           anchor=self._anchor)
+                                           anchor=anchor, episode=self.episode, require_anchor=coordinator is not None)
+            self._holding = holding
             self._last_snapshot = self._anchor = value
+            self.checkpoint.data.update(holding=holding, context=list(value['context']))
+            if (coordinator is not None and self.episode.pending
+                    and self.episode.started is None and getattr(self, '_observation', None) is not None
+                    and getattr(self, '_observed_episode', -1) != self.episode.number):
+                coordinator.observe_motion(self, value)
+                self._observed_episode = self.episode.number
             return value
 
         def _leave_ready(self, minimum, holding=False):
-            # The grasp/placement controllers moved the robot since the last
-            # snapshot: a jump test against it would only measure their drift.
-            self._anchor = None
+            # Preserve the worker's latest anchor across a post-stage outage.
+            # The old pre-approach anchor would include normal controller drift.
+            if getattr(mission, '_g2_task_coordinator', None) is None:
+                self._anchor = None
+            self.checkpoint.save(stage='POST_RELEASE_EXIT' if post_place['pending'] else 'RETREAT',
+                arm_outcome='released' if post_place['pending'] else self.checkpoint.data['arm_outcome'])
             result = {}
             try:
                 retreat_to_patrol(
@@ -219,6 +247,7 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
                 (folder / 'post_place_reentry.json').write_text(
                     json.dumps(self.reentry_reports, indent=2), encoding='utf-8')
             self.backed, self.extra = self.reentry_used, 0.
+            self.checkpoint.save(navigation_complete=True, progress_m=result['distance_m'])
             print('[REENTRY] centre and 7cm turn reserve ready; actual retreat {:.2f}m'.format(
                 result['distance_m']), flush=True)
             return result
@@ -254,8 +283,56 @@ def bind_mission(mission, scene, report_folder, health, recovery=None, placement
         return result
 
     mission.Room = FeedbackRoom
+    original_back = mission.runner.back_straight
+
+    def recovered_back(host, metres, walls, **options):
+        room = rooms.get(host)
+        if room is None or recovery is None:
+            return original_back(host, metres, walls, **options)
+        if not 0 < metres <= MAX_RETREAT:
+            raise ValueError('invalid bounded back distance')
+        initial = room._snapshot(holding=room._holding)
+        coordinator = getattr(mission, '_g2_task_coordinator', None)
+        if coordinator is not None:
+            coordinator.prime_motion(room)
+        progress = task.MotionProgress(initial['odom'], metres)
+        room.checkpoint.save(start_odom=initial['odom'], motion_target_m=metres,
+                             progress_m=0., holding=room._holding)
+        class ReplanBeforeOutput(Exception):
+            pass
+        def localize(_host):
+            # This callback is also used by the NATIVE function's inner read.
+            # It waits before output, never catches/replays an unknown drive.
+            value = room._snapshot(holding=room._holding)
+            rest, done = progress.remaining(value['odom'])
+            if rest < .005 or abs(done-travelled) > .005:
+                raise ReplanBeforeOutput()
+            return value['localization']
+        for _ in range(50):
+            current = room._snapshot(holding=room._holding)
+            remaining, travelled = progress.remaining(current['odom'])
+            room.checkpoint.save(progress_m=travelled, stopped=current)
+            if remaining < .005:
+                return travelled
+            problem = mission.dock.back_path_problem(current['pose'], remaining, walls,
+                obstacles=options.get('obstacles', room.obstacles))
+            if problem:
+                raise task.Fault('RETREAT_PATH_REFUSED', str(problem))
+            try:
+                original_back(host, min(MAX_STEP, remaining), walls,
+                              **dict(options, localize=localize))
+            except ReplanBeforeOutput:
+                continue
+        raise task.Fault('MOTION_STALLED', 'bounded retreat iteration limit')
+
+    mission.runner.back_straight = recovered_back
     mission.place_held = place_held
     supervisor = placement.Supervisor(mission, rooms, scene, folder) if placement is not None else None
+    if supervisor is not None:
+        from integration.g2_task_coordinator import Coordinator
+        mission._g2_placement_supervisor = supervisor
+        mission._g2_recovery = recovery
+        Coordinator(mission, rooms, folder, placement.LocalizationFeed)
     patrol_recovery = recovery.bind_patrol(mission, rooms, folder) if recovery is not None else False
     return {'adapter': 'g2_patrol_reentry', 'turn_margin_m': TURN_MARGIN,
             'max_step_m': MAX_STEP, 'max_retreat_m': MAX_RETREAT,

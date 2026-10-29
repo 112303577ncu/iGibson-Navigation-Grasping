@@ -1,6 +1,8 @@
 """Runtime pinning and headless/motion patches; no network or robot access."""
 import hashlib
 import json
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -32,11 +34,23 @@ def finish():
 ''', encoding='utf-8')
     (root / 'tests/test_flow_contracts.py').write_text(
         '\n'.join(old for old, new in prepare.FLOW_TEST_EDITS), encoding='utf-8')
+    # Additional exact patch contexts remain inert in these tiny import
+    # fixtures. Real pinned-source compilation is covered separately.
+    for name, changes in prepare.g2_recovery_patches.PATCHES.items():
+        path = root / 'integration' / name
+        source = path.read_text(encoding='utf-8')
+        for index, (old, _new) in enumerate(changes):
+            if old not in source:
+                source += '\n_recovery_context_{} = r"""\n{}\n"""\n'.format(index, old)
+        path.write_text(source, encoding='utf-8')
+    for name, changes in prepare.g2_recovery_patches.TEST_PATCHES.items():
+        (root/'tests'/name).write_text('\n'.join(old for old, _new in changes), encoding='utf-8')
 
 
 def manifest(root):
-    data = dict(schema=2, upstream_commit=prepare.COMMIT,
+    data = dict(schema=prepare.SCHEMA, upstream_commit=prepare.COMMIT,
                 patches=prepare.PATCHES,
+                patch_recipe_sha256=prepare.recipe_sha256(),
                 source_sha256={name: hashlib.sha256((root / 'integration' / name).read_bytes()).hexdigest()
                                for name in prepare.SOURCES})
     (root / 'g2_runtime_manifest.json').write_text(json.dumps(data), encoding='utf-8')
@@ -98,3 +112,20 @@ def test_current_pc_guard_must_match_worker_even_if_manifest_is_internally_consi
 def test_existing_runtime_is_never_overwritten(tmp_path):
     with pytest.raises(FileExistsError):
         prepare.prepare(tmp_path)
+
+
+def test_manifest_builder_does_not_preload_the_wrong_integration_package():
+    path = str(prepare.__file__)
+    program = ("import importlib.util,sys\n"
+        "spec=importlib.util.spec_from_file_location('builder',sys.argv[1])\n"
+        "module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)\n"
+        "assert 'integration' not in sys.modules, 'entry would select the legacy package'\n")
+    subprocess.run([sys.executable, '-c', program, path], check=True, capture_output=True)
+
+
+def test_old_patch_recipe_is_rejected_even_with_untampered_runtime_files(tmp_path):
+    source_tree(tmp_path);prepare.patch_sources(tmp_path);manifest(tmp_path)
+    path=tmp_path/'g2_runtime_manifest.json'
+    value=json.loads(path.read_text());value['patch_recipe_sha256']='old recipe'
+    path.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='patch recipe changed'):prepare.verify_manifest(tmp_path)

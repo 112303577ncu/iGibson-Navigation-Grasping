@@ -10,7 +10,11 @@ from integration import g2_offline_workspace_plan as planner
 class WorkspacePlanTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.workspace = planner.Workspace()
+        # This suite verifies the historical 25cm workspace proposal, whose
+        # fixed circuit predates the inward box move. Current compact patrol
+        # has its own full-body route tests in test_g2_compact_patrol.py.
+        legacy=Path(__file__).resolve().parents[1]/'tests/fixtures/patrol_scene_20261018'
+        cls.workspace = planner.Workspace(legacy)
         cls.camera = planner.Camera()
         cls.report = planner.build(cls.workspace, cls.camera)
 

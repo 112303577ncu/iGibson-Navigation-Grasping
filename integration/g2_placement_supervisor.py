@@ -10,6 +10,7 @@ import tempfile
 import threading
 import time
 import uuid
+from integration import g2_task_recovery as task
 
 spec = importlib.util.spec_from_file_location('g2_placement_geometry', Path(__file__).with_name('g2_placement_corridor.py'))
 corridor = importlib.util.module_from_spec(spec)
@@ -56,6 +57,7 @@ while True:
 
     def _read(self):
         sent, anchor = None, None
+        history = []
         try:
             for line in self.proc.stdout:
                 if getattr(self, 'closed', False):
@@ -86,11 +88,25 @@ while True:
                              and min(cov) >= 0 and max(cov[:2]) <= (.04 / 3) ** 2
                              and all(type(state.get(key)) in (int, float) and math.isfinite(state[key])
                                      for key in ('vx', 'wz')))
+                    if (ready and isinstance(state.get('odom'), list) and len(state['odom']) == 3
+                            and task.finite(state['odom']+[state.get('odom_stamp')])):
+                        if not history or history[-1]['stamp'] != state['odom_stamp']:
+                            history.append(dict(at=received-age, pose=pose, odom=state['odom'],
+                                                stamp=state['odom_stamp']))
+                            history = history[-40:]
+                    reason = ('READY' if ready else 'AMCL_UNCERTAIN' if loc.get('ready') is True
+                              else 'REFERENCE_REQUIRED' if loc.get('status') == 'needs_reference'
+                              else loc.get('reason_code') or 'LOCALIZATION_NOT_READY')
                     atomic(self.path, dict(ready=ready, received_at=received,
                         source_age_s=age, pose=pose, context=context,
-                        measured_vx=state.get('vx'), measured_wz=state.get('wz')))
+                        measured_vx=state.get('vx'), measured_wz=state.get('wz'),
+                        odom=state.get('odom'), stamp=state.get('odom_stamp'),
+                        reason_code=reason,
+                        wait_elapsed_s=loc.get('wait_elapsed_s', 0.),
+                        pose_history=history,
+                        fatal=not ready and reason not in task.TRANSIENT))
                 except (OSError, ValueError, KeyError, TypeError, OverflowError):
-                    atomic(self.path, dict(ready=False))
+                    atomic(self.path, dict(ready=False, reason_code='SUPERVISOR_STALE'))
         finally:
             atomic(self.path, dict(ready=False))
 
@@ -207,11 +223,21 @@ class Supervisor:
                   registration_verified=False, exit=geometry.exit(pose))
 
     def transit(self, host, plan, real):
-        output = '/dev/shm/g2_placement_transit_' + uuid.uuid4().hex + '.json'
+        coordinator = getattr(self.mission, '_g2_task_coordinator', None)
+        if real and coordinator is not None:
+            output = '/dev/shm/g2_placement_transit_' + uuid.uuid4().hex + '.json'
+            return coordinator.transport(host, plan,
+                lambda: self._transit(host, plan, real, self.mission.PERMIT_PATH, output), output)
+        return self._transit(host, plan, real)
+
+    def _transit(self, host, plan, real, vision_path=None, output=None):
+        output = output or '/dev/shm/g2_placement_transit_' + uuid.uuid4().hex + '.json'
         argv = ['/usr/bin/python', 'deploy/ros/g2_map_patrol.py', '--scene', self.scene,
                 '--point'] + [str(v) for v in plan['staging'][:2]]
         argv += ['--face-yaw', str(plan['yaw_rad'])]
         argv += ['--inset', '.70', '--boundary-micro', '--seconds', '180', '--output', output]
+        if vision_path is not None:
+            argv += ['--vision-permit', str(vision_path)]
         if real:
             argv.append('--real')
         command = ('cd /home/jetson/Documents/deploy_jetson2 && '
@@ -304,6 +330,8 @@ class Supervisor:
                 except (Exception, KeyboardInterrupt) as exc:
                     failure = str(exc) or 'interrupted'
                     if isinstance(exc, KeyboardInterrupt):
+                        raise
+                    if isinstance(exc, task.Fault) and not exc.retryable:
                         raise
                 finally:
                     try:

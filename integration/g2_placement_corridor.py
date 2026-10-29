@@ -4,6 +4,10 @@ import json
 import math
 from pathlib import Path
 import time
+try:
+    from .g2_patrol_entry import EntryGeometry
+except ImportError:
+    from g2_patrol_entry import EntryGeometry
 
 MAX_BACK = .60
 TURN_RING = .07
@@ -27,6 +31,7 @@ def half_depth(box, yaw, fallback):
 
 
 def turn_ready(mask, pose):
+    if getattr(mask,'compact',False):return mask.compact_turn_allowed(pose)
     return mask.allowed(*pose[:2]) and all(mask.allowed(
         pose[0] + radius * math.cos(k * math.pi / 8),
         pose[1] + radius * math.sin(k * math.pi / 8))
@@ -35,6 +40,8 @@ def turn_ready(mask, pose):
 
 class Grid:
     def __init__(self, record):
+        self.layout=record.get('compact_layout')
+        self.compact=self.layout is not None
         self.width, self.height = record['width'], record['height']
         self.resolution, self.origin = record['resolution'], record['origin']
         self.cells = base64.b64decode(record['cells'], validate=True)
@@ -42,6 +49,9 @@ class Grid:
                 or not 0 < self.width * self.height <= 4000000
                 or len(self.cells) != self.width * self.height or self.resolution <= 0):
             raise ValueError('invalid placement mask')
+
+    def compact_turn_allowed(self,pose):
+        return self.allowed(*pose[:2]) and EntryGeometry(self).turn_allowed(pose)
 
     def allowed(self, x, y):
         col = int(math.floor((x - self.origin[0]) / self.resolution))
@@ -51,8 +61,12 @@ class Grid:
 
 
 def encode_mask(mask):
-    return dict(width=mask.width, height=mask.height, resolution=mask.resolution,
+    record=dict(width=mask.width, height=mask.height, resolution=mask.resolution,
                 origin=list(mask.origin), cells=base64.b64encode(bytes(mask.cells)).decode('ascii'))
+    if getattr(mask,'compact',False):
+        record['compact_layout']={key:mask.layout[key] for key in
+            ('room_polygon','room_heading_rad','navigation_mask_validation','boundary_recovery')}
+    return record
 
 
 class Geometry:

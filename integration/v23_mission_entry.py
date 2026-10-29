@@ -42,14 +42,14 @@ def remote(host, command, timeout=35, data=None, check=True):
     return result
 
 
-def rpc(host, command):
+def rpc(host, command, timeout=30):
     program = """import socket,sys
 s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(15)
 s.connect('/tmp/grasp_health.sock' if sys.argv[1]=='health' else '/tmp/grasp_service.sock')
 s.sendall((sys.argv[1]+'\\n').encode());print(s.makefile().readline());s.close()
 """
     return json.loads(remote(host, 'python3 -c ' + shlex.quote(program) + ' ' +
-                             shlex.quote(command)).stdout)
+                             shlex.quote(command), timeout=timeout).stdout)
 
 
 def require_parked(health):
@@ -219,6 +219,19 @@ def load_koala(root):
     return module
 
 
+def verify_recovery_deployment(host):
+    names = ('deploy/ros/g2_map_patrol.py', 'integration/g2_task_recovery.py')
+    expected = {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in names}
+    program = ("import hashlib,json,os,sys\nroot=sys.argv[1]\n"
+        "print(json.dumps({name:hashlib.sha256(open(os.path.join(root,name),'rb').read()).hexdigest() "
+        "for name in json.loads(sys.argv[2])}))\n")
+    result = remote(host, 'python3 -c '+shlex.quote(program)+' '+shlex.quote(JETSON)+' '+shlex.quote(json.dumps(names)))
+    actual = json.loads(result.stdout)
+    if actual != expected:
+        raise RuntimeError('paired Jetson recovery code/hash mismatch; keep the robot parked')
+    return expected
+
+
 def check_stream(args, folder, mission):
     from integration.rear_stream import StreamReader
     reader = StreamReader(5600, args.gstreamer)
@@ -281,8 +294,10 @@ def install_patrol_reentry(mission, folder, with_placement=True):
         placement_spec = importlib.util.spec_from_file_location('v23_placement_supervisor', placement_path)
         placement = importlib.util.module_from_spec(placement_spec)
         placement_spec.loader.exec_module(placement)
+    def health(host, timeout=None):
+        return rpc(host, 'health') if timeout is None else rpc(host, 'health', timeout=timeout)
     result = adapter.bind_mission(mission, SCENE, folder / 'mission',
-                                  lambda host: rpc(host, 'health'), recovery=recovery, placement=placement)
+                                  health, recovery=recovery, placement=placement)
     result['source_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
     result['recovery_source_sha256'] = hashlib.sha256(recovery_path.read_bytes()).hexdigest()
     if with_placement:
@@ -293,7 +308,7 @@ def install_patrol_reentry(mission, folder, with_placement=True):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', required=True)
-    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0-review',
+    parser.add_argument('--koala-root', type=Path, default=ROOT / '.runtime/koala-e8766f0-recovery',
                         help='runtime prepared by integration/g2_prepare_koala.py')
     parser.add_argument('--gstreamer', type=Path, default=os.environ.get('GSTREAMER_LAUNCH_EXE'))
     parser.add_argument('--output', type=Path)
@@ -331,6 +346,8 @@ def main(argv=None):
         if not args.real:
             code = mission.main(upstream)
         else:
+            report['stage'] = 'RECOVERY_CONTRACT'
+            report['jetson_recovery_sha256'] = verify_recovery_deployment(args.host)
             def localization():
                 report['stage'] = 'LOCALIZATION'
                 return initialize(args, folder)
